@@ -228,10 +228,7 @@ export const generateResponse = internalAction({
       });
 
       // Process streaming response with throttled database updates
-      const result = await processStream(
-        response,
-        requestId,
-        async (content: string) => {
+      const result = await processStream(response, async (content: string) => {
           await ctx.runMutation(internal.messages.updateContent, {
             id: args.assistantMessageId,
             content,
@@ -295,7 +292,6 @@ export const generateResponse = internalAction({
  */
 async function processStream(
   response: Response,
-  requestId: string,
   updateContent: (content: string) => Promise<void>
 ): Promise<StreamResult> {
   const reader = response.body?.getReader();
