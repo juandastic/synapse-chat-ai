@@ -1,78 +1,92 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-// =============================================================================
-// Database Schema
-// =============================================================================
-
+/**
+ * Synapse AI Chat Database Schema
+ *
+ * Tables:
+ * - users: Authenticated users linked to Clerk
+ * - sessions: Conversation sessions with auto-close after 6 hours
+ * - messages: Chat messages with streaming support and analytics
+ */
 export default defineSchema({
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // Users
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   /**
-   * Users table - linked to Clerk via tokenIdentifier.
+   * Users - linked to Clerk via tokenIdentifier.
    * Created automatically on first authentication.
    */
   users: defineTable({
-    /** Clerk token identifier for authentication */
+    /** Clerk token identifier (unique per user) */
     tokenIdentifier: v.string(),
-    /** Display name (from Clerk or user-set) */
+    /** Display name (from Clerk profile or user-set) */
     name: v.string(),
   }).index("by_token", ["tokenIdentifier"]),
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // Sessions
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   /**
-   * Sessions table - logical groupings of messages within the infinite thread.
-   * Sessions auto-close after 6 hours of inactivity to manage context windows.
+   * Sessions - logical groupings of messages within the infinite thread.
+   *
+   * Lifecycle:
+   * - active: User can send messages
+   * - processing: AI is generating a response (currently unused)
+   * - closed: Session ended (auto-close after 6h or manual)
+   *
+   * Auto-close triggers Cortex ingest to persist learnings to knowledge graph.
    */
   sessions: defineTable({
-    /** Reference to the user who owns this session */
+    /** Owner of this session */
     userId: v.id("users"),
-    /** Session lifecycle status */
+    /** Current lifecycle status */
     status: v.union(
       v.literal("active"),
       v.literal("processing"),
       v.literal("closed")
     ),
-    /** Cached user knowledge snapshot for this session (from AI Brain, mocked for now) */
-    cachedUserKnowledge: v.string(),
-    /** Timestamp when session was created */
+    /** Compiled user knowledge from Cortex (injected into system prompt) */
+    cachedUserKnowledge: v.optional(v.string()),
+    /** Session creation timestamp */
     startedAt: v.number(),
-    /** Timestamp when session was closed (if closed) */
+    /** Session close timestamp (set when status -> closed) */
     endedAt: v.optional(v.number()),
-    /** Timestamp of last message activity (for staleness detection) */
+    /** Last message timestamp (used for staleness detection) */
     lastMessageAt: v.number(),
-    /** Reference to scheduled auto-close job (for debouncing) */
+    /** Scheduled auto-close job ID (for cancellation on activity) */
     closerJobId: v.optional(v.id("_scheduled_functions")),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"]),
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // Messages
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   /**
-   * Messages table - individual chat messages.
-   * Both user and assistant messages are stored here.
-   * Assistant messages include generation metadata for analytics.
+   * Messages - individual chat messages in a session.
+   *
+   * Supports:
+   * - User messages (role: "user")
+   * - AI responses (role: "assistant") with streaming
+   * - Error states (type: "error") for failed generations
+   * - Analytics metadata (tokens, latency, cost)
    */
   messages: defineTable({
-    /** Reference to the session this message belongs to */
+    /** Parent session */
     sessionId: v.id("sessions"),
-    /** Message author role */
+    /** Author role */
     role: v.union(v.literal("user"), v.literal("assistant")),
-    /** Message content (streamed for assistant messages) */
+    /** Message content (updated during streaming for assistant) */
     content: v.string(),
-    /** Message type (text or error) */
+    /** Content type (error = generation failed) */
     type: v.union(v.literal("text"), v.literal("error")),
-    /** Timestamp when AI response completed (success or error). Undefined = still processing */
+    /** Completion timestamp (undefined = still streaming) */
     completedAt: v.optional(v.number()),
-    /** Generation metadata (assistant messages only, for analytics) */
+    /** Generation analytics (assistant messages only) */
     metadata: v.optional(
       v.object({
-        /** LLM model used (e.g., "openai/gpt-oss-120b:free") */
+        /** LLM model identifier */
         model: v.optional(v.string()),
         /** Input tokens consumed */
         promptTokens: v.optional(v.number()),
@@ -80,15 +94,15 @@ export default defineSchema({
         completionTokens: v.optional(v.number()),
         /** Total tokens (prompt + completion) */
         totalTokens: v.optional(v.number()),
-        /** Cost in USD (from OpenRouter) */
+        /** Cost in USD */
         cost: v.optional(v.number()),
-        /** Generation time in milliseconds */
+        /** End-to-end generation time (ms) */
         latencyMs: v.optional(v.number()),
-        /** Finish reason (stop, length, etc.) */
+        /** LLM finish reason (stop, length, etc.) */
         finishReason: v.optional(v.string()),
-        /** Error message (internal, for debugging) */
+        /** Internal error message (for debugging) */
         error: v.optional(v.string()),
-        /** Error code (e.g., API error code) */
+        /** Error category code */
         errorCode: v.optional(v.string()),
       })
     ),

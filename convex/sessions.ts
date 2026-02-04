@@ -13,15 +13,18 @@ import { getCurrentUser } from "./users";
 // Configuration
 // =============================================================================
 
-/** Session staleness threshold: 6 hours of inactivity triggers auto-close */
-const SESSION_STALE_THRESHOLD_MS = 6 * 60 * 60 * 1000;
+/** Session auto-close threshold: 6 hours of inactivity */
+export const SESSION_STALE_THRESHOLD_MS = 6 * 60 * 60 * 1000;
 
-/** Mocked user knowledge (will be replaced with real data from AI Brain) */
-const MOCKED_USER_KNOWLEDGE = `User Profile Summary:
+/** Default user knowledge for new users (before Cortex builds a profile) */
+const DEFAULT_USER_KNOWLEDGE = `User Profile Summary:
 - New user, building rapport
 - Interests and preferences: Unknown yet
 - Communication style: To be learned
 - Key context: First interactions, establishing trust`;
+
+/** Valid session status values */
+export type SessionStatus = "active" | "processing" | "closed";
 
 // =============================================================================
 // Public Queries
@@ -29,7 +32,7 @@ const MOCKED_USER_KNOWLEDGE = `User Profile Summary:
 
 /**
  * Get the current active session for the authenticated user.
- * Returns null if no active session exists.
+ * Returns null if not authenticated or no active session exists.
  */
 export const getActiveSession = query({
   args: {},
@@ -51,7 +54,8 @@ export const getActiveSession = query({
 // =============================================================================
 
 /**
- * Get a session by ID (internal use only).
+ * Get a session by ID.
+ * Returns null if not found (caller should handle).
  */
 export const get = internalQuery({
   args: { id: v.id("sessions") },
@@ -66,11 +70,16 @@ export const get = internalQuery({
 
 /**
  * Get or create an active session for the user.
- * Handles session rotation if the current session is stale (> 6 hours inactive).
+ *
+ * Session lifecycle:
+ * 1. Check for existing active session
+ * 2. If stale (> 6 hours since last message), close it and schedule Cortex ingest
+ * 3. Create new session with default or inherited knowledge
  *
  * @param ctx - Mutation context
  * @param userId - User ID to get/create session for
  * @returns Active session document
+ * @throws Error if session creation fails (should never happen)
  */
 export async function getOrCreateActiveSession(
   ctx: MutationCtx,
@@ -78,7 +87,7 @@ export async function getOrCreateActiveSession(
 ): Promise<Doc<"sessions">> {
   const now = Date.now();
 
-  // Find current active session
+  // Check for existing active session
   const existingSession = await ctx.db
     .query("sessions")
     .withIndex("by_user_status", (q) =>
@@ -86,17 +95,20 @@ export async function getOrCreateActiveSession(
     )
     .first();
 
-  // Check if session exists and is fresh
   if (existingSession) {
-    const isStale = now - existingSession.lastMessageAt > SESSION_STALE_THRESHOLD_MS;
+    const inactiveMs = now - existingSession.lastMessageAt;
+    const isStale = inactiveMs > SESSION_STALE_THRESHOLD_MS;
 
     if (!isStale) {
       return existingSession;
     }
 
-    // Session is stale - close it
-    console.log("[sessions] Closing stale session", {
+    // Close stale session
+    const inactiveHours = Math.round(inactiveMs / (60 * 60 * 1000) * 10) / 10;
+    console.log("[sessions.getOrCreateActiveSession] Closing stale session", {
       sessionId: existingSession._id,
+      userId,
+      inactiveHours,
       lastMessageAt: new Date(existingSession.lastMessageAt).toISOString(),
     });
 
@@ -105,57 +117,67 @@ export async function getOrCreateActiveSession(
       endedAt: now,
     });
 
-    // Cancel the old auto-close job if it exists
+    // Cancel pending auto-close job
     if (existingSession.closerJobId) {
       await ctx.scheduler.cancel(existingSession.closerJobId);
     }
   }
 
-  // Create new session
+  // Create new session with default knowledge
   const sessionId = await ctx.db.insert("sessions", {
     userId,
     status: "active",
-    cachedUserKnowledge: MOCKED_USER_KNOWLEDGE,
+    cachedUserKnowledge: DEFAULT_USER_KNOWLEDGE,
     startedAt: now,
     lastMessageAt: now,
   });
 
   const newSession = await ctx.db.get(sessionId);
   if (!newSession) {
-    throw new Error("Failed to create session");
+    // This should never happen - db.insert succeeded
+    throw new Error("Session creation failed unexpectedly");
   }
 
-  console.log("[sessions] New session created", { sessionId: newSession._id, userId });
+  console.log("[sessions.getOrCreateActiveSession] Created new session", {
+    sessionId,
+    userId,
+    hadPreviousSession: !!existingSession,
+  });
+
   return newSession;
 }
 
 /**
- * Update session's lastMessageAt and reschedule the auto-close job.
- * Implements the debounce pattern - each message resets the 6-hour timer.
+ * Update session activity timestamp and reschedule auto-close.
+ *
+ * Implements debounced auto-close: each message resets the 6-hour inactivity
+ * timer by canceling the previous scheduled job and creating a new one.
  *
  * @param ctx - Mutation context
- * @param sessionId - Session to touch
+ * @param sessionId - Session to update
  */
 export async function touchSession(
   ctx: MutationCtx,
   sessionId: Id<"sessions">
 ): Promise<void> {
   const session = await ctx.db.get(sessionId);
-  if (!session) return;
+  if (!session) {
+    console.warn("[sessions.touchSession] Session not found", { sessionId });
+    return;
+  }
 
-  // Cancel existing auto-close job if any
+  // Cancel existing auto-close job to prevent premature closure
   if (session.closerJobId) {
     await ctx.scheduler.cancel(session.closerJobId);
   }
 
-  // Schedule new auto-close job for 6 hours from now
+  // Schedule new auto-close job
   const closerJobId = await ctx.scheduler.runAfter(
     SESSION_STALE_THRESHOLD_MS,
     internal.sessions.autoClose,
     { sessionId }
   );
 
-  // Update session
   await ctx.db.patch(sessionId, {
     lastMessageAt: Date.now(),
     closerJobId,
@@ -168,33 +190,123 @@ export async function touchSession(
 
 /**
  * Auto-close a session after inactivity timeout.
- * Called by the scheduler after 6 hours of no messages.
+ * Triggered by scheduler after SESSION_STALE_THRESHOLD_MS of no messages.
+ *
+ * Post-close flow:
+ * 1. Marks session as closed
+ * 2. Schedules Cortex ingest to persist conversation to knowledge graph
+ * 3. Cortex creates a draft session with updated user knowledge
  */
 export const autoClose = internalMutation({
   args: { sessionId: v.id("sessions") },
   handler: async (ctx, args) => {
     const session = await ctx.db.get(args.sessionId);
-    
-    // Already closed or doesn't exist - nothing to do
+
+    // Guard: session already closed or deleted
     if (!session || session.status === "closed") {
+      console.log("[sessions.autoClose] Session already closed or missing", {
+        sessionId: args.sessionId,
+        exists: !!session,
+      });
       return;
     }
 
-    console.log("[sessions] Auto-closing inactive session", { sessionId: args.sessionId });
+    const sessionDurationMs = Date.now() - session.startedAt;
+    const sessionDurationHours =
+      Math.round((sessionDurationMs / (60 * 60 * 1000)) * 10) / 10;
 
+    console.log("[sessions.autoClose] Closing inactive session", {
+      sessionId: args.sessionId,
+      userId: session.userId,
+      sessionDurationHours,
+    });
+
+    // Close the session
     await ctx.db.patch(args.sessionId, {
       status: "closed",
       endedAt: Date.now(),
       closerJobId: undefined,
     });
 
-    // Note: We don't create a new session here.
-    // The next message will create one via getOrCreateActiveSession.
+    // Trigger Cortex ingest to persist learnings and prepare next session
+    await ctx.scheduler.runAfter(0, internal.cortex.ingestAndCreateDraft, {
+      closedSessionId: args.sessionId,
+      userId: session.userId,
+    });
   },
 });
 
 /**
- * Update session status (internal use only).
+ * Create a draft session pre-loaded with user knowledge from Cortex.
+ * Called by cortex.ingestAndCreateDraft after successful graph ingest.
+ *
+ * Draft session characteristics:
+ * - status: "active" (ready for user's next message)
+ * - cachedUserKnowledge: compiled knowledge from the graph
+ * - No closerJobId (auto-close timer starts on first message)
+ *
+ * Race condition handling: If user starts a new session while Cortex is
+ * processing, we update the existing session's knowledge instead of
+ * creating a duplicate.
+ */
+export const createDraftSession = internalMutation({
+  args: {
+    userId: v.id("users"),
+    knowledge: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    // Check for race condition: user may have started chatting already
+    const existingSession = await ctx.db
+      .query("sessions")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", args.userId).eq("status", "active")
+      )
+      .first();
+
+    if (existingSession) {
+      // Update existing session with new knowledge (if available)
+      if (args.knowledge) {
+        await ctx.db.patch(existingSession._id, {
+          cachedUserKnowledge: args.knowledge,
+        });
+        console.log("[sessions.createDraftSession] Updated existing session", {
+          sessionId: existingSession._id,
+          userId: args.userId,
+          knowledgeLength: args.knowledge.length,
+        });
+      } else {
+        console.log("[sessions.createDraftSession] Session exists, no knowledge update", {
+          sessionId: existingSession._id,
+          userId: args.userId,
+        });
+      }
+      return existingSession._id;
+    }
+
+    // Create new draft session (no closerJobId = auto-close starts on first message)
+    const now = Date.now();
+    const sessionId = await ctx.db.insert("sessions", {
+      userId: args.userId,
+      status: "active",
+      cachedUserKnowledge: args.knowledge ?? undefined,
+      startedAt: now,
+      lastMessageAt: now,
+    });
+
+    console.log("[sessions.createDraftSession] Created draft session", {
+      sessionId,
+      userId: args.userId,
+      hasKnowledge: !!args.knowledge,
+      knowledgeLength: args.knowledge?.length ?? 0,
+    });
+
+    return sessionId;
+  },
+});
+
+/**
+ * Update session status.
+ * Used for transitioning between active/processing/closed states.
  */
 export const updateStatus = internalMutation({
   args: {
@@ -206,6 +318,21 @@ export const updateStatus = internalMutation({
     ),
   },
   handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) {
+      console.warn("[sessions.updateStatus] Session not found", {
+        sessionId: args.sessionId,
+      });
+      return;
+    }
+
+    const previousStatus = session.status;
     await ctx.db.patch(args.sessionId, { status: args.status });
+
+    console.log("[sessions.updateStatus] Status changed", {
+      sessionId: args.sessionId,
+      from: previousStatus,
+      to: args.status,
+    });
   },
 });

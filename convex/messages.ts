@@ -8,7 +8,19 @@ import {
 import { internal } from "./_generated/api";
 import { getOrCreateUser } from "./users";
 import { getOrCreateActiveSession, touchSession } from "./sessions";
-import { Doc } from "./_generated/dataModel";
+
+// =============================================================================
+// Configuration
+// =============================================================================
+
+/** Maximum allowed message content length (characters) */
+const MAX_MESSAGE_LENGTH = 10_000;
+
+/** Default number of messages to return in list query */
+const DEFAULT_MESSAGE_LIMIT = 50;
+
+/** Maximum number of messages allowed in list query */
+const MAX_MESSAGE_LIMIT = 200;
 
 // =============================================================================
 // Public Queries
@@ -21,7 +33,7 @@ import { Doc } from "./_generated/dataModel";
  */
 export const list = query({
   args: {
-    /** Maximum number of messages to return (default: 50) */
+    /** Maximum number of messages to return (default: 50, max: 200) */
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -30,31 +42,40 @@ export const list = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier)
+      )
       .unique();
 
     if (!user) return [];
 
-    const limit = args.limit ?? 50;
+    // Clamp limit to valid range
+    const requestedLimit = args.limit ?? DEFAULT_MESSAGE_LIMIT;
+    const limit = Math.min(Math.max(1, requestedLimit), MAX_MESSAGE_LIMIT);
 
-    // Get all user's sessions
+    // Fetch sessions sorted by most recent activity first
     const sessions = await ctx.db
       .query("sessions")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    // Collect messages from all sessions
-    const allMessages: Doc<"messages">[] = [];
-    for (const session of sessions) {
-      const messages = await ctx.db
-        .query("messages")
-        .withIndex("by_session", (q) => q.eq("sessionId", session._id))
-        .collect();
-      allMessages.push(...messages);
-    }
+    if (sessions.length === 0) return [];
 
-    // Sort by creation time and return the most recent N messages
+    // Batch fetch messages from all sessions using Promise.all
+    // This avoids the N+1 query problem by parallelizing the fetches
+    const messagesBySession = await Promise.all(
+      sessions.map((session) =>
+        ctx.db
+          .query("messages")
+          .withIndex("by_session", (q) => q.eq("sessionId", session._id))
+          .collect()
+      )
+    );
+
+    // Flatten, sort by creation time, and return the most recent N messages
+    const allMessages = messagesBySession.flat();
     allMessages.sort((a, b) => a._creationTime - b._creationTime);
+
     return allMessages.slice(-limit);
   },
 });
@@ -84,6 +105,22 @@ export const getRecent = internalQuery({
   },
 });
 
+/**
+ * Get all messages for a session (for Synapse Cortex ingest).
+ * Returns messages in chronological order.
+ */
+export const getBySession = internalQuery({
+  args: {
+    sessionId: v.id("sessions"),
+  },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("messages")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .collect();
+  },
+});
+
 // =============================================================================
 // Public Mutations
 // =============================================================================
@@ -91,13 +128,14 @@ export const getRecent = internalQuery({
 /**
  * Send a message - the main entry point for the chat.
  *
- * This mutation:
- * 1. Gets or creates the user record
- * 2. Gets or creates an active session (handles rotation if stale)
- * 3. Inserts the user message
- * 4. Creates a placeholder assistant message
- * 5. Touches the session (resets auto-close timer)
- * 6. Schedules the AI response generation
+ * Flow:
+ * 1. Validates input content
+ * 2. Gets or creates user record (auth required)
+ * 3. Gets or creates active session (handles rotation if stale)
+ * 4. Inserts user message
+ * 5. Creates placeholder assistant message (for streaming)
+ * 6. Touches session (resets 6-hour auto-close timer)
+ * 7. Schedules AI response generation
  *
  * @returns IDs for the created messages and session
  */
@@ -107,21 +145,32 @@ export const send = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    // 1. Get or create user
+    // Input validation
+    const content = args.content.trim();
+    if (content.length === 0) {
+      throw new Error("Message content cannot be empty");
+    }
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      throw new Error(
+        `Message exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters`
+      );
+    }
+
+    // Get or create user (throws if not authenticated)
     const user = await getOrCreateUser(ctx);
 
-    // 2. Get or create active session (handles rotation)
+    // Get or create active session (handles rotation if stale)
     const session = await getOrCreateActiveSession(ctx, user._id);
 
-    // 3. Insert user message
+    // Insert user message
     const userMessageId = await ctx.db.insert("messages", {
       sessionId: session._id,
       role: "user",
-      content: args.content,
+      content,
       type: "text",
     });
 
-    // 4. Create placeholder assistant message
+    // Create placeholder for streaming assistant response
     const assistantMessageId = await ctx.db.insert("messages", {
       sessionId: session._id,
       role: "assistant",
@@ -129,19 +178,21 @@ export const send = mutation({
       type: "text",
     });
 
-    // 5. Touch session (updates lastMessageAt, reschedules auto-close)
+    // Update session activity (reschedules auto-close timer)
     await touchSession(ctx, session._id);
 
-    // 6. Schedule AI response generation (runs immediately)
+    // Schedule AI response generation (executes immediately via runAfter(0))
     await ctx.scheduler.runAfter(0, internal.chat.generateResponse, {
       sessionId: session._id,
       assistantMessageId,
     });
 
-    console.log("[messages] Message sent", {
+    console.log("[messages.send] Message queued for processing", {
+      userId: user._id,
       sessionId: session._id,
       userMessageId,
       assistantMessageId,
+      contentLength: content.length,
     });
 
     return {
@@ -157,8 +208,9 @@ export const send = mutation({
 // =============================================================================
 
 /**
- * Update message content (for streaming responses).
- * Called repeatedly during AI generation to update the message.
+ * Update message content during streaming.
+ * Called repeatedly by the AI generation action to update the response.
+ * High-frequency operation - optimized to minimize overhead.
  */
 export const updateContent = internalMutation({
   args: {
@@ -166,14 +218,21 @@ export const updateContent = internalMutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
+    const message = await ctx.db.get(args.id);
+    if (!message) {
+      console.warn("[messages.updateContent] Message not found", {
+        messageId: args.id,
+      });
+      return;
+    }
+
     await ctx.db.patch(args.id, { content: args.content });
   },
 });
 
 /**
- * Save message metadata after generation completes successfully.
- * Stores analytics data like tokens used, latency, and cost.
- * Also marks the message as completed by setting completedAt.
+ * Finalize a successful AI generation.
+ * Stores analytics metadata and marks the message as completed.
  */
 export const saveMetadata = internalMutation({
   args: {
@@ -190,17 +249,32 @@ export const saveMetadata = internalMutation({
     completedAt: v.number(),
   },
   handler: async (ctx, args) => {
+    const message = await ctx.db.get(args.id);
+    if (!message) {
+      console.error("[messages.saveMetadata] Message not found", {
+        messageId: args.id,
+      });
+      return;
+    }
+
     await ctx.db.patch(args.id, {
       metadata: args.metadata,
       completedAt: args.completedAt,
+    });
+
+    console.log("[messages.saveMetadata] Generation completed", {
+      messageId: args.id,
+      model: args.metadata.model,
+      tokens: args.metadata.totalTokens,
+      latencyMs: args.metadata.latencyMs,
+      finishReason: args.metadata.finishReason,
     });
   },
 });
 
 /**
- * Mark a message as an error.
- * Called when AI generation fails to show error to user.
- * Stores error details in metadata for debugging while showing user-friendly content.
+ * Mark a message as failed.
+ * Shows user-friendly error content while storing technical details in metadata.
  */
 export const markAsError = internalMutation({
   args: {
@@ -216,11 +290,27 @@ export const markAsError = internalMutation({
     completedAt: v.number(),
   },
   handler: async (ctx, args) => {
+    const message = await ctx.db.get(args.id);
+    if (!message) {
+      console.error("[messages.markAsError] Message not found", {
+        messageId: args.id,
+      });
+      return;
+    }
+
     await ctx.db.patch(args.id, {
       type: "error",
       content: args.errorMessage,
       metadata: args.metadata,
       completedAt: args.completedAt,
+    });
+
+    console.error("[messages.markAsError] Generation failed", {
+      messageId: args.id,
+      sessionId: message.sessionId,
+      error: args.metadata?.error,
+      errorCode: args.metadata?.errorCode,
+      latencyMs: args.metadata?.latencyMs,
     });
   },
 });
