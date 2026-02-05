@@ -1,7 +1,8 @@
-import { useEffect, useRef, Fragment, useCallback } from "react";
+import { useEffect, useRef, Fragment, useCallback, useState } from "react";
 import { useChatContext } from "@/contexts/ChatContext";
 import { MessageItem } from "./MessageItem";
 import { SessionDivider } from "./SessionDivider";
+import { Button } from "@/components/ui/button";
 
 export function MessageList() {
   const { messages } = useChatContext();
@@ -11,6 +12,7 @@ export function MessageList() {
   const prevLastMessageContentRef = useRef("");
   const userScrolledUpRef = useRef(false);
   const lastScrollTopRef = useRef(0);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   // Check if user is near the bottom (within threshold)
   const isNearBottom = useCallback(() => {
@@ -39,25 +41,43 @@ export function MessageList() {
     const container = scrollContainerRef.current;
     if (!container) return;
 
+    // Initial check - show button if not at bottom on mount
+    const checkInitialPosition = () => {
+      if (!isNearBottom()) {
+        setShowScrollToBottom(true);
+      }
+    };
+    
+    // Check after a brief delay to ensure container is rendered
+    const timeoutId = setTimeout(checkInitialPosition, 100);
+
     const handleScroll = () => {
       const currentScrollTop = container.scrollTop;
       const scrollingUp = currentScrollTop < lastScrollTopRef.current;
+      const nearBottom = isNearBottom();
       
       // If user scrolls up and is not near bottom, mark as intentionally scrolled up
-      if (scrollingUp && !isNearBottom()) {
+      if (scrollingUp && !nearBottom) {
         userScrolledUpRef.current = true;
       }
       
-      // If user scrolls to near bottom, reset the flag
-      if (isNearBottom()) {
+      // Show button whenever user is not near bottom
+      if (!nearBottom) {
+        setShowScrollToBottom(true);
+      } else {
+        // If user scrolls to near bottom, reset the flag and hide button
         userScrolledUpRef.current = false;
+        setShowScrollToBottom(false);
       }
       
       lastScrollTopRef.current = currentScrollTop;
     };
 
     container.addEventListener("scroll", handleScroll, { passive: true });
-    return () => container.removeEventListener("scroll", handleScroll);
+    return () => {
+      clearTimeout(timeoutId);
+      container.removeEventListener("scroll", handleScroll);
+    };
   }, [isNearBottom]);
 
   // Auto-scroll on new messages or streaming content updates
@@ -77,6 +97,13 @@ export function MessageList() {
     prevMessageCountRef.current = messageCount;
     prevLastMessageContentRef.current = lastMessageContent;
 
+    // Check scroll position after messages update (in case user was already scrolled up)
+    setTimeout(() => {
+      if (!isNearBottom()) {
+        setShowScrollToBottom(true);
+      }
+    }, 50);
+
     // Don't auto-scroll if user has intentionally scrolled up
     if (userScrolledUpRef.current) {
       return;
@@ -91,7 +118,7 @@ export function MessageList() {
     } else if (hasNewMessages || isAssistantStreaming) {
       scrollToBottom(false);
     }
-  }, [messages, scrollToBottom]);
+  }, [messages, scrollToBottom, isNearBottom]);
 
   // Loading state
   if (messages === undefined) {
@@ -137,29 +164,59 @@ export function MessageList() {
   }
 
   return (
-    <div ref={scrollContainerRef} className="h-full overflow-y-auto scroll-smooth">
-      <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
-        {messages.map((message, index) => {
-          const prevMessage = messages[index - 1];
-          const showSessionDivider =
-            prevMessage && prevMessage.sessionId !== message.sessionId;
-          // Use completedAt to determine if still processing (more robust than checking empty content)
-          // This prevents infinite loading state if the request fails before writing content
-          const isStreaming =
-            message.role === "assistant" && message.completedAt === undefined;
+    <>
+      <div ref={scrollContainerRef} className="h-full overflow-y-auto scroll-smooth">
+        <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
+          {messages.map((message, index) => {
+            const prevMessage = messages[index - 1];
+            const showSessionDivider =
+              prevMessage && prevMessage.sessionId !== message.sessionId;
+            // Use completedAt to determine if still processing (more robust than checking empty content)
+            // This prevents infinite loading state if the request fails before writing content
+            const isStreaming =
+              message.role === "assistant" && message.completedAt === undefined;
 
-          return (
-            <Fragment key={message._id}>
-              {showSessionDivider && (
-                <SessionDivider timestamp={message._creationTime} />
-              )}
-              <MessageItem message={message} isStreaming={isStreaming} />
-            </Fragment>
-          );
-        })}
-        {/* Spacer at bottom for better UX */}
-        <div ref={bottomRef} className="h-4" />
+            return (
+              <Fragment key={message._id}>
+                {showSessionDivider && (
+                  <SessionDivider timestamp={message._creationTime} />
+                )}
+                <MessageItem message={message} isStreaming={isStreaming} />
+              </Fragment>
+            );
+          })}
+          {/* Spacer at bottom for better UX */}
+          <div ref={bottomRef} className="h-4" />
+        </div>
       </div>
-    </div>
+      
+      {/* Scroll to bottom button */}
+      {showScrollToBottom && (
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <Button
+            onClick={() => {
+              scrollToBottom(false);
+              userScrolledUpRef.current = false;
+              setShowScrollToBottom(false);
+            }}
+            size="icon"
+            className="h-10 w-10 rounded-full shadow-lg transition-all hover:scale-110"
+            aria-label="Scroll to bottom"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-5 w-5"
+            >
+              <path d="M12 5v14M19 12l-7 7-7-7" />
+            </svg>
+          </Button>
+        </div>
+      )}
+    </>
   );
 }
