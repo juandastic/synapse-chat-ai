@@ -27,6 +27,3 @@ dist-ssr
 .env
 .env.local
 .env.*.local
-
-# Convex generated files
-convex/_generated
