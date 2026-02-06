@@ -1,48 +1,67 @@
 import { memo } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { Trash2 } from "lucide-react";
 
 interface ThreadItemProps {
   threadId: string;
   title: string;
   personaIcon: string;
   lastMessageAt: number;
+  /** Called when the user clicks the delete button */
+  onDelete: (threadId: string, title: string) => void;
 }
 
 /**
  * Memoized thread list item for the sidebar.
- * Shows persona icon, truncated title, and relative timestamp.
+ * Shows persona icon, truncated title, relative timestamp, and a delete button on hover.
  */
 export const ThreadItem = memo(function ThreadItem({
   threadId,
   title,
   personaIcon,
   lastMessageAt,
+  onDelete,
 }: ThreadItemProps) {
   const relativeTime = getRelativeTime(lastMessageAt);
 
   return (
-    <NavLink
-      to={`/t/${threadId}`}
-      className={({ isActive }) =>
-        cn(
-          "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
-          isActive
-            ? "border-l-2 border-primary bg-primary/10 text-foreground"
-            : "border-l-2 border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-        )
-      }
-    >
-      <span className="shrink-0 text-lg" role="img" aria-hidden="true">
-        {personaIcon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium leading-snug">{title}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground/70">
-          {relativeTime}
-        </p>
-      </div>
-    </NavLink>
+    <div className="group relative">
+      <NavLink
+        to={`/t/${threadId}`}
+        className={({ isActive }) =>
+          cn(
+            "flex items-center gap-3 rounded-xl px-3 py-2.5 pr-9 text-sm transition-all",
+            isActive
+              ? "border-l-2 border-primary bg-primary/10 text-foreground"
+              : "border-l-2 border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+          )
+        }
+      >
+        <span className="shrink-0 text-lg" role="img" aria-hidden="true">
+          {personaIcon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium leading-snug">{title}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground/70">
+            {relativeTime}
+          </p>
+        </div>
+      </NavLink>
+
+      {/* Delete button — visible on hover */}
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onDelete(threadId, title);
+        }}
+        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground/0 transition-all group-hover:text-muted-foreground hover:!bg-destructive/10 hover:!text-destructive"
+        aria-label={`Delete ${title}`}
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 });
 

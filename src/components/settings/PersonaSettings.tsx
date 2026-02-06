@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { PersonaForm } from "./PersonaForm";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Pencil, Trash2, Plus } from "lucide-react";
 
@@ -11,6 +12,12 @@ type ViewState =
   | { mode: "list" }
   | { mode: "create" }
   | { mode: "edit"; personaId: Id<"personas"> };
+
+/** State for the delete-persona confirmation / error dialogs */
+type DeleteDialogState =
+  | { type: "closed" }
+  | { type: "confirm"; personaId: Id<"personas">; personaName: string }
+  | { type: "error"; message: string };
 
 /**
  * Persona management settings page.
@@ -25,6 +32,9 @@ export function PersonaSettings() {
 
   const [view, setView] = useState<ViewState>({ mode: "list" });
   const [deletePending, startDeleteTransition] = useTransition();
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
+    type: "closed",
+  });
 
   const editingPersona =
     view.mode === "edit" && personas
@@ -73,21 +83,39 @@ export function PersonaSettings() {
     [updatePersona, view]
   );
 
-  const handleDelete = useCallback(
-    (personaId: Id<"personas">) => {
-      if (!confirm("Delete this persona? This cannot be undone.")) return;
-      startDeleteTransition(async () => {
-        try {
-          await removePersona({ id: personaId });
-        } catch (err) {
-          alert(
-            err instanceof Error ? err.message : "Failed to delete persona"
-          );
-        }
-      });
+  /** Open the confirm dialog before deleting */
+  const handleDeleteClick = useCallback(
+    (personaId: Id<"personas">, personaName: string) => {
+      setDeleteDialog({ type: "confirm", personaId, personaName });
     },
-    [removePersona]
+    []
   );
+
+  /** Actually execute the deletion after confirmation */
+  const handleDeleteConfirm = useCallback(() => {
+    if (deleteDialog.type !== "confirm") return;
+    const { personaId } = deleteDialog;
+    startDeleteTransition(async () => {
+      try {
+        await removePersona({ id: personaId });
+        setDeleteDialog({ type: "closed" });
+      } catch (err) {
+        const raw =
+          err instanceof Error ? err.message : "Failed to delete persona";
+
+        // Friendly message when threads still reference this persona
+        if (raw.includes("thread")) {
+          setDeleteDialog({
+            type: "error",
+            message:
+              "This persona is being used by one or more threads.\n\nTo delete it, first delete the threads that use this persona from the sidebar, then try again.",
+          });
+        } else {
+          setDeleteDialog({ type: "error", message: raw });
+        }
+      }
+    });
+  }, [deleteDialog, removePersona]);
 
   // Show create/edit form
   if (view.mode === "create") {
@@ -203,7 +231,9 @@ export function PersonaSettings() {
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 <button
-                  onClick={() => handleDelete(persona._id)}
+                  onClick={() =>
+                    handleDeleteClick(persona._id, persona.name)
+                  }
                   disabled={deletePending}
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                   aria-label={`Delete ${persona.name}`}
@@ -215,6 +245,36 @@ export function PersonaSettings() {
           ))}
         </div>
       )}
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        open={deleteDialog.type === "confirm"}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteDialog({ type: "closed" })}
+        title={
+          deleteDialog.type === "confirm"
+            ? `Delete "${deleteDialog.personaName}"?`
+            : ""
+        }
+        description="This persona will be permanently deleted. This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deletePending}
+      />
+
+      {/* Error dialog (e.g. persona has threads) */}
+      <ConfirmDialog
+        open={deleteDialog.type === "error"}
+        onConfirm={() => setDeleteDialog({ type: "closed" })}
+        onCancel={() => setDeleteDialog({ type: "closed" })}
+        title="Cannot delete persona"
+        description={
+          deleteDialog.type === "error" ? deleteDialog.message : ""
+        }
+        confirmLabel="Understood"
+        cancelLabel="Close"
+        variant="info"
+      />
     </SettingsShell>
   );
 }

@@ -1,17 +1,31 @@
-import { useQuery } from "convex/react";
-import { useNavigate } from "react-router-dom";
+import { useState, useCallback, useTransition } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { UserButton } from "@clerk/clerk-react";
 import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 import { ThreadItem } from "./ThreadItem";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import { Plus, Settings } from "lucide-react";
 
 interface SidebarProps {
   onCloseMobile: () => void;
 }
 
+type DeleteDialogState =
+  | { type: "closed" }
+  | { type: "confirm"; threadId: Id<"threads">; threadTitle: string };
+
 export function Sidebar({ onCloseMobile }: SidebarProps) {
   const threads = useQuery(api.threads.list);
+  const removeThread = useMutation(api.threads.remove);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
+    type: "closed",
+  });
+  const [deletePending, startDeleteTransition] = useTransition();
 
   const handleNewChat = () => {
     navigate("/");
@@ -22,6 +36,39 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
     navigate("/settings/personas");
     onCloseMobile();
   };
+
+  /** Open the delete confirmation dialog */
+  const handleDeleteClick = useCallback(
+    (threadId: string, threadTitle: string) => {
+      setDeleteDialog({
+        type: "confirm",
+        threadId: threadId as Id<"threads">,
+        threadTitle,
+      });
+    },
+    []
+  );
+
+  /** Execute the thread deletion after confirmation */
+  const handleDeleteConfirm = useCallback(() => {
+    if (deleteDialog.type !== "confirm") return;
+    const { threadId } = deleteDialog;
+
+    startDeleteTransition(async () => {
+      try {
+        await removeThread({ threadId });
+        setDeleteDialog({ type: "closed" });
+
+        // If we're viewing the thread being deleted, navigate away
+        if (location.pathname === `/t/${threadId}`) {
+          navigate("/");
+        }
+      } catch {
+        // The mutation validates ownership; if it fails, just close
+        setDeleteDialog({ type: "closed" });
+      }
+    });
+  }, [deleteDialog, removeThread, location.pathname, navigate]);
 
   return (
     <div className="flex h-full flex-col">
@@ -101,6 +148,7 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
                 title={thread.title}
                 personaIcon={thread.persona.icon}
                 lastMessageAt={thread.lastMessageAt}
+                onDelete={handleDeleteClick}
               />
             ))}
           </nav>
@@ -126,6 +174,24 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
           </button>
         </div>
       </div>
+
+      {/* Thread delete confirmation dialog */}
+      <ConfirmDialog
+        open={deleteDialog.type === "confirm"}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteDialog({ type: "closed" })}
+        title={
+          deleteDialog.type === "confirm"
+            ? `Delete "${deleteDialog.threadTitle}"?`
+            : ""
+        }
+        description="All messages in this thread will be permanently deleted. This action cannot be undone."
+        hint="What Synapse learned from these conversations remains stored in memory and will continue to enrich future sessions."
+        confirmLabel="Delete Thread"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deletePending}
+      />
     </div>
   );
 }
