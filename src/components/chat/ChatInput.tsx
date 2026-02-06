@@ -3,7 +3,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { Send } from "lucide-react";
-import { useChatContext } from "@/contexts/ChatContext";
+import { useChatContext } from "@/contexts/useChatContext";
 
 export function ChatInput() {
   const [content, setContent] = useState("");

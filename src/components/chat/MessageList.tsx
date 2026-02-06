@@ -1,5 +1,5 @@
 import { useEffect, useRef, Fragment, useCallback, useState } from "react";
-import { useChatContext } from "@/contexts/ChatContext";
+import { useChatContext } from "@/contexts/useChatContext";
 import { MessageItem } from "./MessageItem";
 import { SessionDivider } from "./SessionDivider";
 import { Button } from "@/components/ui/button";

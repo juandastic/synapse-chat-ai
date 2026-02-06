@@ -1,16 +1,8 @@
-import { createContext, useContext, useMemo, ReactNode } from "react";
+import { useMemo, ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Doc, Id } from "../../convex/_generated/dataModel";
-
-interface ChatContextValue {
-  messages: Doc<"messages">[] | undefined;
-  isGenerating: boolean;
-  isLoading: boolean;
-  threadId: Id<"threads">;
-}
-
-const ChatContext = createContext<ChatContextValue | null>(null);
+import { Id } from "../../convex/_generated/dataModel";
+import { ChatContext } from "./useChatContext";
 
 interface ChatProviderProps {
   threadId: Id<"threads">;
@@ -41,12 +33,4 @@ export function ChatProvider({ threadId, children }: ChatProviderProps) {
       {children}
     </ChatContext.Provider>
   );
-}
-
-export function useChatContext() {
-  const context = useContext(ChatContext);
-  if (!context) {
-    throw new Error("useChatContext must be used within ChatProvider");
-  }
-  return context;
 }
