@@ -74,7 +74,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
 
       <ChatProvider threadId={threadId}>
         {/* Messages area */}
-        <div className="relative flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden">
           <MessageList
             personaIcon={thread.persona.icon}
             personaName={thread.persona.name}

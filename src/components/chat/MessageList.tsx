@@ -174,7 +174,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
   }
 
   return (
-    <>
+    <div className="relative h-full">
       <div
         ref={scrollContainerRef}
         className="h-full overflow-y-auto scroll-smooth"
@@ -206,15 +206,15 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
 
       {/* Scroll to bottom button */}
       {showScrollToBottom && (
-        <div className="absolute bottom-28 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 z-50 flex justify-center animate-in fade-in slide-in-from-bottom-2 duration-200">
           <Button
             onClick={() => {
-              scrollToBottom(false);
               userScrolledUpRef.current = false;
               setShowScrollToBottom(false);
+              scrollToBottom(false);
             }}
             size="icon"
-            className="h-10 w-10 rounded-full shadow-lg transition-all hover:scale-110"
+            className="pointer-events-auto h-10 w-10 rounded-full shadow-lg transition-all hover:scale-110"
             aria-label="Scroll to bottom"
           >
             <svg
@@ -231,6 +231,6 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
           </Button>
         </div>
       )}
-    </>
+    </div>
   );
 }
