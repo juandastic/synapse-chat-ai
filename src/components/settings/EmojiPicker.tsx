@@ -54,7 +54,7 @@ interface EmojiPickerProps {
 
 export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState(EMOJI_CATEGORIES[0].id);
+  const [activeCategory, setActiveCategory] = useState<(typeof EMOJI_CATEGORIES)[number]["id"]>(EMOJI_CATEGORIES[0].id);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Close on click outside
