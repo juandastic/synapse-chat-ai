@@ -23,6 +23,14 @@ interface IngestResponse {
   code?: string;
 }
 
+/** Response from Cortex /hydrate endpoint */
+interface HydrateResponse {
+  success: boolean;
+  userKnowledgeCompilation?: string;
+  error?: string;
+  code?: string;
+}
+
 /** Outcome categories for structured logging */
 type IngestOutcome =
   | "SUCCESS" // New knowledge acquired
@@ -40,6 +48,99 @@ type IngestOutcome =
 // =============================================================================
 
 /**
+ * Hydrate user knowledge from Cortex (no processing, just retrieval).
+ *
+ * Called as a background action after session creation via scheduler.runAfter(0).
+ * Fetches the current compiled knowledge from the Cortex /hydrate endpoint
+ * (a cheap Cypher query on Neo4j, no AI processing) and patches the session.
+ *
+ * Graceful degradation: On failure, the session continues without knowledge.
+ */
+export const hydrate = internalAction({
+  args: {
+    userId: v.id("users"),
+    sessionId: v.id("sessions"),
+  },
+  handler: async (ctx, args) => {
+    const startTime = Date.now();
+    const requestId = `hydrate-${args.sessionId.slice(-6)}-${Date.now().toString(36)}`;
+
+    const logContext = {
+      requestId,
+      sessionId: args.sessionId,
+      userId: args.userId,
+    };
+
+    console.log("[cortex.hydrate] Starting", logContext);
+
+    // Validate configuration
+    const apiSecret = process.env.SYNAPSE_CORTEX_API_SECRET;
+    if (!apiSecret) {
+      console.warn("[cortex.hydrate] SYNAPSE_CORTEX_API_SECRET not set", logContext);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${CORTEX_API_URL}/hydrate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-SECRET": apiSecret,
+        },
+        body: JSON.stringify({
+          userId: args.userId,
+        }),
+      });
+
+      const latencyMs = Date.now() - startTime;
+
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => "");
+        console.warn("[cortex.hydrate] HTTP error", {
+          ...logContext,
+          statusCode: response.status,
+          latencyMs,
+          errorBody: errorBody.slice(0, 300),
+        });
+        return;
+      }
+
+      const data: HydrateResponse = await response.json();
+
+      if (!data.success || !data.userKnowledgeCompilation) {
+        console.warn("[cortex.hydrate] No knowledge returned", {
+          ...logContext,
+          latencyMs,
+          error: data.error,
+          code: data.code,
+        });
+        return;
+      }
+
+      // Patch the session with the retrieved knowledge
+      await ctx.runMutation(internal.sessions.patchKnowledge, {
+        sessionId: args.sessionId,
+        knowledge: data.userKnowledgeCompilation,
+      });
+
+      console.log("[cortex.hydrate] Success", {
+        ...logContext,
+        latencyMs,
+        knowledgeLength: data.userKnowledgeCompilation.length,
+      });
+    } catch (error) {
+      const latencyMs = Date.now() - startTime;
+      console.warn("[cortex.hydrate] Failed", {
+        ...logContext,
+        latencyMs,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Graceful degradation: session continues without knowledge
+    }
+  },
+});
+
+/**
  * Ingest closed session to Synapse Cortex knowledge graph.
  *
  * Execution flow:
@@ -55,6 +156,7 @@ export const ingestAndCreateDraft = internalAction({
   args: {
     closedSessionId: v.id("sessions"),
     userId: v.id("users"),
+    threadId: v.id("threads"),
   },
   handler: async (ctx, args) => {
     const startTime = Date.now();
@@ -64,6 +166,7 @@ export const ingestAndCreateDraft = internalAction({
       requestId,
       sessionId: args.closedSessionId,
       userId: args.userId,
+      threadId: args.threadId,
     };
 
     console.log("[cortex.ingestAndCreateDraft] Starting", logContext);
@@ -78,6 +181,7 @@ export const ingestAndCreateDraft = internalAction({
 
       await ctx.runMutation(internal.sessions.createDraftSession, {
         userId: args.userId,
+        threadId: args.threadId,
         knowledge,
       });
 
@@ -98,7 +202,16 @@ export const ingestAndCreateDraft = internalAction({
     });
 
     if (!session) {
-      console.error("[cortex.ingestAndCreateDraft] Session not found", logContext);
+      console.error(
+        "[cortex.ingestAndCreateDraft] Session not found",
+        logContext
+      );
+      // Still create a draft so the thread isn't left without one
+      await ctx.runMutation(internal.sessions.createDraftSession, {
+        userId: args.userId,
+        threadId: args.threadId,
+        knowledge: null,
+      });
       return;
     }
 

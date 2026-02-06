@@ -116,4 +116,10 @@
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
   }
+
+  /* content-visibility optimization for message lists */
+  .message-item {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 80px;
+  }
 }

@@ -1,15 +1,15 @@
 # Synapse AI Chat
 
-A "Deep Memory" conversational interface that maintains a continuous, infinite-thread conversation with persistent context.
+A multi-thread, persona-based conversational interface with deep memory. Each conversation is linked to a persona (AI personality) and maintains persistent context through a knowledge graph.
 
 ## Tech Stack
 
-- **Frontend:** React 19, TypeScript, Vite
+- **Frontend:** React 19, TypeScript, Vite, React Router DOM
 - **Styling:** TailwindCSS, Shadcn/UI components
 - **Backend:** Convex (realtime database + serverless functions)
 - **Auth:** Clerk
 - **LLM:** Synapse Cortex API (OpenRouter-compatible, uses Gemini 2.5 Flash)
-- **Knowledge Graph:** Synapse Cortex (persistent user knowledge compilation)
+- **Knowledge Graph:** Synapse Cortex (persistent user knowledge compilation via Neo4j)
 
 ## Getting Started
 
@@ -55,7 +55,7 @@ A "Deep Memory" conversational interface that maintains a continuous, infinite-t
    In the Convex dashboard, go to Settings > Environment Variables and add:
 
    - `CLERK_JWT_ISSUER_DOMAIN` - Your Clerk JWT issuer domain (e.g., `https://your-app.clerk.accounts.dev`)
-   - `OPENROUTER_API_KEY` - Your OpenRouter API key
+   - `SYNAPSE_CORTEX_API_SECRET` - Your Synapse Cortex API secret key
 
 5. **Start development:**
 
@@ -69,188 +69,266 @@ A "Deep Memory" conversational interface that maintains a continuous, infinite-t
 
 6. Open [http://localhost:5173](http://localhost:5173)
 
+## Core Concepts
+
+- **Persona:** A configuration template defining AI personality (system prompt + identity + icon + language).
+- **Thread:** A conversation channel immutably linked to a specific persona.
+- **Session:** An atomic execution unit within a thread that snapshots both the system prompt and user knowledge for consistency.
+
+## Architecture
+
+### Database Schema (ER Diagram)
+
+```mermaid
+erDiagram
+    users {
+        string tokenIdentifier
+        string name
+        string customInstructions
+    }
+    personas {
+        id userId
+        string name
+        string description
+        string language
+        string systemPrompt
+        string icon
+        boolean isDefault
+    }
+    threads {
+        id userId
+        id personaId
+        string title
+        number lastMessageAt
+    }
+    sessions {
+        id userId
+        id threadId
+        string status
+        string cachedUserKnowledge
+        string cachedSystemPrompt
+        number startedAt
+        number endedAt
+        number lastMessageAt
+    }
+    messages {
+        id threadId
+        id sessionId
+        string role
+        string content
+        string type
+        number completedAt
+        object metadata
+    }
+
+    users ||--o{ personas : owns
+    users ||--o{ threads : owns
+    personas ||--o{ threads : "used by"
+    threads ||--o{ sessions : contains
+    threads ||--o{ messages : contains
+    sessions ||--o{ messages : "groups"
+```
+
+### System Architecture
+
+```mermaid
+graph TD
+    subgraph frontend [Frontend - React + Vite]
+        AppLayout[AppLayout]
+        Sidebar[Sidebar]
+        PersonaSelector[PersonaSelector]
+        ChatView[ChatView]
+        PersonaSettings[PersonaSettings]
+
+        AppLayout --> Sidebar
+        AppLayout --> PersonaSelector
+        AppLayout --> ChatView
+    end
+
+    subgraph backend [Convex Backend]
+        PersonasAPI[personas.ts]
+        ThreadsAPI[threads.ts]
+        SessionsAPI[sessions.ts]
+        MessagesAPI[messages.ts]
+        ChatAPI[chat.ts]
+        CortexAPI[cortex.ts]
+    end
+
+    subgraph external [External Services]
+        CortexService["Synapse Cortex API"]
+    end
+
+    subgraph db [Database Tables]
+        UsersTable[users]
+        PersonasTable[personas]
+        ThreadsTable[threads]
+        SessionsTable[sessions]
+        MessagesTable[messages]
+    end
+
+    Sidebar -->|"list threads"| ThreadsAPI
+    PersonaSelector -->|"create persona/thread"| PersonasAPI
+    PersonaSelector -->|"create thread"| ThreadsAPI
+    ChatView -->|"list messages"| MessagesAPI
+    ChatView -->|"send message"| MessagesAPI
+    PersonaSettings -->|"CRUD"| PersonasAPI
+
+    MessagesAPI -->|"get/create session"| SessionsAPI
+    MessagesAPI -->|"schedule"| ChatAPI
+    ChatAPI -->|"read session snapshot"| SessionsAPI
+    ChatAPI -->|"stream completion"| CortexService
+    SessionsAPI -->|"schedule hydrate"| CortexAPI
+    SessionsAPI -->|"schedule ingest"| CortexAPI
+    CortexAPI -->|"POST /hydrate"| CortexService
+    CortexAPI -->|"POST /ingest"| CortexService
+
+    PersonasAPI --> PersonasTable
+    ThreadsAPI --> ThreadsTable
+    SessionsAPI --> SessionsTable
+    MessagesAPI --> MessagesTable
+    CortexAPI --> SessionsTable
+```
+
+### Message Sending Flow
+
+```mermaid
+sequenceDiagram
+    participant UI as ChatInput
+    participant Msg as messages.send
+    participant Sess as sessions
+    participant Cortex as cortex.ts
+    participant API as Synapse Cortex API
+    participant Chat as chat.generateResponse
+
+    UI->>Msg: send(threadId, content)
+    Msg->>Sess: getOrCreateActiveSession(threadId)
+
+    alt No active session
+        Sess->>Sess: Fetch persona.systemPrompt
+        Sess->>Sess: Fetch user.customInstructions
+        Sess->>Sess: Build cachedSystemPrompt
+        Sess->>Sess: Inherit knowledge from prev session OR undefined
+        Sess->>Sess: Create session
+        Sess-->>Cortex: schedule hydrate(userId, sessionId)
+        Note right of Cortex: Async background job
+        Cortex->>API: POST /hydrate {userId}
+        API-->>Cortex: userKnowledgeCompilation
+        Cortex->>Sess: patch session.cachedUserKnowledge
+    end
+
+    Msg->>Msg: Insert user message
+    Msg->>Msg: Insert placeholder assistant msg
+    Msg->>Sess: touchSession (reset 3h timer)
+    Msg->>Msg: Update thread.lastMessageAt
+    Msg-->>Chat: schedule generateResponse
+
+    Chat->>Chat: Read session.cachedSystemPrompt
+    Chat->>Chat: Read session.cachedUserKnowledge
+    Chat->>Chat: Read recent messages by threadId
+    Chat->>API: Stream completion
+    Chat->>Msg: Update content (throttled 100ms)
+    Chat->>Msg: Save metadata
+```
+
+### Session Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created: First message in thread
+    Created --> Active: Session created with snapshot
+    Active --> Active: Messages sent (touch resets 3h timer)
+    Active --> Closed: 3h inactivity (autoClose)
+    Active --> Closed: Stale detection on next message
+    Closed --> Ingesting: Schedule cortex.ingestAndCreateDraft
+    Ingesting --> DraftCreated: New session with updated knowledge
+    DraftCreated --> Active: Next message uses draft session
+
+    note right of Created
+        Snapshot assembly:
+        1. cachedSystemPrompt = persona + user instructions
+        2. cachedUserKnowledge = inherited OR undefined
+        3. Schedule cortex.hydrate (background)
+    end note
+
+    note right of Ingesting
+        Cortex processes conversation
+        Returns updated knowledge compilation
+        Creates draft session for next interaction
+    end note
+```
+
 ## Features
 
 ### Core Features
 
-- **Infinite Thread Conversation**: Continuous, seamless conversation experience across sessions with persistent context
-- **Deep Memory System**: User knowledge is compiled and injected into AI context via Synapse Cortex knowledge graph
+- **Multi-Thread Conversations**: Create multiple conversation threads, each with a dedicated persona
+- **Persona System**: Choose from templates (Therapist, Coach, Friend) or create custom personas with their own system prompts
+- **Deep Memory System**: User knowledge compiled and injected into AI context via Synapse Cortex knowledge graph
 - **Real-time Streaming**: AI responses stream in real-time with smooth UI updates (throttled to 100ms intervals)
-- **Session Management**: Automatic session rotation after 6 hours of inactivity with knowledge graph integration
+- **Session Snapshotting**: Sessions freeze both the system prompt and user knowledge for consistency during a conversation
 - **Smart Auto-scroll**: Auto-scrolls to bottom on new messages, with scroll-to-bottom button when scrolled up
-- **Error Handling**: Graceful error handling with user-friendly messages and detailed error logging
-- **Analytics Tracking**: Token usage, latency, and cost tracking for each AI response
-- **Markdown Support**: Rich markdown rendering for AI responses with security hardening
-- **Responsive Design**: Modern, mobile-friendly UI built with TailwindCSS and Shadcn/UI
+- **Responsive Design**: Sidebar collapses to hamburger menu on mobile
 
 ### Advanced Features
 
-- **Knowledge Graph Integration**: Closed sessions are automatically ingested into Synapse Cortex to build persistent user knowledge
-- **Draft Session Creation**: After session ingestion, a draft session is pre-loaded with compiled user knowledge
-- **Context Window Management**: Recent 20 messages included in AI context, with user knowledge prepended to system prompt
-- **Streaming Optimization**: Throttled database updates during streaming to reduce write overhead
+- **Knowledge Hydration**: On session creation, background call to Cortex `/hydrate` fetches latest knowledge (cheap Cypher query, no AI)
+- **Knowledge Graph Ingestion**: Closed sessions are automatically ingested into Synapse Cortex to build persistent user knowledge
+- **Draft Session Creation**: After ingestion, a draft session is pre-loaded with compiled user knowledge
+- **Cross-Session Context**: AI sees full thread history across sessions for better continuity
 - **Race Condition Handling**: Handles concurrent session creation during knowledge graph processing
-- **Graceful Degradation**: Falls back to previous session knowledge if Cortex ingest fails
+- **Graceful Degradation**: Falls back to previous session knowledge if Cortex ingest fails; sessions work without knowledge
 
-## Application Flow
+### UI Features
 
-### User Authentication Flow
-
-1. User authenticates via Clerk
-2. On first login, user record is automatically created in Convex database
-3. User profile (name) is derived from Clerk identity (name → email → "Anonymous")
-
-### Message Sending Flow
-
-1. **User Input**:
-   - User types message in `ChatInput` component
-   - Auto-resizing textarea (max 200px height)
-   - Enter to send, Shift+Enter for new line
-
-2. **Message Creation** (`messages.send` mutation):
-   - Validates content (max 10,000 characters)
-   - Gets or creates user record
-   - Gets or creates active session (handles stale session rotation)
-   - Inserts user message into database
-   - Creates placeholder assistant message (empty content, no `completedAt`)
-   - Touches session (resets 6-hour auto-close timer)
-   - Schedules `generateResponse` action (runs immediately)
-
-3. **AI Response Generation** (`chat.generateResponse` action):
-   - Fetches session data and cached user knowledge
-   - Retrieves recent 20 messages for context
-   - Builds API payload with:
-     - System prompt + user knowledge compilation
-     - Conversation history (filtered to exclude current placeholder)
-   - Streams response from Synapse Cortex API (OpenRouter-compatible)
-   - Updates message content every 100ms during streaming (only if content changed)
-   - Ignores reasoning/thinking tokens (not displayed to users)
-   - On completion: saves metadata (tokens, latency, cost, finish reason)
-   - On error: marks message as error type with user-friendly message
-
-4. **Real-time UI Updates**:
-   - Frontend subscribes to `messages.list` query
-   - UI automatically updates as message content streams
-   - Loading indicator shown when `completedAt` is undefined
-   - Streaming animation during active content updates
-   - Auto-scrolls to bottom (unless user has scrolled up)
-
-### Session Lifecycle Flow
-
-1. **Active Session**:
-   - Created when user sends first message or returns after session timeout
-   - Status: `active`
-   - Contains `cachedUserKnowledge` (compiled from previous sessions)
-   - Auto-close timer scheduled for 6 hours after last message
-
-2. **Session Activity**:
-   - Each message resets the 6-hour timer (debounced auto-close)
-   - Previous scheduled job is cancelled, new one created
-   - `lastMessageAt` timestamp updated
-
-3. **Session Auto-Close**:
-   - Triggered after 6 hours of inactivity
-   - Status changed to `closed`
-   - `endedAt` timestamp set
-   - Auto-close job cancelled
-   - Cortex ingest scheduled immediately
-
-4. **Knowledge Graph Ingestion** (`cortex.ingestAndCreateDraft`):
-   - Fetches all messages from closed session
-   - POSTs to Synapse Cortex `/ingest` endpoint
-   - Sends session metadata and message history
-   - Receives compiled user knowledge compilation
-   - Creates draft session with new knowledge (or updates existing if user already chatting)
-   - Graceful fallback: preserves previous knowledge on any error
-
-5. **Draft Session**:
-   - Pre-loaded with compiled user knowledge
-   - Ready for user's next message
-   - No auto-close timer until first message sent
-
-### Stale Session Handling
-
-- When user returns after 6+ hours:
-  - Existing active session is detected as stale
-  - Session is immediately closed
-  - New session created with default or inherited knowledge
-  - User can continue conversation seamlessly
-
-### Frontend Components Flow
-
-1. **ChatLayout**: Main container with header and chat area
-2. **ChatProvider**: Context provider that subscribes to messages query
-3. **MessageList**: 
-   - Displays all messages across sessions
-   - Shows session dividers between different sessions
-   - Auto-scrolls on new messages
-   - Scroll-to-bottom button when scrolled up
-   - Loading and empty states
-4. **MessageItem**: 
-   - Renders individual messages
-   - User messages: plain text
-   - Assistant messages: markdown with security hardening
-   - Streaming indicators and error states
-   - Timestamps on hover
-5. **ChatInput**: 
-   - Message input with auto-resize
-   - Submit handling and validation
-   - Disabled during generation
+- **Inline Persona Selection**: Full-width card grid for choosing personas (no modal)
+- **Persona Settings**: CRUD interface for managing custom personas
+- **Session Dividers**: Visual dividers between different sessions in the message list
+- **Content Visibility Optimization**: `content-visibility: auto` on message items for rendering performance
+- **Thread Sidebar**: Threads sorted by last activity with persona icons and relative timestamps
 
 ## Project Structure
 
 ```
 synapse-ai-chat/
-├── convex/                 # Convex backend
-│   ├── _generated/         # Auto-generated types
-│   ├── schema.ts           # Database schema
-│   ├── users.ts            # User management
-│   ├── sessions.ts         # Session management
-│   ├── messages.ts         # Message mutations/queries
-│   ├── chat.ts             # AI response action
-│   └── auth.config.ts      # Clerk auth config
+├── convex/                   # Convex backend
+│   ├── _generated/           # Auto-generated types
+│   ├── schema.ts             # Database schema (5 tables)
+│   ├── users.ts              # User management + customInstructions
+│   ├── personas.ts           # Persona CRUD + templates
+│   ├── threads.ts            # Thread CRUD + cascade delete
+│   ├── sessions.ts           # Session management (3h auto-close, dual snapshot)
+│   ├── messages.ts           # Message mutations/queries (threadId-scoped)
+│   ├── chat.ts               # AI response generation (reads session snapshot)
+│   ├── cortex.ts             # Cortex integration (hydrate + ingest)
+│   └── auth.config.ts        # Clerk auth config
 ├── src/
 │   ├── components/
-│   │   ├── chat/           # Chat components
-│   │   └── ui/             # Reusable UI components
+│   │   ├── chat/             # Chat components
+│   │   │   ├── ChatView.tsx        # Thread chat view (route: /t/:threadId)
+│   │   │   ├── ChatInput.tsx       # Message input with threadId
+│   │   │   ├── MessageList.tsx     # Messages with content-visibility
+│   │   │   ├── MessageItem.tsx     # Individual message rendering
+│   │   │   ├── PersonaSelector.tsx # Inline persona selection (route: /)
+│   │   │   └── SessionDivider.tsx  # Visual session separator
+│   │   ├── layout/
+│   │   │   └── AppLayout.tsx       # Sidebar + outlet shell
+│   │   ├── settings/
+│   │   │   ├── PersonaSettings.tsx # Persona CRUD interface
+│   │   │   └── PersonaForm.tsx     # Reusable persona form
+│   │   ├── sidebar/
+│   │   │   ├── Sidebar.tsx         # Thread list + navigation
+│   │   │   └── ThreadItem.tsx      # Memoized thread list item
+│   │   └── ui/               # Reusable UI components (shadcn)
+│   ├── contexts/
+│   │   └── ChatContext.tsx    # Chat state (threadId-scoped messages)
 │   ├── lib/
-│   │   └── utils.ts        # Utility functions
-│   ├── App.tsx
-│   ├── main.tsx
-│   └── index.css           # Global styles + Tailwind
+│   │   └── utils.ts          # Utility functions
+│   ├── App.tsx               # Routes (/, /t/:threadId, /settings/personas)
+│   ├── main.tsx              # Entry point (BrowserRouter + providers)
+│   └── index.css             # Global styles + Tailwind
 ├── public/
 └── package.json
 ```
-
-## Architecture
-
-### System Overview
-
-The application follows a real-time, event-driven architecture:
-
-- **Frontend**: React components with Convex real-time subscriptions
-- **Backend**: Convex mutations (synchronous) and actions (asynchronous, Node.js)
-- **AI Integration**: Synapse Cortex API for LLM responses and knowledge graph
-- **Data Flow**: Mutations → Actions → Internal Mutations → Real-time Queries
-
-### Data Flow
-
-1. User sends message → `messages.send` mutation
-2. Mutation saves user message + creates placeholder assistant message
-3. Mutation schedules `chat.generateResponse` action (runs immediately)
-4. Action streams response from Synapse Cortex API
-5. Action updates assistant message content via internal mutations (throttled to 100ms)
-6. Frontend subscribes to `messages.list` query → real-time updates
-7. On session close → Cortex ingest → draft session creation with compiled knowledge
-
-### Session Management
-
-- Messages are grouped into "sessions" for context management
-- Sessions auto-close after 6 hours of inactivity (debounced timer)
-- Closed sessions trigger knowledge graph ingestion via Synapse Cortex
-- New sessions inherit compiled user knowledge from previous sessions
-- Session dividers are shown in the UI between different sessions
-- Stale sessions are automatically rotated when user returns after timeout
 
 ## Environment Variables
 
@@ -261,68 +339,16 @@ The application follows a real-time, event-driven architecture:
 | `CLERK_JWT_ISSUER_DOMAIN` | Convex dashboard | Clerk JWT issuer domain |
 | `SYNAPSE_CORTEX_API_SECRET` | Convex dashboard | Synapse Cortex API secret key |
 
+## Key Implementation Decisions
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant M as Mutation
-    participant A as Action
-    participant API as Synapse Cortex
-    participant DB as Convex DB
-
-    U->>M: send(content)
-    M->>DB: Insert user message
-    M->>DB: Insert assistant message (empty, no completedAt)
-    M->>M: touchSession (reset 6h timer)
-    M->>A: Schedule generateResponse
-    
-    Note over U,DB: UI shows loading dots (completedAt undefined)
-    
-    A->>DB: Fetch session + user knowledge
-    A->>DB: Fetch recent 20 messages
-    A->>API: Stream request (system prompt + knowledge + history)
-    
-    loop Every 100ms (only if content changed)
-        API-->>A: Content chunks
-        A->>DB: updateContent(content)
-        Note over U,DB: UI shows streamed content (real-time subscription)
-    end
-    
-    Note over A: Reasoning tokens ignored, no DB writes
-    
-    alt Success
-        A->>DB: saveMetadata(tokens, latency, cost, completedAt)
-        Note over U,DB: UI shows final content
-    else Error
-        A->>DB: markAsError(userMessage, errorMetadata, completedAt)
-        Note over U,DB: UI shows error message
-    end
-```
-
-### Session Lifecycle Diagram
-
-```mermaid
-stateDiagram-v2
-    [*] --> Active: User sends message
-    Active --> Active: Message received (reset timer)
-    Active --> Closed: 6 hours inactivity
-    Closed --> Ingesting: Schedule Cortex ingest
-    Ingesting --> Draft: Knowledge compiled
-    Draft --> Active: User sends message
-    Active --> Closed: Manual close (future)
-    
-    note right of Active
-        Auto-close timer: 6 hours
-        Each message resets timer
-    end note
-    
-    note right of Ingesting
-        Graceful fallback:
-        Preserves previous knowledge
-        on any error
-    end note
-```
-
+1. **Routing:** `react-router-dom` with paths `/`, `/t/:threadId`, and `/settings/personas`. Sidebar persists via `AppLayout` with `<Outlet />`.
+2. **Auto-close timer: 3 hours** for faster knowledge graph updates.
+3. **`cachedUserKnowledge` is optional** -- `undefined` for the first session before any ingestion, handles race conditions gracefully.
+4. **Knowledge hydration via `/hydrate` endpoint:** Scheduled as background action on session creation. Cheap Cypher query, no AI processing.
+5. **Inline persona selection (no modal):** Content area shows `PersonaSelector` card grid. Selecting one creates the thread and navigates directly.
+6. **Context window queries by threadId:** `getRecent` fetches messages across all sessions in the thread for full conversational continuity.
+7. **Thread deletion cascade:** Deletes all sessions + messages for the thread in a single mutation.
+8. **React best practices:** `content-visibility: auto` for message lists, `useTransition` for form submissions, `React.memo` for thread items, functional setState, passive scroll listeners.
 
 ## License
 

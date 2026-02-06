@@ -6,7 +6,7 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { getOrCreateUser } from "./users";
+import { getOrCreateUser, getCurrentUser } from "./users";
 import { getOrCreateActiveSession, touchSession } from "./sessions";
 
 // =============================================================================
@@ -27,56 +27,38 @@ const MAX_MESSAGE_LIMIT = 200;
 // =============================================================================
 
 /**
- * List messages for the current user's conversation.
- * Returns messages across all sessions (infinite thread experience).
- * Messages are sorted by creation time, most recent at the end.
+ * List messages for a thread.
+ * Returns messages sorted by creation time, most recent at the end.
+ * Uses the by_thread index for efficient single-query fetching.
  */
 export const list = query({
   args: {
+    /** Thread to list messages for */
+    threadId: v.id("threads"),
     /** Maximum number of messages to return (default: 50, max: 200) */
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .unique();
-
+    // Verify authentication and thread ownership
+    const user = await getCurrentUser(ctx);
     if (!user) return [];
+
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread || thread.userId !== user._id) return [];
 
     // Clamp limit to valid range
     const requestedLimit = args.limit ?? DEFAULT_MESSAGE_LIMIT;
     const limit = Math.min(Math.max(1, requestedLimit), MAX_MESSAGE_LIMIT);
 
-    // Fetch sessions sorted by most recent activity first
-    const sessions = await ctx.db
-      .query("sessions")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+    // Fetch messages for this thread using the by_thread index
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
+      .order("desc")
+      .take(limit);
 
-    if (sessions.length === 0) return [];
-
-    // Batch fetch messages from all sessions using Promise.all
-    // This avoids the N+1 query problem by parallelizing the fetches
-    const messagesBySession = await Promise.all(
-      sessions.map((session) =>
-        ctx.db
-          .query("messages")
-          .withIndex("by_session", (q) => q.eq("sessionId", session._id))
-          .collect()
-      )
-    );
-
-    // Flatten, sort by creation time, and return the most recent N messages
-    const allMessages = messagesBySession.flat();
-    allMessages.sort((a, b) => a._creationTime - b._creationTime);
-
-    return allMessages.slice(-limit);
+    // Return in chronological order (oldest first)
+    return messages.reverse();
   },
 });
 
@@ -85,18 +67,18 @@ export const list = query({
 // =============================================================================
 
 /**
- * Get recent messages for a session (for AI context window).
- * Returns messages in chronological order.
+ * Get recent messages for a thread (for AI context window).
+ * Returns messages in chronological order across all sessions.
  */
 export const getRecent = internalQuery({
   args: {
-    sessionId: v.id("sessions"),
+    threadId: v.id("threads"),
     limit: v.number(),
   },
   handler: async (ctx, args) => {
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
       .order("desc")
       .take(args.limit);
 
@@ -131,16 +113,20 @@ export const getBySession = internalQuery({
  * Flow:
  * 1. Validates input content
  * 2. Gets or creates user record (auth required)
- * 3. Gets or creates active session (handles rotation if stale)
- * 4. Inserts user message
- * 5. Creates placeholder assistant message (for streaming)
- * 6. Touches session (resets 6-hour auto-close timer)
- * 7. Schedules AI response generation
+ * 3. Verifies thread ownership
+ * 4. Gets or creates active session (handles rotation if stale)
+ * 5. Inserts user message with threadId + sessionId
+ * 6. Creates placeholder assistant message (for streaming)
+ * 7. Touches session (resets 3-hour auto-close timer)
+ * 8. Updates thread.lastMessageAt
+ * 9. Schedules AI response generation
  *
  * @returns IDs for the created messages and session
  */
 export const send = mutation({
   args: {
+    /** Thread to send the message in */
+    threadId: v.id("threads"),
     /** Message content from the user */
     content: v.string(),
   },
@@ -159,11 +145,22 @@ export const send = mutation({
     // Get or create user (throws if not authenticated)
     const user = await getOrCreateUser(ctx);
 
+    // Verify thread ownership
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread || thread.userId !== user._id) {
+      throw new Error("Thread not found");
+    }
+
     // Get or create active session (handles rotation if stale)
-    const session = await getOrCreateActiveSession(ctx, user._id);
+    const session = await getOrCreateActiveSession(
+      ctx,
+      args.threadId,
+      user._id
+    );
 
     // Insert user message
     const userMessageId = await ctx.db.insert("messages", {
+      threadId: args.threadId,
       sessionId: session._id,
       role: "user",
       content,
@@ -172,6 +169,7 @@ export const send = mutation({
 
     // Create placeholder for streaming assistant response
     const assistantMessageId = await ctx.db.insert("messages", {
+      threadId: args.threadId,
       sessionId: session._id,
       role: "assistant",
       content: "",
@@ -181,14 +179,21 @@ export const send = mutation({
     // Update session activity (reschedules auto-close timer)
     await touchSession(ctx, session._id);
 
+    // Update thread's last activity timestamp
+    await ctx.db.patch(args.threadId, {
+      lastMessageAt: Date.now(),
+    });
+
     // Schedule AI response generation (executes immediately via runAfter(0))
     await ctx.scheduler.runAfter(0, internal.chat.generateResponse, {
       sessionId: session._id,
+      threadId: args.threadId,
       assistantMessageId,
     });
 
     console.log("[messages.send] Message queued for processing", {
       userId: user._id,
+      threadId: args.threadId,
       sessionId: session._id,
       userMessageId,
       assistantMessageId,
@@ -211,6 +216,9 @@ export const send = mutation({
  * Update message content during streaming.
  * Called repeatedly by the AI generation action to update the response.
  * High-frequency operation - optimized to minimize overhead.
+ *
+ * Throws if the message is missing, since a disappeared message mid-stream
+ * indicates a data integrity issue that the caller should handle.
  */
 export const updateContent = internalMutation({
   args: {
@@ -220,10 +228,10 @@ export const updateContent = internalMutation({
   handler: async (ctx, args) => {
     const message = await ctx.db.get(args.id);
     if (!message) {
-      console.warn("[messages.updateContent] Message not found", {
+      console.error("[messages.updateContent] Message not found mid-stream", {
         messageId: args.id,
       });
-      return;
+      throw new Error(`Message ${args.id} not found during streaming update`);
     }
 
     await ctx.db.patch(args.id, { content: args.content });
@@ -307,7 +315,6 @@ export const markAsError = internalMutation({
 
     console.error("[messages.markAsError] Generation failed", {
       messageId: args.id,
-      sessionId: message.sessionId,
       error: args.metadata?.error,
       errorCode: args.metadata?.errorCode,
       latencyMs: args.metadata?.latencyMs,

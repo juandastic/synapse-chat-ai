@@ -8,9 +8,10 @@ import { useChatContext } from "@/contexts/ChatContext";
 export function ChatInput() {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { isGenerating } = useChatContext();
+  const { isGenerating, threadId } = useChatContext();
   const sendMessage = useMutation(api.messages.send);
 
   // Auto-resize textarea
@@ -27,6 +28,7 @@ export function ChatInput() {
     if (!trimmedContent || isSubmitting || isGenerating) return;
 
     setIsSubmitting(true);
+    setError(null);
     setContent("");
 
     // Reset textarea height
@@ -35,17 +37,19 @@ export function ChatInput() {
     }
 
     try {
-      await sendMessage({ content: trimmedContent });
-    } catch (error) {
-      // Restore content on error
+      await sendMessage({ threadId, content: trimmedContent });
+    } catch (err) {
+      // Restore content on error so the user doesn't lose their message
       setContent(trimmedContent);
-      console.error("Failed to send message:", error);
+      const message =
+        err instanceof Error ? err.message : "Failed to send message";
+      setError(message);
+      console.error("[ChatInput] Failed to send message:", err);
     } finally {
       setIsSubmitting(false);
-      // Refocus textarea
       textareaRef.current?.focus();
     }
-  }, [content, isSubmitting, isGenerating, sendMessage]);
+  }, [content, isSubmitting, isGenerating, sendMessage, threadId]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -69,10 +73,15 @@ export function ChatInput() {
           value={content}
           onChange={(e) => {
             setContent(e.target.value);
+            if (error) setError(null);
             adjustTextareaHeight();
           }}
           onKeyDown={handleKeyDown}
-          placeholder={isGenerating ? "Waiting for response..." : "Share what's on your mind..."}
+          placeholder={
+            isGenerating
+              ? "Waiting for response..."
+              : "Share what's on your mind..."
+          }
           disabled={isDisabled}
           rows={1}
           className={cn(
@@ -99,6 +108,15 @@ export function ChatInput() {
           )}
         </button>
       </div>
+
+      {error && (
+        <p
+          className="mt-2 text-center text-xs text-destructive"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
 
       <p className="mt-2 text-center text-xs text-muted-foreground/60">
         Press Enter to send, Shift + Enter for new line

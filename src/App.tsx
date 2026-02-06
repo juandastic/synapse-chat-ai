@@ -1,9 +1,9 @@
-import {
-  SignInButton,
-  SignedIn,
-  SignedOut,
-} from "@clerk/clerk-react";
-import { ChatLayout } from "./components/chat/ChatLayout";
+import { SignInButton, SignedIn, SignedOut } from "@clerk/clerk-react";
+import { Routes, Route } from "react-router-dom";
+import { AppLayout } from "./components/layout/AppLayout";
+import { PersonaSelector } from "./components/chat/PersonaSelector";
+import { ChatView } from "./components/chat/ChatView";
+import { PersonaSettings } from "./components/settings/PersonaSettings";
 
 function App() {
   return (
@@ -12,7 +12,13 @@ function App() {
         <LandingPage />
       </SignedOut>
       <SignedIn>
-        <ChatLayout />
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route index element={<PersonaSelector />} />
+            <Route path="t/:threadId" element={<ChatView />} />
+            <Route path="settings/personas" element={<PersonaSettings />} />
+          </Route>
+        </Routes>
       </SignedIn>
     </div>
   );
@@ -23,7 +29,7 @@ function LandingPage() {
     <div className="flex h-full flex-col items-center justify-center px-6">
       {/* Subtle background gradient */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent" />
-      
+
       <div className="relative z-10 max-w-md text-center">
         {/* Logo mark */}
         <div className="mx-auto mb-8 h-16 w-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 p-4">
@@ -43,10 +49,10 @@ function LandingPage() {
         <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
           Synapse
         </h1>
-        
+
         <p className="mt-4 text-lg text-muted-foreground text-balance">
-          A continuous conversation that remembers you.
-          Deep memory, always present.
+          A continuous conversation that remembers you. Deep memory, always
+          present.
         </p>
 
         <div className="mt-10">

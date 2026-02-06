@@ -11,7 +11,9 @@
 import type * as chat from "../chat.js";
 import type * as cortex from "../cortex.js";
 import type * as messages from "../messages.js";
+import type * as personas from "../personas.js";
 import type * as sessions from "../sessions.js";
+import type * as threads from "../threads.js";
 import type * as users from "../users.js";
 
 import type {
@@ -24,7 +26,9 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   cortex: typeof cortex;
   messages: typeof messages;
+  personas: typeof personas;
   sessions: typeof sessions;
+  threads: typeof threads;
   users: typeof users;
 }>;
 

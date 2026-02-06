@@ -8,23 +8,6 @@ import { internal } from "./_generated/api";
 // Configuration
 // =============================================================================
 
-/** System prompt defining Synapse's personality and behavior */
-const SYSTEM_PROMPT = `You are Synapse, an expert ACT/DBT therapist with deep expertise in neurodivergent support. You maintain continuity across conversations and reference the user's history naturally.
-
-Core principles:
-- Be warm, insightful, and growth-oriented
-- Use evidence-based therapeutic techniques (ACT, DBT, CBT)
-- Validate emotions while gently challenging unhelpful patterns
-- Remember and reference previous conversations naturally
-- Ask thoughtful follow-up questions
-- Celebrate progress and acknowledge struggles
-
-Communication style:
-- Conversational and genuine, not clinical or robotic
-- Use "I" statements to share observations
-- Mirror the user's energy level appropriately
-- Keep responses focused and meaningful (not overly long)`;
-
 /** LLM model identifier for Synapse Cortex */
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
@@ -95,18 +78,20 @@ type ErrorCategory =
  * Generate AI response for a chat message.
  *
  * Execution flow:
- * 1. Fetches session data and recent message history
- * 2. Builds context with system prompt + user knowledge + conversation history
- * 3. Streams response from Synapse Cortex API
- * 4. Updates message content periodically during streaming
- * 5. Saves final metadata (tokens, latency, etc.)
+ * 1. Fetches session data (cached system prompt + user knowledge)
+ * 2. Fetches recent messages by threadId (cross-session continuity)
+ * 3. Builds context with system prompt + user knowledge + conversation history
+ * 4. Streams response from Synapse Cortex API
+ * 5. Updates message content periodically during streaming
+ * 6. Saves final metadata (tokens, latency, etc.)
  *
- * Error handling: On failure, marks the message as error type with user-friendly
- * content while storing technical details in metadata for debugging.
+ * This action is "pure and fast" -- it reads the session snapshot directly
+ * without needing to look up threads or personas.
  */
 export const generateResponse = internalAction({
   args: {
     sessionId: v.id("sessions"),
+    threadId: v.id("threads"),
     assistantMessageId: v.id("messages"),
   },
   handler: async (ctx, args) => {
@@ -116,6 +101,7 @@ export const generateResponse = internalAction({
     const logContext = {
       requestId,
       sessionId: args.sessionId,
+      threadId: args.threadId,
       messageId: args.assistantMessageId,
     };
 
@@ -158,7 +144,7 @@ export const generateResponse = internalAction({
         return;
       }
 
-      // Fetch session for cached user knowledge
+      // Fetch session for cached snapshot data
       const session = await ctx.runQuery(internal.sessions.get, {
         id: args.sessionId,
       });
@@ -168,19 +154,34 @@ export const generateResponse = internalAction({
         return;
       }
 
-      // Fetch recent messages for context
+      // Fetch recent messages by threadId (cross-session continuity)
       const history = await ctx.runQuery(internal.messages.getRecent, {
-        sessionId: args.sessionId,
+        threadId: args.threadId,
         limit: CONTEXT_MESSAGE_LIMIT,
       });
 
-      // Build messages array for the API, appending user knowledge to system prompt
-      const systemPromptWithKnowledge = session.cachedUserKnowledge
-        ? `${SYSTEM_PROMPT}\n\n${session.cachedUserKnowledge}`
-        : SYSTEM_PROMPT;
+      // Build system message from session snapshot
+      // cachedSystemPrompt is always set (persona + user instructions)
+      // cachedUserKnowledge is optional (may not exist yet)
+      const now = new Date();
+      const currentDateTime = now.toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+      });
+
+      let systemContent = session.cachedSystemPrompt;
+      systemContent += `\n\nCurrent date and time: ${currentDateTime}`;
+      if (session.cachedUserKnowledge) {
+        systemContent += `\n\n${session.cachedUserKnowledge}`;
+      }
 
       const apiMessages = [
-        { role: "system" as const, content: systemPromptWithKnowledge },
+        { role: "system" as const, content: systemContent },
         ...history
           .filter((m) => m._id !== args.assistantMessageId)
           .map((m) => ({
@@ -193,6 +194,7 @@ export const generateResponse = internalAction({
         ...logContext,
         historyCount: history.length,
         hasUserKnowledge: !!session.cachedUserKnowledge,
+        systemPromptLength: systemContent.length,
       });
 
       // Call Synapse Cortex streaming API
@@ -212,7 +214,9 @@ export const generateResponse = internalAction({
       const apiLatencyMs = Date.now() - startTime;
 
       if (!response.ok) {
-        const errorBody = await response.text().catch(() => "Unable to read error body");
+        const errorBody = await response
+          .text()
+          .catch(() => "Unable to read error body");
         await handleError("API_ERROR", `HTTP ${response.status}`, {
           statusCode: response.status,
           apiLatencyMs,
@@ -228,7 +232,9 @@ export const generateResponse = internalAction({
       });
 
       // Process streaming response with throttled database updates
-      const result = await processStream(response, async (content: string) => {
+      const result = await processStream(
+        response,
+        async (content: string) => {
           await ctx.runMutation(internal.messages.updateContent, {
             id: args.assistantMessageId,
             content,
@@ -307,68 +313,72 @@ async function processStream(
   let lastUpdateTime = Date.now();
   let lastUpdatedContent = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
 
-      const data = line.slice(6);
-      if (data === "[DONE]") continue;
+        const data = line.slice(6);
+        if (data === "[DONE]") continue;
 
-      try {
-        const chunk: StreamChunk = JSON.parse(data);
+        try {
+          const chunk: StreamChunk = JSON.parse(data);
 
-        // Provider errors are surfaced immediately
-        if (chunk.error) {
-          throw new Error(
-            `Provider error: ${chunk.error.message || `Code ${chunk.error.code}`}`
-          );
+          // Provider errors are surfaced immediately
+          if (chunk.error) {
+            throw new Error(
+              `Provider error: ${chunk.error.message || `Code ${chunk.error.code}`}`
+            );
+          }
+
+          const delta = chunk.choices?.[0]?.delta;
+          if (delta?.content) {
+            content += delta.content;
+          }
+
+          if (chunk.choices?.[0]?.finish_reason) {
+            finishReason = chunk.choices[0].finish_reason;
+          }
+
+          if (chunk.usage) {
+            usage = chunk.usage;
+          }
+        } catch (e) {
+          // Re-throw provider errors for proper categorization upstream
+          if (e instanceof Error && e.message.startsWith("Provider error:")) {
+            throw e;
+          }
+          // Skip malformed JSON lines (common in SSE streams)
         }
+      }
 
-        const delta = chunk.choices?.[0]?.delta;
-        if (delta?.content) {
-          content += delta.content;
-        }
-        // Note: reasoning_content and reasoning fields are intentionally
-        // ignored to reduce DB writes and not display thinking to users
+      // Throttled content updates to reduce database writes
+      const now = Date.now();
+      const hasNewContent = content && content !== lastUpdatedContent;
+      const intervalElapsed =
+        now - lastUpdateTime >= STREAM_UPDATE_INTERVAL_MS;
 
-        if (chunk.choices?.[0]?.finish_reason) {
-          finishReason = chunk.choices[0].finish_reason;
-        }
-
-        if (chunk.usage) {
-          usage = chunk.usage;
-        }
-      } catch (e) {
-        // Re-throw provider errors for proper categorization upstream
-        if (e instanceof Error && e.message.startsWith("Provider error:")) {
-          throw e;
-        }
-        // Skip malformed JSON lines (common in SSE streams)
+      if (hasNewContent && intervalElapsed) {
+        await updateContent(content);
+        lastUpdateTime = now;
+        lastUpdatedContent = content;
       }
     }
 
-    // Throttled content updates to reduce database writes
-    const now = Date.now();
-    const hasNewContent = content && content !== lastUpdatedContent;
-    const intervalElapsed = now - lastUpdateTime >= STREAM_UPDATE_INTERVAL_MS;
-
-    if (hasNewContent && intervalElapsed) {
+    // Ensure final content is persisted
+    if (content && content !== lastUpdatedContent) {
       await updateContent(content);
-      lastUpdateTime = now;
-      lastUpdatedContent = content;
     }
-  }
-
-  // Ensure final content is persisted
-  if (content && content !== lastUpdatedContent) {
-    await updateContent(content);
+  } finally {
+    // Always release the reader to prevent resource leaks
+    reader.releaseLock();
   }
 
   return { content, usage, finishReason };
