@@ -1,5 +1,11 @@
 import { v } from "convex/values";
-import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import {
+  mutation,
+  query,
+  internalQuery,
+  QueryCtx,
+  MutationCtx,
+} from "./_generated/server";
 
 // =============================================================================
 // Configuration
@@ -97,6 +103,26 @@ function sanitizeName(name: string): string {
   }
   return trimmed.slice(0, MAX_NAME_LENGTH);
 }
+
+// =============================================================================
+// Internal Queries
+// =============================================================================
+
+/**
+ * Resolve a user by their Clerk token identifier.
+ * Used by actions that cannot access ctx.db directly.
+ */
+export const getByToken = internalQuery({
+  args: { tokenIdentifier: v.string() },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", args.tokenIdentifier)
+      )
+      .unique();
+  },
+});
 
 // =============================================================================
 // Public Queries

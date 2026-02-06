@@ -6,7 +6,7 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { ThreadItem } from "./ThreadItem";
 import { ConfirmDialog } from "../ui/confirm-dialog";
-import { Plus, Settings } from "lucide-react";
+import { Plus, Settings, Brain } from "lucide-react";
 
 interface SidebarProps {
   onCloseMobile: () => void;
@@ -34,6 +34,11 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
 
   const handleSettings = () => {
     navigate("/settings/personas");
+    onCloseMobile();
+  };
+
+  const handleMemory = () => {
+    navigate("/memory");
     onCloseMobile();
   };
 
@@ -165,13 +170,22 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
               },
             }}
           />
-          <button
-            onClick={handleSettings}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Settings"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleMemory}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+              aria-label="Memory Explorer"
+            >
+              <Brain className="h-4 w-4" />
+            </button>
+            <button
+              onClick={handleSettings}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 

@@ -19,6 +19,7 @@
     "lucide-react": "^0.460.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-force-graph-2d": "^1.29.1",
     "react-router-dom": "^7.13.0",
     "rehype-harden": "^1.1.7",
     "streamdown": "^2.1.0",

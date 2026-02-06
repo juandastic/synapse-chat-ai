@@ -4,6 +4,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import { PersonaSelector } from "./components/chat/PersonaSelector";
 import { ChatView } from "./components/chat/ChatView";
 import { PersonaSettings } from "./components/settings/PersonaSettings";
+import { MemoryExplorer } from "./components/memory/MemoryExplorer";
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
             <Route index element={<PersonaSelector />} />
             <Route path="t/:threadId" element={<ChatView />} />
             <Route path="settings/personas" element={<PersonaSettings />} />
+            <Route path="memory" element={<MemoryExplorer />} />
           </Route>
         </Routes>
       </SignedIn>
