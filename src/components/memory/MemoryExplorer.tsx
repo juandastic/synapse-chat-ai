@@ -7,6 +7,7 @@ import type { GraphCanvasHandle } from "./GraphCanvas";
 import { EntityList } from "./EntityList";
 import { NodeInspector } from "./NodeInspector";
 import { MemoryCorrection } from "./MemoryCorrection";
+import { CortexJobStatus } from "./CortexJobStatus";
 import type { GraphData, GraphNode } from "./types";
 import { ArrowLeft, List, X } from "lucide-react";
 
@@ -123,6 +124,9 @@ export function MemoryExplorer() {
           </button>
         )}
       </header>
+
+      {/* Cortex job status indicators */}
+      <CortexJobStatus />
 
       {/* Main content area */}
       <div className="flex min-h-0 flex-1">

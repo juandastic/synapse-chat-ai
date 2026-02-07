@@ -120,6 +120,56 @@ export default defineSchema({
   }).index("by_thread_status", ["threadId", "status"]),
 
   // ===========================================================================
+  // Cortex Jobs (Async Processing Queue)
+  // ===========================================================================
+  /**
+   * Cortex Jobs — persistent queue for async Cortex API operations.
+   *
+   * Decouples heavy AI processing (ingestion, corrections) from the UI.
+   * A recursive processor action executes jobs with slow-backoff retry.
+   *
+   * Status lifecycle: pending -> processing -> completed | failed
+   * On transient failures, jobs are retried with increasing delays:
+   *   Immediate -> 2m -> 10m -> 30m -> 30m (5 attempts max)
+   */
+  cortex_jobs: defineTable({
+    /** Owner of this job */
+    userId: v.id("users"),
+    /** Related session (optional — corrections may not have one) */
+    sessionId: v.optional(v.id("sessions")),
+    /** Operation type */
+    type: v.union(v.literal("ingest"), v.literal("correction")),
+    /** JSON payload with data needed for the API call */
+    payload: v.any(),
+
+    // State machine
+    /** Current job status */
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    /** Current attempt count (0-based, incremented before each attempt) */
+    attempts: v.number(),
+    /** Maximum retry attempts before marking as failed */
+    maxAttempts: v.number(),
+    /** Last error message (for display and debugging) */
+    lastError: v.optional(v.string()),
+
+    // Scheduling
+    /** Timestamp for the next scheduled retry (undefined if not waiting) */
+    nextRetryAt: v.optional(v.number()),
+    /** Job creation timestamp */
+    createdAt: v.number(),
+    /** Last status change timestamp */
+    updatedAt: v.number(),
+  })
+    .index("by_user_status", ["userId", "status"])
+    .index("by_session", ["sessionId"])
+    .index("by_status", ["status"]),
+
+  // ===========================================================================
   // Messages
   // ===========================================================================
   /**

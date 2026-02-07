@@ -22,6 +22,7 @@
     "react-force-graph-2d": "^1.29.1",
     "react-router-dom": "^7.13.0",
     "rehype-harden": "^1.1.7",
+    "sonner": "^2.0.7",
     "streamdown": "^2.1.0",
     "tailwind-merge": "^2.5.0"
   },

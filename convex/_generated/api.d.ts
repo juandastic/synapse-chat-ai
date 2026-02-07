@@ -10,6 +10,8 @@
 
 import type * as chat from "../chat.js";
 import type * as cortex from "../cortex.js";
+import type * as cortexJobs from "../cortexJobs.js";
+import type * as cortexProcessor from "../cortexProcessor.js";
 import type * as graph from "../graph.js";
 import type * as messages from "../messages.js";
 import type * as personas from "../personas.js";
@@ -26,6 +28,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   cortex: typeof cortex;
+  cortexJobs: typeof cortexJobs;
+  cortexProcessor: typeof cortexProcessor;
   graph: typeof graph;
   messages: typeof messages;
   personas: typeof personas;

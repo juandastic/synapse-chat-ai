@@ -40,7 +40,7 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
         setText("");
         setFeedback({
           type: "success",
-          message: "Memory updated. Refreshing graph...",
+          message: "Correction queued. Processing in the background...",
         });
         onCorrectionSent();
 

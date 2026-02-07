@@ -1,11 +1,13 @@
 import { v } from "convex/values";
 import {
+  mutation,
   internalMutation,
   internalQuery,
   MutationCtx,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
+import { getOrCreateUser } from "./users";
 
 // =============================================================================
 // Configuration
@@ -115,8 +117,8 @@ export async function getOrCreateActiveSession(
       await ctx.scheduler.cancel(existingSession.closerJobId);
     }
 
-    // Schedule Cortex ingest for the closed session
-    await ctx.scheduler.runAfter(0, internal.cortex.ingestAndCreateDraft, {
+    // Enqueue Cortex ingest job for the closed session
+    await ctx.runMutation(internal.cortexJobs.enqueueIngest, {
       closedSessionId: existingSession._id,
       userId,
       threadId,
@@ -230,11 +232,7 @@ export async function touchSession(
 /**
  * Auto-close a session after inactivity timeout.
  * Triggered by scheduler after SESSION_STALE_THRESHOLD_MS of no messages.
- *
- * Post-close flow:
- * 1. Marks session as closed
- * 2. Schedules Cortex ingest to persist conversation to knowledge graph
- * 3. Cortex creates a draft session with updated user knowledge
+ * Enqueues a Cortex ingest job to persist the conversation to the knowledge graph.
  */
 export const autoClose = internalMutation({
   args: { sessionId: v.id("sessions") },
@@ -268,8 +266,8 @@ export const autoClose = internalMutation({
       closerJobId: undefined,
     });
 
-    // Trigger Cortex ingest to persist learnings and prepare next session
-    await ctx.scheduler.runAfter(0, internal.cortex.ingestAndCreateDraft, {
+    // Enqueue Cortex ingest job to persist learnings and prepare next session
+    await ctx.runMutation(internal.cortexJobs.enqueueIngest, {
       closedSessionId: args.sessionId,
       userId: session.userId,
       threadId: session.threadId,
@@ -279,10 +277,10 @@ export const autoClose = internalMutation({
 
 /**
  * Create a draft session pre-loaded with user knowledge from Cortex.
- * Called by cortex.ingestAndCreateDraft after successful graph ingest.
+ * Called by cortexProcessor after a successful (or fallback) ingest.
  *
- * Race condition handling: If user starts a new session while Cortex is
- * processing, we update the existing session's knowledge instead of
+ * Race condition handling: if the user already started a new session
+ * while Cortex was processing, we patch its knowledge instead of
  * creating a duplicate.
  */
 export const createDraftSession = internalMutation({
@@ -458,5 +456,70 @@ export const patchKnowledge = internalMutation({
       sessionId: args.sessionId,
       knowledgeLength: args.knowledge.length,
     });
+  },
+});
+
+// =============================================================================
+// Public Mutations
+// =============================================================================
+
+/**
+ * Force-close the active session for a thread and enqueue Cortex ingest.
+ *
+ * Used by the "Consolidate Memory" button in the chat UI.
+ * Closes the current active session (if any) and creates an ingest job
+ * so that the conversation is persisted to the knowledge graph.
+ *
+ * @returns { success: boolean, message: string }
+ */
+export const forceClose = mutation({
+  args: { threadId: v.id("threads") },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUser(ctx);
+
+    // Verify thread ownership
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread || thread.userId !== user._id) {
+      throw new Error("Thread not found");
+    }
+
+    // Find active session
+    const activeSession = await ctx.db
+      .query("sessions")
+      .withIndex("by_thread_status", (q) =>
+        q.eq("threadId", args.threadId).eq("status", "active")
+      )
+      .first();
+
+    if (!activeSession) {
+      return { success: false, message: "No active session to close" };
+    }
+
+    // Cancel pending auto-close job
+    if (activeSession.closerJobId) {
+      await ctx.scheduler.cancel(activeSession.closerJobId);
+    }
+
+    // Close the session
+    await ctx.db.patch(activeSession._id, {
+      status: "closed",
+      endedAt: Date.now(),
+      closerJobId: undefined,
+    });
+
+    // Enqueue Cortex ingest job
+    await ctx.runMutation(internal.cortexJobs.enqueueIngest, {
+      closedSessionId: activeSession._id,
+      userId: user._id,
+      threadId: args.threadId,
+    });
+
+    console.log("[sessions.forceClose] Session force-closed", {
+      sessionId: activeSession._id,
+      userId: user._id,
+      threadId: args.threadId,
+    });
+
+    return { success: true, message: "Memory consolidation started" };
   },
 });

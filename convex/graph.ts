@@ -3,19 +3,18 @@
 import { v } from "convex/values";
 import { action, ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 
 // =============================================================================
 // Configuration
 // =============================================================================
 
-/** Synapse Cortex API base URL */
 const CORTEX_API_URL = "https://synapse-cortex.juandago.dev";
 
 // =============================================================================
 // Types
 // =============================================================================
 
-/** A node in the knowledge graph */
 interface GraphNode {
   id: string;
   name: string;
@@ -23,7 +22,6 @@ interface GraphNode {
   summary: string;
 }
 
-/** A directed relationship between two nodes */
 interface GraphLink {
   source: string;
   target: string;
@@ -31,17 +29,9 @@ interface GraphLink {
   fact: string | null;
 }
 
-/** Full graph payload returned by Cortex */
 interface GraphResponse {
   nodes: GraphNode[];
   links: GraphLink[];
-}
-
-/** Response from the correction endpoint */
-interface CorrectionResponse {
-  success: boolean;
-  error: string | null;
-  code: string | null;
 }
 
 // =============================================================================
@@ -49,11 +39,8 @@ interface CorrectionResponse {
 // =============================================================================
 
 /**
- * Resolve the current authenticated user's ID from the action context.
- * Actions cannot access ctx.db directly, so we call an internal query.
- *
- * @returns The Convex user ID string
- * @throws Error if not authenticated or user not found
+ * Resolve the authenticated user's Convex ID from an action context.
+ * Actions can't access ctx.db, so we bounce through an internal query.
  */
 async function resolveUserId(ctx: ActionCtx): Promise<string> {
   const identity = await ctx.auth.getUserIdentity();
@@ -77,11 +64,8 @@ async function resolveUserId(ctx: ActionCtx): Promise<string> {
 // =============================================================================
 
 /**
- * Fetch the user's knowledge graph from Synapse Cortex.
- *
- * Calls GET /v1/graph/{group_id} where group_id is the Convex userId.
- * Returns { nodes, links } for rendering in react-force-graph-2d.
- *
+ * Fetch the user's knowledge graph for visualization.
+ * Returns { nodes, links } for react-force-graph-2d.
  * Graceful degradation: returns empty graph on any failure.
  */
 export const fetch = action({
@@ -93,21 +77,13 @@ export const fetch = action({
     let userId: string;
     try {
       userId = await resolveUserId(ctx);
-    } catch (error) {
-      console.warn("[graph.fetch] Auth failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+    } catch {
       return empty;
     }
 
-    const requestId = `graph-fetch-${userId.slice(-6)}-${Date.now().toString(36)}`;
-    const logContext = { requestId, userId };
-
-    console.log("[graph.fetch] Starting", logContext);
-
     const apiSecret = process.env.SYNAPSE_CORTEX_API_SECRET;
     if (!apiSecret) {
-      console.warn("[graph.fetch] SYNAPSE_CORTEX_API_SECRET not set", logContext);
+      console.warn("[graph.fetch] SYNAPSE_CORTEX_API_SECRET not set");
       return empty;
     }
 
@@ -116,21 +92,14 @@ export const fetch = action({
         `${CORTEX_API_URL}/v1/graph/${encodeURIComponent(userId)}`,
         {
           method: "GET",
-          headers: {
-            "X-API-SECRET": apiSecret,
-          },
+          headers: { "X-API-SECRET": apiSecret },
         }
       );
 
-      const latencyMs = Date.now() - startTime;
-
       if (!response.ok) {
-        const errorBody = await response.text().catch(() => "");
         console.warn("[graph.fetch] HTTP error", {
-          ...logContext,
           statusCode: response.status,
-          latencyMs,
-          errorBody: errorBody.slice(0, 300),
+          latencyMs: Date.now() - startTime,
         });
         return empty;
       }
@@ -138,8 +107,7 @@ export const fetch = action({
       const data: GraphResponse = await response.json();
 
       console.log("[graph.fetch] Success", {
-        ...logContext,
-        latencyMs,
+        latencyMs: Date.now() - startTime,
         nodeCount: data.nodes?.length ?? 0,
         linkCount: data.links?.length ?? 0,
       });
@@ -149,10 +117,8 @@ export const fetch = action({
         links: data.links ?? [],
       };
     } catch (error) {
-      const latencyMs = Date.now() - startTime;
       console.warn("[graph.fetch] Failed", {
-        ...logContext,
-        latencyMs,
+        latencyMs: Date.now() - startTime,
         error: error instanceof Error ? error.message : String(error),
       });
       return empty;
@@ -161,13 +127,9 @@ export const fetch = action({
 });
 
 /**
- * Submit a natural-language memory correction to Synapse Cortex.
- *
- * Calls POST /v1/graph/correction with { group_id, correction_text }.
- * Graphiti processes it as an episode: invalidates outdated edges
- * and creates new ones automatically.
- *
- * After success, the frontend should re-fetch the graph.
+ * Enqueue a memory correction job.
+ * Returns immediately — processing happens asynchronously via cortexProcessor.
+ * The frontend tracks progress by subscribing to cortexJobs.getActiveByUser.
  */
 export const correct = action({
   args: {
@@ -177,8 +139,6 @@ export const correct = action({
     ctx,
     args
   ): Promise<{ success: boolean; error?: string }> => {
-    const startTime = Date.now();
-
     let userId: string;
     try {
       userId = await resolveUserId(ctx);
@@ -189,81 +149,11 @@ export const correct = action({
       };
     }
 
-    const requestId = `graph-correct-${userId.slice(-6)}-${Date.now().toString(36)}`;
-    const logContext = { requestId, userId };
-
-    console.log("[graph.correct] Starting", {
-      ...logContext,
-      correctionLength: args.correctionText.length,
+    await ctx.runMutation(internal.cortexJobs.enqueueCorrection, {
+      userId: userId as Id<"users">,
+      correctionText: args.correctionText,
     });
 
-    const apiSecret = process.env.SYNAPSE_CORTEX_API_SECRET;
-    if (!apiSecret) {
-      console.warn(
-        "[graph.correct] SYNAPSE_CORTEX_API_SECRET not set",
-        logContext
-      );
-      return { success: false, error: "Service configuration error" };
-    }
-
-    try {
-      const response = await globalThis.fetch(
-        `${CORTEX_API_URL}/v1/graph/correction`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-API-SECRET": apiSecret,
-          },
-          body: JSON.stringify({
-            group_id: userId,
-            correction_text: args.correctionText,
-          }),
-        }
-      );
-
-      const latencyMs = Date.now() - startTime;
-
-      if (!response.ok) {
-        const errorBody = await response.text().catch(() => "");
-        console.warn("[graph.correct] HTTP error", {
-          ...logContext,
-          statusCode: response.status,
-          latencyMs,
-          errorBody: errorBody.slice(0, 300),
-        });
-        return { success: false, error: "Failed to process correction" };
-      }
-
-      const data: CorrectionResponse = await response.json();
-
-      if (!data.success) {
-        console.warn("[graph.correct] API error", {
-          ...logContext,
-          latencyMs,
-          error: data.error,
-          code: data.code,
-        });
-        return {
-          success: false,
-          error: data.error ?? "Failed to process correction",
-        };
-      }
-
-      console.log("[graph.correct] Success", {
-        ...logContext,
-        latencyMs,
-      });
-
-      return { success: true };
-    } catch (error) {
-      const latencyMs = Date.now() - startTime;
-      console.warn("[graph.correct] Failed", {
-        ...logContext,
-        latencyMs,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return { success: false, error: "Network error" };
-    }
+    return { success: true };
   },
 });

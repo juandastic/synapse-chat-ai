@@ -5,6 +5,7 @@ import { PersonaSelector } from "./components/chat/PersonaSelector";
 import { ChatView } from "./components/chat/ChatView";
 import { PersonaSettings } from "./components/settings/PersonaSettings";
 import { MemoryExplorer } from "./components/memory/MemoryExplorer";
+import { Toaster } from "./components/ui/sonner";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           </Route>
         </Routes>
       </SignedIn>
+      <Toaster />
     </div>
   );
 }
