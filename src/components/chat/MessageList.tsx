@@ -16,23 +16,21 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
   const prevMessageCountRef = useRef(0);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
-  // ── Is user at the very bottom? ─────────────────────────────────────
   const isAtBottom = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return true;
     return (
       container.scrollHeight - container.scrollTop - container.clientHeight < 30
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
-  // ── Scroll to bottom ────────────────────────────────────────────────
   const scrollToBottom = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
     container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, []);
 
-  // ── Show / hide button based on scroll position ─────────────────────
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -45,7 +43,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
     return () => container.removeEventListener("scroll", handleScroll);
   }, [isAtBottom]);
 
-  // ── Scroll to bottom ONLY when a new message is added ───────────────
+  // Auto-scroll only on new messages, not on content updates
   useEffect(() => {
     if (!messages || messages.length === 0) return;
 
@@ -56,11 +54,9 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
     prevMessageCountRef.current = messageCount;
 
     if (isFirstLoad) {
-      // First load — jump instantly (no animation)
       requestAnimationFrame(() => {
         const container = scrollContainerRef.current;
         if (container) container.scrollTop = container.scrollHeight;
-        // Update button state after jump
         setShowScrollButton(false);
       });
     } else if (hasNewMessage) {
@@ -68,7 +64,6 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
     }
   }, [messages, scrollToBottom]);
 
-  // ── Loading state ───────────────────────────────────────────────────
   if (messages === undefined) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -80,7 +75,6 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
     );
   }
 
-  // ── Empty state ─────────────────────────────────────────────────────
   if (messages.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center px-6">
@@ -118,7 +112,6 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
     );
   }
 
-  // ── Message list ────────────────────────────────────────────────────
   return (
     <div className="relative h-full">
       <div
@@ -149,7 +142,6 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
         </div>
       </div>
 
-      {/* Scroll to bottom button */}
       {showScrollButton && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 z-50 flex justify-center animate-in fade-in slide-in-from-bottom-2 duration-200">
           <Button

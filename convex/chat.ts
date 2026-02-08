@@ -3,21 +3,20 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { r2 } from "./r2";
 
 // =============================================================================
 // Configuration
 // =============================================================================
 
-/** LLM model identifier for Synapse Cortex */
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
-/** Throttle interval for streaming updates to reduce database writes (ms) */
+/** Reduce DB writes during streaming by batching updates */
 const STREAM_UPDATE_INTERVAL_MS = 100;
 
-/** Number of recent messages to include in context window */
 const CONTEXT_MESSAGE_LIMIT = 20;
 
-/** Synapse Cortex API endpoint (OpenAI-compatible streaming) */
+/** OpenAI-compatible streaming endpoint */
 const CORTEX_API_URL =
   "https://synapse-cortex.juandago.dev/v1/chat/completions";
 
@@ -25,50 +24,52 @@ const CORTEX_API_URL =
 // Types
 // =============================================================================
 
-/** Token usage statistics from the LLM response */
 interface StreamUsage {
   prompt_tokens?: number;
   completion_tokens?: number;
   total_tokens?: number;
 }
 
-/** Delta content in a streaming chunk */
 interface StreamDelta {
   content?: string;
-  /** Extended thinking content (ignored - not displayed to users) */
-  reasoning_content?: string;
-  /** Legacy reasoning field (ignored) */
-  reasoning?: string;
+  reasoning_content?: string; // thinking tokens — ignored
+  reasoning?: string; // legacy reasoning field — ignored
 }
 
-/** Single choice in a streaming chunk */
 interface StreamChoice {
   delta?: StreamDelta;
   finish_reason?: string;
 }
 
-/** Individual SSE chunk from the streaming API */
 interface StreamChunk {
   error?: { message?: string; code?: number };
   choices?: StreamChoice[];
   usage?: StreamUsage;
 }
 
-/** Result of processing the complete stream */
 interface StreamResult {
   content: string;
   usage: StreamUsage | null;
   finishReason: string;
 }
 
-/** Error categories for structured logging and handling */
+/** OpenAI vision-compatible content part */
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+interface ApiMessage {
+  role: "system" | "user" | "assistant";
+  content: string | ContentPart[];
+}
+
 type ErrorCategory =
-  | "CONFIG_ERROR" // Missing environment variables
-  | "SESSION_NOT_FOUND" // Invalid session reference
-  | "API_ERROR" // HTTP errors from Cortex API
-  | "STREAM_ERROR" // Errors during stream processing
-  | "PROVIDER_ERROR" // Upstream LLM provider errors
-  | "UNKNOWN_ERROR"; // Catch-all for unexpected errors
+  | "CONFIG_ERROR"
+  | "SESSION_NOT_FOUND"
+  | "API_ERROR"
+  | "STREAM_ERROR"
+  | "PROVIDER_ERROR"
+  | "UNKNOWN_ERROR";
 
 // =============================================================================
 // Main Action
@@ -77,16 +78,9 @@ type ErrorCategory =
 /**
  * Generate AI response for a chat message.
  *
- * Execution flow:
- * 1. Fetches session data (cached system prompt + user knowledge)
- * 2. Fetches recent messages by threadId (cross-session continuity)
- * 3. Builds context with system prompt + user knowledge + conversation history
- * 4. Streams response from Synapse Cortex API
- * 5. Updates message content periodically during streaming
- * 6. Saves final metadata (tokens, latency, etc.)
- *
- * This action is "pure and fast" -- it reads the session snapshot directly
- * without needing to look up threads or personas.
+ * Reads the session snapshot directly (no thread/persona lookups needed)
+ * and streams the response from Synapse Cortex, updating the message
+ * content periodically until complete.
  */
 export const generateResponse = internalAction({
   args: {
@@ -107,7 +101,6 @@ export const generateResponse = internalAction({
 
     console.log("[chat.generateResponse] Starting", logContext);
 
-    // Helper to handle errors consistently
     const handleError = async (
       category: ErrorCategory,
       message: string,
@@ -137,14 +130,12 @@ export const generateResponse = internalAction({
     };
 
     try {
-      // Validate API configuration
       const apiSecret = process.env.SYNAPSE_CORTEX_API_SECRET;
       if (!apiSecret) {
         await handleError("CONFIG_ERROR", "SYNAPSE_CORTEX_API_SECRET not set");
         return;
       }
 
-      // Fetch session for cached snapshot data
       const session = await ctx.runQuery(internal.sessions.get, {
         id: args.sessionId,
       });
@@ -154,15 +145,12 @@ export const generateResponse = internalAction({
         return;
       }
 
-      // Fetch recent messages by threadId (cross-session continuity)
+      // Fetches across all sessions for the thread (cross-session continuity)
       const history = await ctx.runQuery(internal.messages.getRecent, {
         threadId: args.threadId,
         limit: CONTEXT_MESSAGE_LIMIT,
       });
 
-      // Build system message from session snapshot
-      // cachedSystemPrompt is always set (persona + user instructions)
-      // cachedUserKnowledge is optional (may not exist yet)
       const now = new Date();
       const currentDateTime = now.toLocaleString("en-US", {
         weekday: "long",
@@ -180,24 +168,53 @@ export const generateResponse = internalAction({
         systemContent += `\n\n${session.cachedUserKnowledge}`;
       }
 
-      const apiMessages = [
-        { role: "system" as const, content: systemContent },
-        ...history
-          .filter((m) => m._id !== args.assistantMessageId)
-          .map((m) => ({
+      // Convert image keys to signed R2 URLs for vision-capable models
+      const filteredHistory = history.filter(
+        (m) => m._id !== args.assistantMessageId
+      );
+
+      const apiMessages: ApiMessage[] = [
+        { role: "system", content: systemContent },
+      ];
+
+      for (const m of filteredHistory) {
+        const hasImages =
+          m.role === "user" && m.imageKeys && m.imageKeys.length > 0;
+
+        if (hasImages) {
+          const parts: ContentPart[] = [];
+
+          for (const key of m.imageKeys!) {
+            const url = await r2.getUrl(key);
+            parts.push({ type: "image_url", image_url: { url } });
+          }
+
+          if (m.content) {
+            parts.push({ type: "text", text: m.content });
+          }
+
+          apiMessages.push({
+            role: "user",
+            content: parts,
+          });
+        } else {
+          apiMessages.push({
             role: m.role as "user" | "assistant",
             content: m.content,
-          })),
-      ];
+          });
+        }
+      }
 
       console.log("[chat.generateResponse] Context prepared", {
         ...logContext,
-        historyCount: history.length,
+        historyCount: filteredHistory.length,
         hasUserKnowledge: !!session.cachedUserKnowledge,
         systemPromptLength: systemContent.length,
+        messagesWithImages: filteredHistory.filter(
+          (m) => m.imageKeys && m.imageKeys.length > 0
+        ).length,
       });
 
-      // Call Synapse Cortex streaming API
       const response = await fetch(CORTEX_API_URL, {
         method: "POST",
         headers: {
@@ -231,7 +248,6 @@ export const generateResponse = internalAction({
         apiLatencyMs,
       });
 
-      // Process streaming response with throttled database updates
       const result = await processStream(
         response,
         async (content: string) => {
@@ -242,7 +258,6 @@ export const generateResponse = internalAction({
         }
       );
 
-      // Finalize with metadata
       const totalLatencyMs = Date.now() - startTime;
       await ctx.runMutation(internal.messages.saveMetadata, {
         id: args.assistantMessageId,
@@ -265,7 +280,6 @@ export const generateResponse = internalAction({
         finishReason: result.finishReason,
       });
     } catch (error) {
-      // Catch-all for unexpected errors (stream errors, network issues, etc.)
       const message = error instanceof Error ? error.message : String(error);
       const isProviderError = message.startsWith("Provider error:");
 
@@ -288,13 +302,8 @@ export const generateResponse = internalAction({
 // =============================================================================
 
 /**
- * Process SSE stream from Synapse Cortex API.
- *
- * Key behaviors:
- * - Throttles database updates to every STREAM_UPDATE_INTERVAL_MS
- * - Only captures standard content (ignores reasoning/thinking tokens)
- * - Throws on provider errors with "Provider error:" prefix for categorization
- * - Silently skips malformed SSE lines (common with streaming APIs)
+ * Process SSE stream. Throttles DB updates and ignores reasoning tokens.
+ * Provider errors throw with "Provider error:" prefix for upstream categorization.
  */
 async function processStream(
   response: Response,
@@ -331,7 +340,6 @@ async function processStream(
         try {
           const chunk: StreamChunk = JSON.parse(data);
 
-          // Provider errors are surfaced immediately
           if (chunk.error) {
             throw new Error(
               `Provider error: ${chunk.error.message || `Code ${chunk.error.code}`}`
@@ -351,15 +359,13 @@ async function processStream(
             usage = chunk.usage;
           }
         } catch (e) {
-          // Re-throw provider errors for proper categorization upstream
           if (e instanceof Error && e.message.startsWith("Provider error:")) {
             throw e;
           }
-          // Skip malformed JSON lines (common in SSE streams)
+          // Malformed SSE lines are expected — skip silently
         }
       }
 
-      // Throttled content updates to reduce database writes
       const now = Date.now();
       const hasNewContent = content && content !== lastUpdatedContent;
       const intervalElapsed =
@@ -372,12 +378,10 @@ async function processStream(
       }
     }
 
-    // Ensure final content is persisted
     if (content && content !== lastUpdatedContent) {
       await updateContent(content);
     }
   } finally {
-    // Always release the reader to prevent resource leaks
     reader.releaseLock();
   }
 

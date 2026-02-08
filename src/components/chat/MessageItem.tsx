@@ -1,7 +1,9 @@
 import { memo, useRef, useEffect } from "react";
+import { useQuery } from "convex/react";
 import { Streamdown, defaultRehypePlugins } from "streamdown";
 import { cn, formatMessageTime } from "@/lib/utils";
 import { Doc } from "../../../convex/_generated/dataModel";
+import { api } from "../../../convex/_generated/api";
 import { createSecureRehypePlugins } from "@/lib/markdown-security";
 
 interface MessageItemProps {
@@ -18,13 +20,13 @@ export const MessageItem = memo(function MessageItem({
   const isEmpty = message.content === "";
   const prevContentRef = useRef(message.content);
   const isContentChanging = message.content !== prevContentRef.current;
+  const hasImages =
+    isUser && message.imageKeys !== undefined && message.imageKeys.length > 0;
 
-  // Update ref when content changes
   useEffect(() => {
     prevContentRef.current = message.content;
   }, [message.content]);
 
-  // Determine if content is actively streaming (has content and is changing)
   const isActivelyStreaming =
     !isUser &&
     !isEmpty &&
@@ -48,9 +50,22 @@ export const MessageItem = memo(function MessageItem({
               : "bg-card text-card-foreground shadow-sm"
         )}
       >
-        {/* Message content */}
+        {hasImages && (
+          <div
+            className={cn(
+              "mb-2 grid gap-1.5",
+              message.imageKeys!.length === 1
+                ? "grid-cols-1"
+                : "grid-cols-2"
+            )}
+          >
+            {message.imageKeys!.map((key) => (
+              <MessageImage key={key} imageKey={key} />
+            ))}
+          </div>
+        )}
+
         {isEmpty && isStreaming ? (
-          // Show loading indicator when message is empty and streaming
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 animate-pulse rounded-full bg-current opacity-60" />
             <span
@@ -62,18 +77,16 @@ export const MessageItem = memo(function MessageItem({
               style={{ animationDelay: "0.4s" }}
             />
           </div>
-        ) : isUser ? (
-          // User messages: render as plain text (no markdown needed)
+        ) : isEmpty && hasImages ? null : isUser ? (
           <div className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
             {message.content}
           </div>
         ) : (
-          // Assistant messages: render with markdown support
           <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-display prose-p:text-[15px] prose-p:leading-relaxed prose-p:break-words prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-code:text-[14px] prose-pre:bg-muted prose-pre:border prose-pre:border-border">
             <Streamdown
               rehypePlugins={[
                 defaultRehypePlugins.raw,
-                createSecureRehypePlugins(true), // AI-generated content [harden, config]
+                createSecureRehypePlugins(true), // hardened for AI-generated content
               ]}
               isAnimating={isActivelyStreaming}
             >
@@ -82,7 +95,6 @@ export const MessageItem = memo(function MessageItem({
           </div>
         )}
 
-        {/* Error indicator */}
         {isError && (
           <div className="mt-2 flex items-center gap-1.5 text-xs opacity-70">
             <svg
@@ -102,8 +114,7 @@ export const MessageItem = memo(function MessageItem({
           </div>
         )}
 
-        {/* Timestamp - shown on hover */}
-        {!isEmpty && (
+        {(!isEmpty || hasImages) && (
           <div
             className={cn(
               "mt-1.5 text-[11px] leading-none opacity-0 transition-opacity group-hover:opacity-60",
@@ -117,5 +128,35 @@ export const MessageItem = memo(function MessageItem({
         )}
       </div>
     </div>
+  );
+});
+
+const MessageImage = memo(function MessageImage({
+  imageKey,
+}: {
+  imageKey: string;
+}) {
+  const imageUrl = useQuery(api.messages.getImageUrl, { key: imageKey });
+
+  if (!imageUrl) {
+    return (
+      <div className="aspect-square w-full animate-pulse rounded-lg bg-primary-foreground/10" />
+    );
+  }
+
+  return (
+    <a
+      href={imageUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block overflow-hidden rounded-lg"
+    >
+      <img
+        src={imageUrl}
+        alt="Attached image"
+        className="h-auto max-h-64 w-full object-cover transition-transform hover:scale-[1.02]"
+        loading="lazy"
+      />
+    </a>
   );
 });
