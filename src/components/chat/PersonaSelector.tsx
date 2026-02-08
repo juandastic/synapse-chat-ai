@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
+import { Logo } from "../ui/logo";
 
 /**
  * Hardcoded system templates (mirrors convex/personas.ts PERSONA_TEMPLATES).
@@ -69,22 +70,13 @@ export function PersonaSelector() {
   const hasCustomPersonas = personas && personas.length > 0;
 
   return (
-    <div className="flex h-full flex-col items-center justify-center overflow-y-auto px-6 py-12">
+    <div className="h-full overflow-y-auto">
+      <div className="flex min-h-full flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="mb-10 text-center">
           <div className="mx-auto mb-6 h-16 w-16 rounded-full bg-gradient-to-br from-primary/15 to-accent/15 p-4">
-            <svg viewBox="0 0 100 100" className="h-full w-full">
-              <path
-                d="M30 50 Q50 25 70 50 Q50 75 30 50"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="4"
-                strokeLinecap="round"
-                className="text-primary/70"
-              />
-              <circle cx="50" cy="50" r="8" className="fill-primary/70" />
-            </svg>
+            <Logo />
           </div>
           <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
             Start a new conversation
@@ -158,6 +150,7 @@ export function PersonaSelector() {
             <span>Creating your conversation...</span>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { ThreadItem } from "./ThreadItem";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { Plus, Settings, Brain } from "lucide-react";
+import { Logo } from "../ui/logo";
 
 interface SidebarProps {
   onCloseMobile: () => void;
@@ -78,17 +79,9 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex h-14 shrink-0 items-center gap-2.5 px-4">
+      <div className="flex h-14 shrink-0 items-center gap-2.5 px-4 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleNewChat}>
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-accent/15">
-          <svg viewBox="0 0 100 100" className="h-5 w-5">
-            <path d="M50 46 Q63 30 74 24" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" className="text-primary" />
-            <path d="M50 46 Q32 32 22 34" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" className="text-primary" opacity="0.7" />
-            <path d="M50 46 Q54 64 58 76" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" className="text-primary" opacity="0.75" />
-            <circle cx="74" cy="24" r="7" className="fill-primary" />
-            <circle cx="22" cy="34" r="6" className="fill-primary" opacity="0.7" />
-            <circle cx="58" cy="76" r="6.5" className="fill-primary" opacity="0.85" />
-            <circle cx="50" cy="46" r="10" className="fill-primary" />
-          </svg>
+          <Logo className="h-5 w-5" />
         </div>
         <span className="font-display text-base font-semibold tracking-tight">
           Synapse

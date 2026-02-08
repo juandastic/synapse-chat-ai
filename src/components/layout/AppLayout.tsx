@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, Link } from "react-router-dom";
 import { Sidebar } from "../sidebar/Sidebar";
 
 export function AppLayout() {
@@ -69,9 +69,9 @@ export function AppLayout() {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <span className="ml-3 font-display text-sm font-medium tracking-tight">
+          <Link to="/" className="ml-3 font-display text-sm font-medium tracking-tight hover:text-foreground transition-colors">
             Synapse
-          </span>
+          </Link>
         </div>
 
         <Outlet />

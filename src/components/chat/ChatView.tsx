@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -33,7 +33,11 @@ export function ChatView() {
 function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
   const thread = useQuery(api.threads.get, { threadId });
   const forceClose = useMutation(api.sessions.forceClose);
+  const updateTitle = useMutation(api.threads.updateTitle);
   const [consolidating, setConsolidating] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const handleConsolidate = useCallback(async () => {
     if (consolidating) return;
@@ -51,6 +55,44 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
       setConsolidating(false);
     }
   }, [forceClose, threadId, consolidating]);
+
+  const handleTitleClick = useCallback(() => {
+    if (thread) {
+      setEditTitle(thread.title);
+      setIsEditingTitle(true);
+    }
+  }, [thread]);
+
+  const handleTitleSave = useCallback(async () => {
+    const trimmed = editTitle.trim();
+    if (trimmed && trimmed !== thread?.title) {
+      try {
+        await updateTitle({ threadId, title: trimmed });
+      } catch {
+        toast.error("Failed to update title");
+      }
+    }
+    setIsEditingTitle(false);
+  }, [editTitle, thread?.title, updateTitle, threadId]);
+
+  const handleTitleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleTitleSave();
+      } else if (e.key === "Escape") {
+        setIsEditingTitle(false);
+      }
+    },
+    [handleTitleSave]
+  );
+
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [isEditingTitle]);
 
   // Loading state
   if (thread === undefined) {
@@ -81,10 +123,26 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
           <span className="shrink-0 text-xl" role="img" aria-hidden="true">
             {thread.persona.icon}
           </span>
-          <div className="min-w-0">
-            <h1 className="truncate font-display text-sm font-semibold tracking-tight text-foreground">
-              {thread.title}
-            </h1>
+          <div className="min-w-0 flex-1">
+            {isEditingTitle ? (
+              <input
+                ref={titleInputRef}
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onBlur={handleTitleSave}
+                onKeyDown={handleTitleKeyDown}
+                className="w-full bg-transparent font-display text-sm font-semibold tracking-tight text-foreground outline-none border-b border-primary/30 focus:border-primary"
+                maxLength={100}
+              />
+            ) : (
+              <h1
+                onClick={handleTitleClick}
+                className="truncate font-display text-sm font-semibold tracking-tight text-foreground cursor-pointer hover:text-primary/80 transition-colors"
+                title="Click to edit title"
+              >
+                {thread.title}
+              </h1>
+            )}
             {thread.persona.description && (
               <p className="truncate text-xs text-muted-foreground">
                 {thread.persona.description}

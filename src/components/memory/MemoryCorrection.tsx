@@ -26,6 +26,15 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
   } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Auto-resize textarea up to a max height
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
+    }
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
@@ -38,6 +47,10 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
 
       if (result.success) {
         setText("");
+        // Reset textarea height after clearing
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto";
+        }
         setFeedback({
           type: "success",
           message: "Correction queued. Processing in the background...",
@@ -85,7 +98,10 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
         <textarea
           ref={textareaRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            adjustTextareaHeight();
+          }}
           onKeyDown={handleKeyDown}
           placeholder='e.g. "I no longer work at Acme Corp, I joined NewCo last month."'
           disabled={loading}
