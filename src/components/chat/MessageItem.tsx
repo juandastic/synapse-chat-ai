@@ -1,4 +1,4 @@
-import { memo, useRef, useEffect } from "react";
+import { memo, useRef, useEffect, useState, useCallback } from "react";
 import { useQuery } from "convex/react";
 import { Streamdown, defaultRehypePlugins } from "streamdown";
 import { cn, formatMessageTime } from "@/lib/utils";
@@ -117,17 +117,81 @@ export const MessageItem = memo(function MessageItem({
         {(!isEmpty || hasImages) && (
           <div
             className={cn(
-              "mt-1.5 text-[11px] leading-none opacity-0 transition-opacity group-hover:opacity-60",
+              "mt-1.5 flex items-center gap-2 text-[11px] leading-none opacity-0 transition-opacity group-hover:opacity-60",
               isUser
                 ? "text-primary-foreground/60"
                 : "text-muted-foreground"
             )}
           >
-            {formatMessageTime(message._creationTime)}
+            <span>{formatMessageTime(message._creationTime)}</span>
+            {!isUser && !isEmpty && (
+              <CopyMarkdownButton content={message.content} />
+            )}
           </div>
         )}
       </div>
     </div>
+  );
+});
+
+const CopyMarkdownButton = memo(function CopyMarkdownButton({
+  content,
+}: {
+  content: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [content]);
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 transition-colors hover:bg-muted-foreground/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      title="Copy as Markdown"
+      aria-label="Copy as Markdown"
+    >
+      {copied ? (
+        <>
+          <svg
+            className="h-3 w-3"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+          <span className="text-[10px]">Copied</span>
+        </>
+      ) : (
+        <>
+          <svg
+            className="h-3 w-3"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+            />
+          </svg>
+          <span className="text-[10px]">MD</span>
+        </>
+      )}
+    </button>
   );
 });
 
