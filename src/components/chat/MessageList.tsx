@@ -23,7 +23,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
     return (
       container.scrollHeight - container.scrollTop - container.clientHeight < 30
     );
-  }, []);
+  }, [messages]);
 
   // ── Scroll to bottom ────────────────────────────────────────────────
   const scrollToBottom = useCallback(() => {
