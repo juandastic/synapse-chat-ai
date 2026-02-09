@@ -180,6 +180,80 @@ export const send = mutation({
   },
 });
 
+/**
+ * Delete a message. Only the thread owner can delete messages.
+ * If the deleted message is a user message and the next message is an
+ * assistant reply (its pair), the assistant message is also deleted.
+ */
+export const deleteMessage = mutation({
+  args: {
+    messageId: v.id("messages"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUser(ctx);
+
+    const message = await ctx.db.get(args.messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    // Verify ownership via thread
+    const thread = await ctx.db.get(message.threadId);
+    if (!thread || thread.userId !== user._id) {
+      throw new Error("Not authorized to delete this message");
+    }
+
+    // If deleting a user message, also remove the paired assistant response
+    if (message.role === "user") {
+      const nextMessages = await ctx.db
+        .query("messages")
+        .withIndex("by_thread", (q) => q.eq("threadId", message.threadId))
+        .order("asc")
+        .collect();
+
+      const messageIndex = nextMessages.findIndex(
+        (m) => m._id === args.messageId
+      );
+
+      if (
+        messageIndex !== -1 &&
+        messageIndex + 1 < nextMessages.length &&
+        nextMessages[messageIndex + 1].role === "assistant"
+      ) {
+        await ctx.db.delete(nextMessages[messageIndex + 1]._id);
+      }
+    }
+
+    // If deleting an assistant message, also remove the paired user message before it
+    if (message.role === "assistant") {
+      const allMessages = await ctx.db
+        .query("messages")
+        .withIndex("by_thread", (q) => q.eq("threadId", message.threadId))
+        .order("asc")
+        .collect();
+
+      const messageIndex = allMessages.findIndex(
+        (m) => m._id === args.messageId
+      );
+
+      if (
+        messageIndex > 0 &&
+        allMessages[messageIndex - 1].role === "user"
+      ) {
+        await ctx.db.delete(allMessages[messageIndex - 1]._id);
+      }
+    }
+
+    await ctx.db.delete(args.messageId);
+
+    console.log("[messages.deleteMessage] Deleted", {
+      messageId: args.messageId,
+      role: message.role,
+      threadId: message.threadId,
+    });
+  },
+});
+
 // =============================================================================
 // Internal Mutations
 // =============================================================================

@@ -9,7 +9,7 @@ import { r2 } from "./r2";
 // Configuration
 // =============================================================================
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3-pro-preview";
 
 /** Reduce DB writes during streaming by batching updates */
 const STREAM_UPDATE_INTERVAL_MS = 100;

@@ -1,5 +1,5 @@
 import { memo, useRef, useEffect, useState, useCallback } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { Streamdown, defaultRehypePlugins } from "streamdown";
 import { cn, formatMessageTime } from "@/lib/utils";
 import { Doc } from "../../../convex/_generated/dataModel";
@@ -127,6 +127,7 @@ export const MessageItem = memo(function MessageItem({
             {!isUser && !isEmpty && (
               <CopyMarkdownButton content={message.content} />
             )}
+            <DeleteMessageButton messageId={message._id} isUserMessage={isUser} />
           </div>
         )}
       </div>
@@ -191,6 +192,64 @@ const CopyMarkdownButton = memo(function CopyMarkdownButton({
           <span className="text-[10px]">MD</span>
         </>
       )}
+    </button>
+  );
+});
+
+const DeleteMessageButton = memo(function DeleteMessageButton({
+  messageId,
+  isUserMessage,
+}: {
+  messageId: Doc<"messages">["_id"];
+  isUserMessage: boolean;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const deleteMessage = useMutation(api.messages.deleteMessage);
+
+  const handleDelete = useCallback(async () => {
+    if (!confirming) {
+      setConfirming(true);
+      // Auto-reset after 3 seconds if user doesn't confirm
+      setTimeout(() => setConfirming(false), 3000);
+      return;
+    }
+    try {
+      await deleteMessage({ messageId });
+    } catch (error) {
+      console.error("Failed to delete message:", error);
+    }
+    setConfirming(false);
+  }, [confirming, deleteMessage, messageId]);
+
+  return (
+    <button
+      type="button"
+      onClick={handleDelete}
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded px-1 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        confirming
+          ? isUserMessage
+            ? "bg-primary-foreground/25 text-primary-foreground hover:bg-primary-foreground/35"
+            : "bg-destructive/20 text-destructive hover:bg-destructive/30"
+          : "hover:bg-muted-foreground/10"
+      )}
+      title={confirming ? "Click again to confirm" : "Delete message"}
+      aria-label={confirming ? "Confirm delete" : "Delete message"}
+    >
+      <svg
+        className="h-3 w-3"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+        />
+      </svg>
+      <span className="text-[10px]">{confirming ? "Sure?" : "Delete"}</span>
     </button>
   );
 });
