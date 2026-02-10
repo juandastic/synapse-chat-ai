@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { Outlet, Link } from "react-router-dom";
 import { Sidebar } from "../sidebar/Sidebar";
+import { useTheme } from "../../contexts/ThemeContext";
+import { Moon, Sun } from "lucide-react";
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -23,6 +25,8 @@ export function AppLayout() {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [sidebarOpen, closeSidebar]);
+
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="flex h-full">
@@ -69,9 +73,20 @@ export function AppLayout() {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <Link to="/" className="ml-3 font-display text-sm font-medium tracking-tight hover:text-foreground transition-colors">
+          <Link to="/" className="ml-3 flex-1 font-display text-sm font-medium tracking-tight hover:text-foreground transition-colors">
             Synapse
           </Link>
+          <button
+            onClick={toggleTheme}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </button>
         </div>
 
         <Outlet />

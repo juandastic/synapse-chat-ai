@@ -14,6 +14,20 @@
     <title>Synapse</title>
   </head>
   <body>
+    <script>
+      // Apply theme before React renders to prevent flash of wrong theme
+      (function() {
+        try {
+          var theme = localStorage.getItem('synapse-theme:v1');
+          if (!theme) {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

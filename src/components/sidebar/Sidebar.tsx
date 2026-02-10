@@ -6,8 +6,9 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { ThreadItem } from "./ThreadItem";
 import { ConfirmDialog } from "../ui/confirm-dialog";
-import { Plus, Settings, Brain } from "lucide-react";
+import { Plus, Settings, Brain, Moon, Sun } from "lucide-react";
 import { Logo } from "../ui/logo";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface SidebarProps {
   onCloseMobile: () => void;
@@ -22,6 +23,8 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
   const removeThread = useMutation(api.threads.remove);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const { theme, toggleTheme } = useTheme();
 
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
     type: "closed",
@@ -164,8 +167,8 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
         )}
       </div>
 
-      {/* Footer — user avatar only */}
-      <div className="shrink-0 border-t border-border/50 px-4 py-3">
+      {/* Footer — user avatar + theme toggle */}
+      <div className="flex shrink-0 items-center justify-between border-t border-border/50 px-4 py-3">
         <UserButton
           appearance={{
             elements: {
@@ -173,6 +176,17 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
             },
           }}
         />
+        <button
+          onClick={toggleTheme}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? (
+            <Sun className="h-4 w-4" />
+          ) : (
+            <Moon className="h-4 w-4" />
+          )}
+        </button>
       </div>
 
       {/* Thread delete confirmation dialog */}
