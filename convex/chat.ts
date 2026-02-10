@@ -12,7 +12,7 @@ import { r2 } from "./r2";
 const DEFAULT_MODEL = "gemini-3-pro-preview";
 
 /** Reduce DB writes during streaming by batching updates */
-const STREAM_UPDATE_INTERVAL_MS = 100;
+const STREAM_UPDATE_INTERVAL_MS = 300;
 
 const CONTEXT_MESSAGE_LIMIT = 20;
 

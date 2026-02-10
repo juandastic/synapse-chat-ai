@@ -10,7 +10,7 @@ interface ChatProviderProps {
 }
 
 export function ChatProvider({ threadId, children }: ChatProviderProps) {
-  const messages = useQuery(api.messages.list, { threadId, limit: 100 });
+  const messages = useQuery(api.messages.list, { threadId, limit: 30 });
 
   const isLoading = messages === undefined;
 
