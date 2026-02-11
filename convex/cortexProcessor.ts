@@ -85,7 +85,7 @@ export const processJob = internalAction({
       if (job.type === "ingest") {
         await processIngest(ctx, job.payload as IngestPayload, logCtx);
       } else if (job.type === "correction") {
-        await processCorrection(job.payload as CorrectionPayload, logCtx);
+        await processCorrection(ctx, job.payload as CorrectionPayload, logCtx);
       } else {
         throw new Error(`Unknown job type: ${job.type}`);
       }
@@ -246,6 +246,27 @@ async function processIngest(
     );
   }
 
+  // Track ingestion usage (best-effort)
+  try {
+    const totalChars = requestPayload.messages.reduce(
+      (sum: number, m: { content: string }) => sum + m.content.length,
+      0
+    );
+    await ctx.runMutation(internal.usage.trackActivity, {
+      userId: payload.userId,
+      type: "ingest",
+      metrics: { chars: totalChars, count: 1 },
+    });
+  } catch (trackingError) {
+    console.warn("[cortexProcessor] Ingest usage tracking failed", {
+      ...logCtx,
+      error:
+        trackingError instanceof Error
+          ? trackingError.message
+          : String(trackingError),
+    });
+  }
+
   await createDraft(ctx, payload, data.userKnowledgeCompilation);
 }
 
@@ -254,6 +275,7 @@ async function processIngest(
  * All failures are retryable (throws on any error).
  */
 async function processCorrection(
+  ctx: ProcessorCtx,
   payload: CorrectionPayload,
   logCtx: Record<string, unknown>
 ): Promise<void> {
@@ -295,6 +317,23 @@ async function processCorrection(
     throw new Error(
       `Cortex /correction error: ${data.code} - ${data.error ?? "Unknown"}`
     );
+  }
+
+  // Track correction usage (best-effort)
+  try {
+    await ctx.runMutation(internal.usage.trackActivity, {
+      userId: payload.userId,
+      type: "correction",
+      metrics: { chars: payload.correctionText.length, count: 1 },
+    });
+  } catch (trackingError) {
+    console.warn("[cortexProcessor] Correction usage tracking failed", {
+      ...logCtx,
+      error:
+        trackingError instanceof Error
+          ? trackingError.message
+          : String(trackingError),
+    });
   }
 }
 

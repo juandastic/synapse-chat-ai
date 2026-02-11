@@ -128,4 +128,29 @@ export default defineSchema({
   })
     .index("by_thread", ["threadId"])
     .index("by_session", ["sessionId"]),
+
+  // ===========================================================================
+  // Usage Tracking
+  // ===========================================================================
+  /**
+   * Monthly bucket with daily slots pattern.
+   * One document per user per month. dailyStats holds per-day breakdowns.
+   * No cost estimation — raw token/char counts only.
+   */
+  monthly_usage: defineTable({
+    userId: v.id("users"),
+    month: v.string(), // "YYYY-MM"
+
+    // Global aggregates (fast monthly totals)
+    totalChatMessages: v.number(),
+    totalChatCharsGenerated: v.number(),
+    totalInputTokens: v.number(),
+    totalOutputTokens: v.number(),
+    totalIngestions: v.number(),
+    totalCorrections: v.number(),
+    totalIngestedChars: v.number(),
+
+    // Daily breakdown — key = "DD", value = day stats object
+    dailyStats: v.any(),
+  }).index("by_user_month", ["userId", "month"]),
 });

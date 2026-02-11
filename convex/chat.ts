@@ -272,6 +272,28 @@ export const generateResponse = internalAction({
         completedAt: Date.now(),
       });
 
+      // Track usage (best-effort — never break the chat flow)
+      try {
+        await ctx.runMutation(internal.usage.trackActivity, {
+          userId: session.userId,
+          type: "chat",
+          metrics: {
+            tokensIn: result.usage?.prompt_tokens ?? 0,
+            tokensOut: result.usage?.completion_tokens ?? 0,
+            chars: result.content.length,
+            count: 1,
+          },
+        });
+      } catch (trackingError) {
+        console.warn("[chat.generateResponse] Usage tracking failed", {
+          ...logContext,
+          error:
+            trackingError instanceof Error
+              ? trackingError.message
+              : String(trackingError),
+        });
+      }
+
       console.log("[chat.generateResponse] Completed", {
         ...logContext,
         latencyMs: totalLatencyMs,

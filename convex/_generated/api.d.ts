@@ -18,6 +18,7 @@ import type * as personas from "../personas.js";
 import type * as r2 from "../r2.js";
 import type * as sessions from "../sessions.js";
 import type * as threads from "../threads.js";
+import type * as usage from "../usage.js";
 import type * as users from "../users.js";
 
 import type {
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   r2: typeof r2;
   sessions: typeof sessions;
   threads: typeof threads;
+  usage: typeof usage;
   users: typeof users;
 }>;
 

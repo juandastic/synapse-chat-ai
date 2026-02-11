@@ -54,6 +54,19 @@ export const enqueueIngest = internalMutation({
   handler: async (ctx, args) => {
     const now = Date.now();
 
+    // Snapshot message stats for debugging/observability (cheap indexed read)
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_session", (q) =>
+        q.eq("sessionId", args.closedSessionId)
+      )
+      .collect();
+    const messageCount = messages.length;
+    const totalChars = messages.reduce(
+      (sum, m) => sum + m.content.length,
+      0
+    );
+
     const jobId = await ctx.db.insert("cortex_jobs", {
       userId: args.userId,
       sessionId: args.closedSessionId,
@@ -62,6 +75,8 @@ export const enqueueIngest = internalMutation({
         closedSessionId: args.closedSessionId,
         userId: args.userId,
         threadId: args.threadId,
+        messageCount,
+        totalChars,
       },
       status: "pending",
       attempts: 0,
@@ -79,6 +94,8 @@ export const enqueueIngest = internalMutation({
     console.log("[cortexJobs] Enqueued ingest", {
       jobId,
       sessionId: args.closedSessionId,
+      messageCount,
+      totalChars,
     });
 
     return jobId;
