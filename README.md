@@ -662,7 +662,7 @@ synapse-ai-chat/
 1. **Session auto-close timer: 3 hours** — balances conversational coherence with knowledge graph freshness. Shorter timers mean more frequent ingestion.
 2. `**cachedUserKnowledge` is optional** — `undefined` for the first session before any ingestion; handles race conditions where hydration hasn't completed yet.
 3. **Knowledge hydration via `/hydrate**` — scheduled as a background action on session creation. Cheap Cypher query, no AI processing, so it's fast and low-cost.
-4. **Cross-session message queries** — `getRecent` fetches the last 20 messages by `threadId` across all sessions for full thread continuity.
+4. **Session-scoped message context** — `getRecent` fetches the last 20 messages by `sessionId` for the current session only. Previous sessions are already ingested into Cortex (`cachedUserKnowledge`), so cross-session continuity comes from the knowledge graph rather than raw message history.
 5. **Inline persona selection (no modal)** — content area shows `PersonaSelector` card grid. Selecting one creates the thread and navigates directly.
 6. **Thread deletion cascade** — deletes all sessions + messages for the thread in a single mutation.
 7. **NLP-based memory corrections** — instead of manual entity editing, users submit natural language corrections that Graphiti processes through its entity resolution pipeline.

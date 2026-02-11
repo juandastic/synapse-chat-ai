@@ -145,9 +145,9 @@ export const generateResponse = internalAction({
         return;
       }
 
-      // Fetches across all sessions for the thread (cross-session continuity)
+      // Only messages from current session; previous sessions are already ingested
       const history = await ctx.runQuery(internal.messages.getRecent, {
-        threadId: args.threadId,
+        sessionId: args.sessionId,
         limit: CONTEXT_MESSAGE_LIMIT,
       });
 

@@ -61,16 +61,16 @@ export const getImageUrl = query({
 // Internal Queries
 // =============================================================================
 
-/** Recent messages for a thread (AI context window, cross-session). */
+/** Recent messages for a session (AI context window). Previous sessions are already ingested into Cortex. */
 export const getRecent = internalQuery({
   args: {
-    threadId: v.id("threads"),
+    sessionId: v.id("sessions"),
     limit: v.number(),
   },
   handler: async (ctx, args) => {
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
       .order("desc")
       .take(args.limit);
 
