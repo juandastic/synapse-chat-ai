@@ -143,7 +143,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
       </div>
 
       {showScrollButton && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 z-50 flex justify-center animate-in fade-in slide-in-from-bottom-2 duration-200">
+        <div className="mx-auto max-w-3xl space-y-4 px-4 py-6 pointer-events-none absolute inset-x-0 bottom-6 z-50 flex justify-end animate-in fade-in slide-in-from-bottom-2 duration-200">
           <Button
             onClick={() => {
               scrollToBottom();

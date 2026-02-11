@@ -5,6 +5,8 @@ import {
   useEffect,
   KeyboardEvent,
   ChangeEvent,
+  ClipboardEvent,
+  DragEvent,
 } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -15,6 +17,7 @@ import { useUploadFile } from "@convex-dev/r2/react";
 
 const MAX_IMAGES = 4;
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/gif,image/webp";
+const ALLOWED_TYPES = new Set(ACCEPTED_IMAGE_TYPES.split(","));
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 interface ImagePreview {
@@ -29,6 +32,7 @@ export function ChatInput() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [images, setImages] = useState<ImagePreview[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,51 +56,58 @@ export function ChatInput() {
     }
   }, []);
 
+  const processAndAddImages = useCallback((files: File[]) => {
+    const imageFiles = files.filter((f) => ALLOWED_TYPES.has(f.type));
+    if (imageFiles.length === 0) return;
+
+    const validImages: ImagePreview[] = [];
+    let sizeError: string | null = null;
+
+    for (const file of imageFiles) {
+      if (validImages.length >= MAX_IMAGES) break;
+
+      if (file.size > MAX_FILE_SIZE) {
+        sizeError = `${file.name} exceeds 10MB limit`;
+        continue;
+      }
+
+      validImages.push({
+        file,
+        previewUrl: URL.createObjectURL(file),
+        id: `${Date.now()}-${validImages.length}-${file.name}`,
+      });
+    }
+
+    if (sizeError) {
+      setError(sizeError);
+    }
+
+    if (validImages.length > 0) {
+      setImages((prev) => {
+        const remaining = MAX_IMAGES - prev.length;
+        if (remaining <= 0) {
+          validImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+          return prev;
+        }
+        const toAdd = validImages.slice(0, remaining);
+        validImages
+          .slice(remaining)
+          .forEach((img) => URL.revokeObjectURL(img.previewUrl));
+        return [...prev, ...toAdd];
+      });
+    }
+  }, []);
+
   const handleAddImages = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       const fileList = e.target.files;
       if (!fileList || fileList.length === 0) return;
 
-      const filesArray = Array.from(fileList); // snapshot — FileList is live
+      const filesArray = Array.from(fileList);
       e.target.value = ""; // allow re-selecting same file
-
-      // Build previews outside state updater to avoid side effects
-      const validImages: ImagePreview[] = [];
-      let sizeError: string | null = null;
-
-      for (const file of filesArray) {
-        if (validImages.length >= MAX_IMAGES) break;
-
-        if (file.size > MAX_FILE_SIZE) {
-          sizeError = `${file.name} exceeds 10MB limit`;
-          continue;
-        }
-
-        validImages.push({
-          file,
-          previewUrl: URL.createObjectURL(file),
-          id: `${Date.now()}-${validImages.length}-${file.name}`,
-        });
-      }
-
-      if (sizeError) {
-        setError(sizeError);
-      }
-
-      if (validImages.length > 0) {
-        setImages((prev) => {
-          const remaining = MAX_IMAGES - prev.length;
-          if (remaining <= 0) {
-            validImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-            return prev;
-          }
-          const toAdd = validImages.slice(0, remaining);
-          validImages.slice(remaining).forEach((img) => URL.revokeObjectURL(img.previewUrl));
-          return [...prev, ...toAdd];
-        });
-      }
+      processAndAddImages(filesArray);
     },
-    []
+    [processAndAddImages]
   );
 
   const handleRemoveImage = useCallback((id: string) => {
@@ -181,6 +192,61 @@ export function ChatInput() {
     fileInputRef.current?.click();
   }, []);
 
+  const handlePaste = useCallback(
+    (e: ClipboardEvent<HTMLTextAreaElement>) => {
+      const files = e.clipboardData?.files;
+      if (!files?.length) return;
+
+      const imageFiles = Array.from(files).filter((f) => ALLOWED_TYPES.has(f.type));
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        processAndAddImages(imageFiles);
+      }
+    },
+    [processAndAddImages]
+  );
+
+  const dragCounterRef = useRef(0);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+
+      const files = e.dataTransfer?.files;
+      if (!files?.length) return;
+
+      const imageFiles = Array.from(files).filter((f) => ALLOWED_TYPES.has(f.type));
+      if (imageFiles.length > 0) {
+        processAndAddImages(imageFiles);
+      }
+    },
+    [processAndAddImages]
+  );
+
   const isDisabled = isSubmitting || isGenerating;
   const canSubmit =
     (content.trim().length > 0 || images.length > 0) && !isDisabled;
@@ -188,7 +254,16 @@ export function ChatInput() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-4">
-      <div className="relative rounded-2xl border border-border/50 bg-card shadow-sm transition-shadow focus-within:shadow-md focus-within:border-primary/20">
+      <div
+        className={cn(
+          "relative rounded-2xl border border-border/50 bg-card shadow-sm transition-shadow focus-within:shadow-md focus-within:border-primary/20",
+          isDragging && "ring-2 ring-primary/30"
+        )}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {/* Hidden via size/opacity (not display:none) for mobile Safari .click() compat */}
         <input
           ref={fileInputRef}
@@ -210,6 +285,7 @@ export function ChatInput() {
               adjustTextareaHeight();
             }}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={
               isGenerating
                 ? "Waiting for response..."
@@ -305,7 +381,8 @@ export function ChatInput() {
       )}
 
       <p className="mt-2 text-center text-xs text-muted-foreground/60">
-        Press Enter to send, Shift + Enter for new line
+        Press Enter to send, Shift+Enter for new line. Paste or drag images to
+        attach.
       </p>
     </div>
   );
