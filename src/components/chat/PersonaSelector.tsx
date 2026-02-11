@@ -12,6 +12,13 @@ import { Logo } from "../ui/logo";
  */
 const SYSTEM_TEMPLATES = [
   {
+    key: "psicogemini",
+    name: "PsicoGemini",
+    icon: "🧠",
+    description:
+      "Psicoterapeuta con formación en terapias de tercera generación (ACT, DBT) y enfoque neuroafirmativo",
+  },
+  {
     key: "therapist",
     name: "Therapist",
     icon: "🧠",

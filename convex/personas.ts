@@ -24,7 +24,7 @@ const MAX_SYSTEM_PROMPT_LENGTH = 10_000;
  * When selected, a copy is created in the personas table for the user.
  */
 export const PERSONA_TEMPLATES = {
-  psicoGemini: {
+  psicogemini: {
     name: "PsicoGemini",
     icon: "🧠",
     language: "Español",
