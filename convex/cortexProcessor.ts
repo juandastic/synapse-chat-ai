@@ -356,7 +356,7 @@ export const pollIngestStatus = internalAction({
       }
 
       // status === "processing" — schedule next poll
-      scheduleNextPoll(ctx, args.jobId, args.pollAttempt, payload);
+      await scheduleNextPoll(ctx, args.jobId, args.pollAttempt, payload);
     } catch (error) {
       // Transient failure (network, HTTP, parse) — advance to next poll
       // instead of throwing, so the job doesn't get stuck in "processing"
