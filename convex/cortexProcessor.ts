@@ -13,6 +13,53 @@ import { RETRY_DELAYS_MS } from "./cortexJobs";
 const CORTEX_API_URL = "https://synapse-cortex.juandago.dev";
 
 // =============================================================================
+// Error Helpers
+// =============================================================================
+
+/**
+ * Extract a detailed error message from any thrown value.
+ *
+ * Node's `fetch` (undici) throws `TypeError("fetch failed")` and hides the
+ * real cause (DNS, TCP, TLS, timeout …) in a nested `.cause` chain. This
+ * function walks the chain so logs always show actionable detail.
+ */
+function extractErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+
+  const parts: string[] = [error.message];
+  // Node fetch (undici) nests the real cause in error.cause
+  let current: unknown = (error as Error & { cause?: unknown }).cause;
+  const seen = new Set<unknown>();
+
+  while (current instanceof Error && !seen.has(current)) {
+    seen.add(current);
+    const errno = (current as Error & { code?: string }).code;
+    parts.push(errno ? `${current.message} [${errno}]` : current.message);
+    current = (current as Error & { cause?: unknown }).cause;
+  }
+
+  return parts.join(" → ");
+}
+
+/**
+ * Fetch wrapper that turns network-level errors into descriptive messages
+ * including the URL and root cause. No timeout — these are background jobs
+ * that can take as long as they need.
+ */
+async function cortexFetch(
+  url: string,
+  init: RequestInit
+): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    throw new Error(
+      `Cortex request to ${url} failed: ${extractErrorMessage(error)}`
+    );
+  }
+}
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -100,8 +147,7 @@ export const processJob = internalAction({
         latencyMs: Date.now() - startTime,
       });
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = extractErrorMessage(error);
       const nextAttempt = job.attempts + 1;
 
       console.warn("[cortexProcessor] Failed", {
@@ -212,7 +258,8 @@ async function processIngest(
     payloadSizeKb: Math.round(body.length / 1024),
   });
 
-  const response = await fetch(`${CORTEX_API_URL}/ingest`, {
+  const url = `${CORTEX_API_URL}/ingest`;
+  const response = await cortexFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -222,9 +269,9 @@ async function processIngest(
   });
 
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => "");
+    const errorBody = await response.text().catch(() => "<unreadable body>");
     throw new Error(
-      `Cortex /ingest HTTP ${response.status}: ${errorBody.slice(0, 300)}`
+      `Cortex /ingest HTTP ${response.status} ${response.statusText}: ${errorBody.slice(0, 500)}`
     );
   }
 
@@ -289,25 +336,23 @@ async function processCorrection(
     correctionLength: payload.correctionText.length,
   });
 
-  const response = await globalThis.fetch(
-    `${CORTEX_API_URL}/v1/graph/correction`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-SECRET": apiSecret,
-      },
-      body: JSON.stringify({
-        group_id: payload.userId,
-        correction_text: payload.correctionText,
-      }),
-    }
-  );
+  const url = `${CORTEX_API_URL}/v1/graph/correction`;
+  const response = await cortexFetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-SECRET": apiSecret,
+    },
+    body: JSON.stringify({
+      group_id: payload.userId,
+      correction_text: payload.correctionText,
+    }),
+  });
 
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => "");
+    const errorBody = await response.text().catch(() => "<unreadable body>");
     throw new Error(
-      `Cortex /correction HTTP ${response.status}: ${errorBody.slice(0, 300)}`
+      `Cortex /correction HTTP ${response.status} ${response.statusText}: ${errorBody.slice(0, 500)}`
     );
   }
 

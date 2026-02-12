@@ -11,6 +11,25 @@ import { internal } from "./_generated/api";
 const CORTEX_API_URL = "https://synapse-cortex.juandago.dev";
 
 // =============================================================================
+// Error Helpers
+// =============================================================================
+
+/** Walk the .cause chain to extract the real error from Node fetch failures. */
+function extractErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  const parts: string[] = [error.message];
+  let current: unknown = (error as Error & { cause?: unknown }).cause;
+  const seen = new Set<unknown>();
+  while (current instanceof Error && !seen.has(current)) {
+    seen.add(current);
+    const errno = (current as Error & { code?: string }).code;
+    parts.push(errno ? `${current.message} [${errno}]` : current.message);
+    current = (current as Error & { cause?: unknown }).cause;
+  }
+  return parts.join(" → ");
+}
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -49,21 +68,31 @@ export const hydrate = internalAction({
     }
 
     try {
-      const response = await fetch(`${CORTEX_API_URL}/hydrate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-SECRET": apiSecret,
-        },
-        body: JSON.stringify({ userId: args.userId }),
-      });
+      let response: Response;
+      try {
+        response = await fetch(`${CORTEX_API_URL}/hydrate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-SECRET": apiSecret,
+          },
+          body: JSON.stringify({ userId: args.userId }),
+        });
+      } catch (fetchError) {
+        console.warn("[cortex.hydrate] Network error", {
+          latencyMs: Date.now() - startTime,
+          error: extractErrorMessage(fetchError),
+        });
+        return;
+      }
 
       if (!response.ok) {
-        const errorBody = await response.text().catch(() => "");
+        const errorBody = await response.text().catch(() => "<unreadable>");
         console.warn("[cortex.hydrate] HTTP error", {
           statusCode: response.status,
+          statusText: response.statusText,
           latencyMs: Date.now() - startTime,
-          errorBody: errorBody.slice(0, 300),
+          errorBody: errorBody.slice(0, 500),
         });
         return;
       }
@@ -90,7 +119,7 @@ export const hydrate = internalAction({
     } catch (error) {
       console.warn("[cortex.hydrate] Failed", {
         latencyMs: Date.now() - startTime,
-        error: error instanceof Error ? error.message : String(error),
+        error: extractErrorMessage(error),
       });
     }
   },
