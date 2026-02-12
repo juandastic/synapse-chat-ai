@@ -4,7 +4,11 @@ import { v } from "convex/values";
 import { ActionCtx, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-import { RETRY_DELAYS_MS } from "./cortexJobs";
+import {
+  RETRY_DELAYS_MS,
+  POLL_DELAYS_MS,
+  MAX_POLL_ATTEMPTS,
+} from "./cortexJobs";
 
 // =============================================================================
 // Configuration
@@ -69,6 +73,8 @@ interface IngestPayload {
   closedSessionId: Id<"sessions">;
   userId: Id<"users">;
   threadId: Id<"threads">;
+  messageCount?: number;
+  totalChars?: number;
 }
 
 interface CorrectionPayload {
@@ -76,11 +82,27 @@ interface CorrectionPayload {
   correctionText: string;
 }
 
-interface IngestResponse {
-  success: boolean;
-  userKnowledgeCompilation?: string;
-  error?: string;
-  code?: string;
+interface IngestAcceptedResponse {
+  jobId: string;
+  status: "processing" | "skipped";
+  userKnowledgeCompilation?: string; // only when "skipped"
+}
+
+interface IngestStatusResponse {
+  jobId: string;
+  status: "processing" | "completed" | "failed";
+  userKnowledgeCompilation?: string; // only when "completed"
+  metadata?: IngestResponseMetadata; // only when "completed"
+  error?: string; // only when "failed"
+  code?: string; // only when "failed"
+}
+
+interface IngestResponseMetadata {
+  model: string;
+  processing_time_ms?: number;
+  nodes_extracted?: number;
+  edges_extracted?: number;
+  episode_id?: string;
 }
 
 interface CorrectionResponse {
@@ -94,15 +116,21 @@ interface CorrectionResponse {
 // =============================================================================
 
 /**
- * Recursive job processor for async Cortex API calls.
+ * Job processor for async Cortex API calls.
  *
- * Called by the scheduler after a job is enqueued. On failure, schedules
- * itself again with increasing delay (slow backoff). On permanent failure,
- * creates a fallback draft session so the thread is never left broken.
+ * Called by the scheduler after a job is enqueued.
+ * - Ingest: POSTs to /ingest (202 Accepted). If "processing", delegates
+ *   to pollIngestStatus for async status polling. If "skipped", completes
+ *   synchronously.
+ * - Correction: POSTs to /correction synchronously.
+ *
+ * On POST failure, schedules itself again with increasing delay (slow backoff).
+ * On permanent failure, creates a fallback draft session so the thread is never
+ * left broken.
  *
  * Error strategy:
  *   - Throws    → retryable (HTTP errors, network failures, API errors)
- *   - Returns   → non-retryable, handled gracefully (no messages, content blocked)
+ *   - Returns   → non-retryable, handled gracefully (no messages, skipped)
  */
 export const processJob = internalAction({
   args: { jobId: v.id("cortex_jobs") },
@@ -130,7 +158,26 @@ export const processJob = internalAction({
 
     try {
       if (job.type === "ingest") {
-        await processIngest(ctx, job.payload as IngestPayload, logCtx);
+        const result = await processIngest(
+          ctx,
+          args.jobId,
+          job.payload as IngestPayload,
+          logCtx
+        );
+        if (result === "polling") {
+          const delay = POLL_DELAYS_MS[0];
+          await ctx.runMutation(internal.cortexJobs.updateStatus, {
+            jobId: args.jobId,
+            status: "processing",
+            nextRetryAt: Date.now() + delay,
+          });
+          await ctx.scheduler.runAfter(
+            delay,
+            internal.cortexProcessor.pollIngestStatus,
+            { jobId: args.jobId, pollAttempt: 0 }
+          );
+          return;
+        }
       } else if (job.type === "correction") {
         await processCorrection(ctx, job.payload as CorrectionPayload, logCtx);
       } else {
@@ -190,6 +237,199 @@ export const processJob = internalAction({
   },
 });
 
+/**
+ * Poll the Cortex ingest status endpoint for an async ingestion job.
+ * Scheduled by processJob when POST /ingest returns status "processing".
+ * Uses scheduler-driven linear intervals (5m first, then 10m each).
+ *
+ * Error strategy mirrors processJob: on transient failure (network, HTTP,
+ * parse errors), advances to the next poll attempt instead of throwing.
+ * This prevents Convex's limited auto-retries from leaving the job stuck
+ * in "processing" state if the Cortex API is temporarily unavailable.
+ */
+export const pollIngestStatus = internalAction({
+  args: {
+    jobId: v.id("cortex_jobs"),
+    pollAttempt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const job = await ctx.runQuery(internal.cortexJobs.get, {
+      id: args.jobId,
+    });
+
+    if (!job || job.status === "completed" || job.status === "failed") {
+      return;
+    }
+
+    if (job.type !== "ingest") {
+      return;
+    }
+
+    const payload = job.payload as IngestPayload;
+
+    try {
+      const apiSecret = process.env.SYNAPSE_CORTEX_API_SECRET;
+      if (!apiSecret) {
+        throw new Error("SYNAPSE_CORTEX_API_SECRET not set");
+      }
+
+      const url = `${CORTEX_API_URL}/ingest/status/${args.jobId}`;
+      const response = await cortexFetch(url, {
+        method: "GET",
+        headers: {
+          "X-API-SECRET": apiSecret,
+        },
+      });
+
+      if (response.status === 404) {
+        // Job removed or unknown — re-submit POST /ingest
+        console.log("[cortexProcessor] Ingest status 404, re-submitting", {
+          jobId: args.jobId,
+          pollAttempt: args.pollAttempt,
+        });
+        await ctx.scheduler.runAfter(
+          0,
+          internal.cortexProcessor.processJob,
+          { jobId: args.jobId }
+        );
+        return;
+      }
+
+      if (!response.ok) {
+        const errorBody = await response
+          .text()
+          .catch(() => "<unreadable body>");
+        throw new Error(
+          `Cortex /ingest/status HTTP ${response.status} ${response.statusText}: ${errorBody.slice(0, 500)}`
+        );
+      }
+
+      const data: IngestStatusResponse = await response.json();
+
+      if (data.status === "completed") {
+        const knowledge = data.userKnowledgeCompilation ?? null;
+        await createDraft(ctx, payload, knowledge);
+
+        if (payload.totalChars !== undefined) {
+          try {
+            await ctx.runMutation(internal.usage.trackActivity, {
+              userId: payload.userId,
+              type: "ingest",
+              metrics: { chars: payload.totalChars, count: 1 },
+            });
+          } catch (trackingError) {
+            console.warn("[cortexProcessor] Ingest usage tracking failed", {
+              jobId: args.jobId,
+              error:
+                trackingError instanceof Error
+                  ? trackingError.message
+                  : String(trackingError),
+            });
+          }
+        }
+
+        await ctx.runMutation(internal.cortexJobs.updateStatus, {
+          jobId: args.jobId,
+          status: "completed",
+        });
+
+        console.log("[cortexProcessor] Ingest polling completed", {
+          jobId: args.jobId,
+          pollAttempt: args.pollAttempt,
+        });
+        return;
+      }
+
+      if (data.status === "failed") {
+        const errorMessage = `${data.code ?? "UNKNOWN"}: ${data.error ?? "Unknown error"}`;
+        await ctx.runMutation(internal.cortexJobs.updateStatus, {
+          jobId: args.jobId,
+          status: "failed",
+          lastError: errorMessage,
+        });
+        await createFallbackDraft(ctx, payload);
+        console.warn("[cortexProcessor] Ingest failed via Cortex", {
+          jobId: args.jobId,
+          error: errorMessage,
+        });
+        return;
+      }
+
+      // status === "processing" — schedule next poll
+      scheduleNextPoll(ctx, args.jobId, args.pollAttempt, payload);
+    } catch (error) {
+      // Transient failure (network, HTTP, parse) — advance to next poll
+      // instead of throwing, so the job doesn't get stuck in "processing"
+      const errorMessage = extractErrorMessage(error);
+      console.warn("[cortexProcessor] Poll error, scheduling next attempt", {
+        jobId: args.jobId,
+        pollAttempt: args.pollAttempt,
+        errorMessage,
+      });
+
+      await scheduleNextPoll(
+        ctx,
+        args.jobId,
+        args.pollAttempt,
+        payload,
+        errorMessage
+      );
+    }
+  },
+});
+
+/**
+ * Schedule the next poll attempt, or fail the job if all attempts exhausted.
+ * Shared by the normal "still processing" path and the error recovery path.
+ */
+async function scheduleNextPoll(
+  ctx: Pick<ActionCtx, "runQuery" | "runMutation" | "scheduler">,
+  jobId: Id<"cortex_jobs">,
+  currentAttempt: number,
+  payload: IngestPayload,
+  lastError?: string
+): Promise<void> {
+  const nextAttempt = currentAttempt + 1;
+
+  if (nextAttempt >= MAX_POLL_ATTEMPTS) {
+    const errorMessage =
+      lastError ?? "Ingest polling timeout: max attempts exceeded";
+    await ctx.runMutation(internal.cortexJobs.updateStatus, {
+      jobId,
+      status: "failed",
+      lastError: errorMessage,
+    });
+    await createFallbackDraft(ctx, payload);
+    console.warn("[cortexProcessor] Ingest polling exhausted", {
+      jobId,
+      pollAttempt: currentAttempt,
+      reason: lastError ? "error" : "timeout",
+    });
+    return;
+  }
+
+  const delay = POLL_DELAYS_MS[nextAttempt] ?? 10 * 60_000;
+  await ctx.runMutation(internal.cortexJobs.updateStatus, {
+    jobId,
+    status: "processing",
+    ...(lastError !== undefined && { lastError }),
+    nextRetryAt: Date.now() + delay,
+  });
+
+  await ctx.scheduler.runAfter(
+    delay,
+    internal.cortexProcessor.pollIngestStatus,
+    { jobId, pollAttempt: nextAttempt }
+  );
+
+  console.log("[cortexProcessor] Next poll scheduled", {
+    jobId,
+    pollAttempt: nextAttempt,
+    delayMs: delay,
+    ...(lastError !== undefined && { recoveredFrom: lastError }),
+  });
+}
+
 // =============================================================================
 // Job Handlers
 // =============================================================================
@@ -197,16 +437,21 @@ export const processJob = internalAction({
 /**
  * Ingest a closed session's messages into the Cortex knowledge graph.
  *
+ * New async API: POST returns 202 with status "processing" or "skipped".
+ * When "skipped", completes synchronously. When "processing", returns "polling"
+ * and the caller schedules pollIngestStatus.
+ *
  * Non-retryable cases (returns gracefully):
- *   - Session deleted, no messages, content blocked by safety filter
+ *   - Session deleted, no messages
  * Retryable cases (throws):
  *   - HTTP errors, network failures, API logic errors, missing config
  */
 async function processIngest(
   ctx: ProcessorCtx,
+  jobId: Id<"cortex_jobs">,
   payload: IngestPayload,
   logCtx: Record<string, unknown>
-): Promise<void> {
+): Promise<"completed" | "polling"> {
   const apiSecret = process.env.SYNAPSE_CORTEX_API_SECRET;
   if (!apiSecret) {
     throw new Error("SYNAPSE_CORTEX_API_SECRET not set");
@@ -219,7 +464,7 @@ async function processIngest(
   if (!session) {
     // Session was deleted — create empty draft so thread isn't orphaned
     await createDraft(ctx, payload, null);
-    return;
+    return "completed";
   }
 
   const fallbackKnowledge = session.cachedUserKnowledge ?? null;
@@ -230,10 +475,11 @@ async function processIngest(
 
   if (messages.length === 0) {
     await createDraft(ctx, payload, fallbackKnowledge);
-    return;
+    return "completed";
   }
 
   const requestPayload = {
+    jobId,
     userId: payload.userId,
     sessionId: payload.closedSessionId,
     messages: messages.map(
@@ -275,46 +521,38 @@ async function processIngest(
     );
   }
 
-  const data: IngestResponse = await response.json();
+  const data: IngestAcceptedResponse = await response.json();
 
-  if (!data.success || !data.userKnowledgeCompilation) {
-    // Content blocked by safety filter — not retryable, use fallback
-    if (
-      data.code === "GRAPH_PROCESSING_ERROR" &&
-      data.error?.includes("Content blocked")
-    ) {
-      console.warn("[cortexProcessor] Content blocked, using fallback", logCtx);
-      await createDraft(ctx, payload, fallbackKnowledge);
-      return;
+  if (data.status === "skipped") {
+    await createDraft(
+      ctx,
+      payload,
+      data.userKnowledgeCompilation ?? fallbackKnowledge
+    );
+    // Track usage for skipped (best-effort)
+    if (payload.totalChars !== undefined) {
+      try {
+        await ctx.runMutation(internal.usage.trackActivity, {
+          userId: payload.userId,
+          type: "ingest",
+          metrics: { chars: payload.totalChars, count: 1 },
+        });
+      } catch (trackingError) {
+        console.warn("[cortexProcessor] Ingest usage tracking failed", {
+          ...logCtx,
+          error:
+            trackingError instanceof Error
+              ? trackingError.message
+              : String(trackingError),
+        });
+      }
     }
-
-    throw new Error(
-      `Cortex /ingest error: ${data.code} - ${data.error?.slice(0, 200)}`
-    );
+    return "completed";
   }
 
-  // Track ingestion usage (best-effort)
-  try {
-    const totalChars = requestPayload.messages.reduce(
-      (sum: number, m: { content: string }) => sum + m.content.length,
-      0
-    );
-    await ctx.runMutation(internal.usage.trackActivity, {
-      userId: payload.userId,
-      type: "ingest",
-      metrics: { chars: totalChars, count: 1 },
-    });
-  } catch (trackingError) {
-    console.warn("[cortexProcessor] Ingest usage tracking failed", {
-      ...logCtx,
-      error:
-        trackingError instanceof Error
-          ? trackingError.message
-          : String(trackingError),
-    });
-  }
-
-  await createDraft(ctx, payload, data.userKnowledgeCompilation);
+  // status === "processing" — poll for result
+  console.log("[cortexProcessor] Ingest accepted, polling needed", logCtx);
+  return "polling";
 }
 
 /**

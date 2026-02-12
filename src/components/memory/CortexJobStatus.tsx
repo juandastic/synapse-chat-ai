@@ -8,7 +8,8 @@ import { Loader2, Clock, AlertCircle, RefreshCw } from "lucide-react";
  *
  * Subscribes to the user's non-completed jobs and renders:
  * - Pending/Processing: spinner with "Updating memory graph..."
- * - Retrying (has nextRetryAt): clock icon with countdown
+ * - Polling (has nextRetryAt, no lastError): clock icon with "next check in ~Xm"
+ * - Retrying (has nextRetryAt + lastError): clock icon with "Retrying in ~Xm"
  * - Failed: error icon with manual retry button
  *
  * Placed below the Memory Explorer header.
@@ -93,21 +94,26 @@ function JobStatusRow({
     );
   }
 
-  // Retrying with countdown
+  // Polling or retrying with countdown (nextRetryAt set)
   if (isRetrying) {
     const minutesLeft = Math.max(
       1,
       Math.ceil((nextRetryAt - Date.now()) / 60_000)
     );
+    const isActualRetry = !!lastError;
     return (
       <div className="flex items-center gap-2 text-xs">
         <Clock className="h-3.5 w-3.5 shrink-0 text-amber-500" />
         <span className="text-muted-foreground">
-          AI overloaded. Retrying {label} in ~{minutesLeft}m...
-          <span className="text-muted-foreground/50">
-            {" "}
-            (attempt {attempts}/{maxAttempts})
-          </span>
+          {isActualRetry
+            ? `AI overloaded. Retrying ${label} in ~${minutesLeft}m...`
+            : `Processing ${label}... next check in ~${minutesLeft}m`}
+          {isActualRetry && (
+            <span className="text-muted-foreground/50">
+              {" "}
+              (attempt {attempts}/{maxAttempts})
+            </span>
+          )}
         </span>
       </div>
     );

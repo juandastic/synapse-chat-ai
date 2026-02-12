@@ -95,7 +95,8 @@ graph TD
 
     subgraph cortex ["Synapse Cortex (external)"]
         HydrateEndpoint["/hydrate"]
-        IngestEndpoint["/ingest"]
+        IngestEndpoint["POST /ingest"]
+        IngestStatusEndpoint["GET /ingest/status"]
         GraphEndpoint["/v1/graph"]
         CorrectionEndpoint["/v1/graph/correction"]
     end
@@ -135,7 +136,8 @@ graph TD
 
     %% Async job queue
     CortexJobs -->|"schedule"| CortexProcessor
-    CortexProcessor -->|"POST /ingest"| IngestEndpoint
+    CortexProcessor -->|"POST /ingest (202)"| IngestEndpoint
+    CortexProcessor -->|"poll GET /ingest/status"| IngestStatusEndpoint
     CortexProcessor -->|"POST /correction"| CorrectionEndpoint
     CortexProcessor -->|"create draft"| SessionsAPI
 
@@ -154,6 +156,7 @@ graph TD
     %% External services
     HydrateEndpoint --> KG
     IngestEndpoint --> KG
+    IngestStatusEndpoint --> KG
     GraphEndpoint --> KG
     CorrectionEndpoint --> KG
 ```
@@ -162,7 +165,7 @@ graph TD
 
 1. **Frontend** communicates with Convex via reactive queries and mutations (real-time subscriptions).
 2. **Convex backend** orchestrates session management, message persistence, and AI generation.
-3. **Cortex job queue** decouples heavy AI processing (ingestion, corrections) from the UI. Jobs are persisted in `cortex_jobs` and processed asynchronously with slow-backoff retry.
+3. **Cortex job queue** decouples heavy AI processing (ingestion, corrections) from the UI. Jobs are persisted in `cortex_jobs`. Ingest uses async API (POST 202 → poll status); failures retry with slow backoff.
 4. **Synapse Cortex** serves as the bridge to the Neo4j knowledge graph -- handling hydration (reads), ingestion (writes), graph queries, and NLP-based corrections.
 5. **Neo4j / Graphiti** stores the actual knowledge graph, processing entity extraction and relationship management.
 
@@ -239,7 +242,7 @@ Key points:
 
 - **Sessions** store `cachedSystemPrompt` and `cachedUserKnowledge` as snapshots -- decoupling the running conversation from live persona/knowledge changes.
 - **Messages** store analytics in `metadata`: token counts, latency, cost, finish reason, and error details.
-- **Cortex jobs** decouple heavy AI calls from the UI. Status lifecycle: `pending` → `processing` → `completed` | `failed`, with slow-backoff retry (0 → 2m → 10m → 30m → 30m).
+- **Cortex jobs** decouple heavy AI calls from the UI. Status lifecycle: `pending` → `processing` → `completed` | `failed`. Ingest: POST returns 202, poll GET /ingest/status (5m, 10m×5). Retry on POST failure: 0 → 2m → 10m → 30m → 30m.
 - Sessions use a status state machine: `active` → `processing` → `active` | `closed`.
 
 ---
@@ -310,11 +313,15 @@ stateDiagram-v2
     Active --> Closed: Manual "Consolidate Memory" button
 
     Closed --> Queued: Enqueue ingest job (cortex_jobs)
-    Queued --> Ingesting: cortexProcessor picks up job
-    Ingesting --> DraftCreated: New session with updated knowledge
-    Ingesting --> Retrying: Transient failure (slow backoff)
-    Retrying --> Ingesting: Scheduled retry
-    Ingesting --> Failed: Max attempts exceeded
+    Queued --> Submitting: cortexProcessor processJob
+    Submitting --> Polling: POST /ingest returns 202 (processing)
+    Submitting --> DraftCreated: POST /ingest returns 202 (skipped)
+    Polling --> DraftCreated: GET /ingest/status returns completed
+    Polling --> Polling: Still processing, schedule next poll
+    Polling --> Failed: Max poll attempts exceeded
+    Submitting --> Retrying: Transient failure (slow backoff)
+    Retrying --> Submitting: Scheduled retry
+    Submitting --> Failed: Max attempts exceeded
     DraftCreated --> Active: Next message uses draft session
 
     note right of Created
@@ -330,7 +337,9 @@ stateDiagram-v2
     note right of Queued
         Job persisted to cortex_jobs table.
         Processor scheduled immediately.
-        Retry schedule: 0, 2m, 10m, 30m, 30m
+        Ingest: POST returns 202 → poll GET /ingest/status
+        Poll schedule: 5m, 10m, 10m, 10m, 10m, 10m
+        Retry (on POST failure): 0, 2m, 10m, 30m, 30m
     end note
 
     note left of Active
@@ -367,6 +376,7 @@ flowchart TD
 
     subgraph processor ["cortexProcessor.ts"]
         PROC["processJob action"]
+        POLL["pollIngestStatus action"]
     end
 
     subgraph outcomes [Outcomes]
@@ -382,17 +392,39 @@ flowchart TD
 
     triggers -->|"enqueueIngest / enqueueCorrection"| JOB
     JOB -->|"scheduler.runAfter(0)"| PROC
+    PROC -->|"POST /ingest"| INGEST_API["Synapse Cortex API"]
+    INGEST_API -->|"202 skipped"| OK
+    INGEST_API -->|"202 processing"| POLL
     PROC --> OK
     PROC -->|"transient error"| RETRY
     RETRY -->|"scheduler.runAfter(delay)"| PROC
     PROC -->|"max attempts"| FAIL
+
+    POLL -->|"GET /ingest/status"| INGEST_API
+    INGEST_API -->|"completed"| OK
+    INGEST_API -->|"processing"| POLL
+    POLL -->|"scheduler.runAfter(5m, 10m...)"| POLL
+    POLL -->|"max poll attempts"| FAIL
 
     OK -->|"ingest jobs"| DRAFT
     FAIL -->|"ingest jobs: fallback knowledge"| DRAFT
     JOB -.->|"useQuery subscription"| UI
 ```
 
-**Retry schedule (slow backoff):**
+**Ingest flow (async API):**
+
+1. **POST /ingest** — submit session + messages; returns `202 Accepted` with `status: "processing"` or `"skipped"`.
+2. **Skipped** — too few messages; `userKnowledgeCompilation` returned immediately → create draft, done.
+3. **Processing** — schedule `pollIngestStatus` to poll `GET /ingest/status/{jobId}` until completed or failed.
+
+**Poll schedule (ingest status — linear, no exponential backoff):**
+
+| Poll   | Delay   | Cumulative |
+| ------ | ------- | ---------- |
+| 0      | 5 min   | 5 min      |
+| 1–5    | 10 min  | 15–55 min  |
+
+**Retry schedule (POST /ingest or correction failures — slow backoff):**
 
 | Attempt | Delay    |
 | ------- | -------- |
@@ -422,11 +454,13 @@ flowchart LR
     subgraph sessionClose ["Session Close (3h idle / manual)"]
         M3 --> ENQUEUE["cortexJobs.enqueueIngest"]
         ENQUEUE --> PROC["cortexProcessor.processJob"]
-        PROC --> INGEST["cortex /ingest"]
+        PROC --> POST["POST /ingest"]
+        POST -->|"202 processing"| POLL["pollIngestStatus"]
+        POLL --> STATUS["GET /ingest/status"]
     end
 
     subgraph cortexProcessing ["Synapse Cortex"]
-        INGEST --> EXTRACT["Entity Extraction"]
+        POST --> EXTRACT["Entity Extraction"]
         EXTRACT --> RESOLVE["Entity Resolution"]
         RESOLVE --> UPDATE["Graph Update"]
         UPDATE --> COMPILE["Knowledge Compilation"]
@@ -449,7 +483,7 @@ flowchart LR
 **Pipeline stages:**
 
 1. **Conversation**: User interacts with AI within a session. Messages accumulate.
-2. **Ingestion** (on session close): An ingest job is enqueued in `cortex_jobs`. The processor sends all session messages to Cortex `/ingest`. Cortex processes them through Graphiti -- extracting entities, resolving duplicates, and updating the Neo4j graph. Failures are retried with slow backoff.
+2. **Ingestion** (on session close): An ingest job is enqueued in `cortex_jobs`. The processor sends all session messages to Cortex `POST /ingest`, which returns `202 Accepted` with `status: "processing"` or `"skipped"`. When processing, `pollIngestStatus` polls `GET /ingest/status/{jobId}` (5m, then 10m intervals) until completion. Cortex processes messages through Graphiti — extracting entities, resolving duplicates, and updating the Neo4j graph. Failures are retried with slow backoff.
 3. **Hydration** (on session creation): A cheap Cypher query fetches the compiled knowledge and injects it into the new session's cached context. No AI processing needed.
 4. **Correction** (user-initiated): A correction job is enqueued in `cortex_jobs`. Users submit natural language corrections (e.g., *"I no longer live in Colombia, I moved to Canada"*) that Graphiti processes to invalidate outdated edges and create new ones.
 
@@ -478,7 +512,7 @@ flowchart LR
 ### Knowledge Graph & Deep Memory
 
 - **Automatic Knowledge Extraction**: Closed sessions are automatically ingested into the knowledge graph, extracting entities and relationships from conversations.
-- **Async Cortex Job Queue**: Heavy AI operations (ingestion, corrections) are decoupled from the UI via a persistent job queue with slow-backoff retry (5 attempts: 0 → 2m → 10m → 30m → 30m).
+- **Async Cortex Job Queue**: Heavy AI operations (ingestion, corrections) are decoupled from the UI via a persistent job queue. Ingest uses async API: POST returns 202, then poll GET /ingest/status (5m, 10m×5). POST/correction failures retry with slow backoff (5 attempts: 0 → 2m → 10m → 30m → 30m).
 - **Real-time Job Status**: Users see live processing status (pending, processing, retrying with countdown, failed with retry button) via Convex reactive subscriptions.
 - **Manual Memory Consolidation**: "Consolidate Memory" button in the chat UI force-closes the active session and enqueues an ingest job immediately.
 - **Knowledge Hydration**: On session creation, a background job fetches the latest compiled knowledge via a cheap Cypher query (no AI processing).
@@ -494,7 +528,7 @@ flowchart LR
 - **Node Inspection**: Click any entity to see its name, summary, connection count, and all incoming/outgoing relationships with fact labels.
 - **Entity Search**: Searchable, filterable entity list sorted by connection count, with click-to-center navigation.
 - **Natural Language Corrections**: Submit corrections like *"I no longer work at Google, I joined Meta"* -- enqueued as a background job and processed by Graphiti to invalidate outdated edges and create new relationships.
-- **Cortex Job Status Panel**: Real-time display of active ingestion and correction jobs with processing spinners, retry countdowns, and manual retry for failed jobs.
+- **Cortex Job Status Panel**: Real-time display of active ingestion and correction jobs with processing spinners, polling countdown ("next check in ~Xm"), retry countdown after failures, and manual retry for failed jobs.
 - **Real-time Refresh**: Graph auto-refreshes after corrections. Manual refresh available.
 - **Responsive Layout**: Desktop shows entity list + graph + inspector side by side. Mobile uses full-width graph with bottom-sheet inspector.
 - **Custom Rendering**: Nodes sized by connection count, selection highlighting with glow effects, labels appear on zoom.
@@ -517,8 +551,8 @@ flowchart LR
 | **Realtime**              | Convex reactive queries auto-update UI when DB changes -- no polling, no WebSocket management           |
 | **Streaming**             | SSE streaming with 100ms throttled writes to Convex; frontend derives `isGenerating` from message state |
 | **Session snapshot**      | Dual snapshot (system prompt + knowledge) decouples running conversation from live changes              |
-| **Knowledge pipeline**    | Async hydrate on create → conversation → enqueue ingest on close → processor with retry → draft         |
-| **Async job queue**       | Persistent `cortex_jobs` table with recursive processor, slow-backoff retry (5 attempts), real-time UI  |
+| **Knowledge pipeline**    | Async hydrate on create → conversation → enqueue ingest on close → POST /ingest (202) → poll status → draft |
+| **Async job queue**       | Persistent `cortex_jobs` table; ingest: POST returns 202, poll GET /ingest/status (5m, 10m×5); retry on POST failure (5 attempts); real-time UI |
 | **Auto-close timer**      | 3h debounced via Convex scheduled functions; each message cancels previous and reschedules              |
 | **Cross-session context** | Messages queried by `threadId` (not `sessionId`) for full thread continuity                             |
 | **Graph visualization**   | `react-force-graph-2d` with d3-force physics, custom rendering, imperative camera API                   |
@@ -545,7 +579,7 @@ synapse-ai-chat/
 │   ├── chat.ts                   # AI response generation (SSE streaming, throttled writes)
 │   ├── cortex.ts                 # Cortex integration (hydrate only)
 │   ├── cortexJobs.ts             # Job queue management (enqueue, status, retry)
-│   ├── cortexProcessor.ts        # Recursive job processor (ingest, correction, slow-backoff retry)
+│   ├── cortexProcessor.ts        # Job processor (ingest: POST + pollIngestStatus; correction; slow-backoff retry)
 │   ├── graph.ts                  # Knowledge graph queries + NLP corrections (enqueues correction jobs)
 │   └── auth.config.ts            # Clerk auth configuration
 ├── src/
@@ -666,7 +700,7 @@ synapse-ai-chat/
 5. **Inline persona selection (no modal)** — content area shows `PersonaSelector` card grid. Selecting one creates the thread and navigates directly.
 6. **Thread deletion cascade** — deletes all sessions + messages for the thread in a single mutation.
 7. **NLP-based memory corrections** — instead of manual entity editing, users submit natural language corrections that Graphiti processes through its entity resolution pipeline.
-8. **Async job queue over fire-and-forget** — Cortex API calls (ingestion: 30-200s, corrections: 30-60s) are too slow and unreliable for synchronous execution. A persistent `cortex_jobs` table with a recursive processor gives resilience (slow-backoff retry), observability (real-time UI), and auditability (job history). The "bouncer" pattern (enqueue + schedule immediately) minimizes latency while decoupling from the caller.
+8. **Async job queue over fire-and-forget** — Cortex API calls (ingestion: 30-200s, corrections: 30-60s) are too slow and unreliable for synchronous execution. Ingest uses an async API: POST /ingest returns 202 immediately, and `pollIngestStatus` polls GET /ingest/status until completed (5m first, then 10m intervals, up to ~55 min). A persistent `cortex_jobs` table with a recursive processor gives resilience (slow-backoff retry on POST failures), observability (real-time UI), and auditability (job history). The "bouncer" pattern (enqueue + schedule immediately) minimizes latency while decoupling from the caller.
 9. **Routing:** `react-router-dom` with paths `/`, `/t/:threadId`, `/settings/personas`, and `/memory`. Sidebar persists via `AppLayout` with `<Outlet />`.
 10. **React performance patterns:** `content-visibility: auto` for message lists, `useTransition` for form submissions, `React.memo` for thread items, functional setState, passive scroll listeners.
 11. **Full-context injection over RAG** — see rationale below.

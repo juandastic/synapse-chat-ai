@@ -26,6 +26,22 @@ export const RETRY_DELAYS_MS = [
   30 * 60_000, // Attempt 5: +30 minutes (final)
 ];
 
+/**
+ * Polling intervals for async ingest status checks.
+ * Process can take up to ~15 min; intervals are wider and linear (no exponential backoff),
+ * since we're polling an already-running process, not restarting.
+ */
+export const POLL_DELAYS_MS = [
+  5 * 60_000,  // Poll 0: 5 min - small graphs often done by then
+  10 * 60_000, // Poll 1: +10 min (~15 min total)
+  10 * 60_000, // Poll 2: +10 min (~25 min total)
+  10 * 60_000, // Poll 3: +10 min (~35 min total)
+  10 * 60_000, // Poll 4: +10 min (~45 min total)
+  10 * 60_000, // Poll 5: +10 min (~55 min total)
+];
+
+export const MAX_POLL_ATTEMPTS = POLL_DELAYS_MS.length;
+
 // =============================================================================
 // Internal Queries
 // =============================================================================
