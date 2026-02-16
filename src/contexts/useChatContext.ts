@@ -6,6 +6,9 @@ export interface ChatContextValue {
   isGenerating: boolean;
   isLoading: boolean;
   threadId: Id<"threads">;
+  startStreaming: (messageId: Id<"messages">) => void;
+  updateStreamedContent: (content: string) => void;
+  stopStreaming: () => void;
 }
 
 export const ChatContext = createContext<ChatContextValue | null>(null);

@@ -86,6 +86,7 @@ graph TD
         ThreadsAPI["threads.ts"]
         SessionsAPI["sessions.ts"]
         MessagesAPI["messages.ts"]
+        HttpAPI["http.ts"]
         ChatAPI["chat.ts"]
         CortexAPI["cortex.ts"]
         GraphAPI["graph.ts"]
@@ -95,6 +96,7 @@ graph TD
 
     subgraph cortex ["Synapse Cortex (external)"]
         HydrateEndpoint["/hydrate"]
+        CompletionEndpoint["/v1/chat/completions"]
         IngestEndpoint["POST /ingest"]
         IngestStatusEndpoint["GET /ingest/status"]
         GraphEndpoint["/v1/graph"]
@@ -120,6 +122,7 @@ graph TD
     PersonaSelector -->|"create thread"| ThreadsAPI
     ChatView -->|"list messages"| MessagesAPI
     ChatView -->|"send message"| MessagesAPI
+    ChatView -->|"HTTP stream /chat"| HttpAPI
     ChatView -->|"consolidate memory"| SessionsAPI
     MemoryExplorer -->|"fetch graph"| GraphAPI
     MemoryExplorer -->|"submit correction"| GraphAPI
@@ -128,7 +131,8 @@ graph TD
 
     %% Backend orchestration
     MessagesAPI -->|"get/create session"| SessionsAPI
-    MessagesAPI -->|"schedule"| ChatAPI
+    HttpAPI -->|"prepareContext"| ChatAPI
+    HttpAPI -->|"finalizeGeneration"| MessagesAPI
     ChatAPI -->|"read session snapshot"| SessionsAPI
     SessionsAPI -->|"schedule hydrate"| CortexAPI
     SessionsAPI -->|"enqueue ingest"| CortexJobs
@@ -143,6 +147,7 @@ graph TD
 
     %% Direct Cortex calls (fast, no queue needed)
     CortexAPI -->|"POST /hydrate"| HydrateEndpoint
+    HttpAPI -->|"stream completion"| CompletionEndpoint
     GraphAPI -->|"GET graph"| GraphEndpoint
 
     %% Data layer
@@ -252,11 +257,13 @@ Key points:
 ```mermaid
 sequenceDiagram
     participant UI as ChatInput
+    participant Ctx as ChatContext
     participant Msg as messages.send
     participant Sess as sessions
+    participant Http as http.ts
+    participant Chat as chat.prepareContext
     participant Cortex as cortex.ts
     participant API as Synapse Cortex API
-    participant Chat as chat.generateResponse
 
     UI->>Msg: send(threadId, content)
     Msg->>Sess: getOrCreateActiveSession(threadId)
@@ -278,23 +285,35 @@ sequenceDiagram
     Msg->>Msg: Insert placeholder assistant message (empty)
     Msg->>Sess: touchSession (reset 3h auto-close timer)
     Msg->>Msg: Update thread.lastMessageAt
-    Msg-->>Chat: schedule generateResponse
+    Msg-->>UI: assistantMessageId, sessionId
 
-    Chat->>Chat: Read session.cachedSystemPrompt
-    Chat->>Chat: Read session.cachedUserKnowledge
-    Chat->>Chat: Read last 20 messages by threadId (cross-session)
-    Chat->>API: Stream completion (SSE)
-    loop Every 100ms
-        Chat->>Msg: Update assistant message content (throttled)
+    UI->>Ctx: startStreaming(assistantMessageId)
+    UI->>Http: POST /chat (JWT, sessionId, threadId, assistantMessageId)
+
+    Http->>Chat: prepareContext(sessionId, assistantMessageId)
+    Chat->>Chat: Read session snapshot, getRecent by sessionId
+    Chat->>Chat: Resolve R2 image URLs
+    Chat-->>Http: apiMessages, userId, requestId
+
+    Http->>API: Stream completion (SSE)
+    loop Stream chunks
+        API-->>Http: SSE delta
+        Http-->>UI: TransformStream to client
+        UI->>Ctx: updateStreamedContent(accumulated)
+        Note right of Ctx: Overlay streamed content on DB message
     end
-    Chat->>Msg: Save final content + metadata (tokens, latency, cost)
+
+    Http->>Msg: finalizeGeneration(content, metadata, completedAt)
+    Note right of Msg: Single atomic DB write
+    Ctx->>Ctx: Detect completedAt, clear local streaming state
 ```
 
 **Key details:**
 
-- Messages are fetched by `threadId` (not `sessionId`), giving the AI full cross-session conversational continuity.
-- Streaming updates are throttled to 100ms intervals to balance responsiveness with database write efficiency.
-- The placeholder assistant message is created immediately, giving the UI a target to render streaming content into.
+- Zero database writes during streaming — content is streamed directly to the client via HTTP.
+- Single atomic DB write at the end persists content + metadata.
+- Frontend overlays locally streamed content on the DB message; once `completedAt` is set, DB content becomes authoritative.
+- `getRecent` fetches messages by `sessionId` (previous sessions are ingested into Cortex knowledge).
 
 ---
 
@@ -501,7 +520,7 @@ flowchart LR
 ### Conversational AI
 
 - **Multi-Thread Conversations**: Create multiple threads, each with a dedicated persona and independent history.
-- **Real-time Streaming**: AI responses stream via SSE with throttled DB updates (100ms), enabling smooth, character-by-character rendering.
+- **Real-time Streaming**: HTTP streaming directly to the client with zero intermediate DB writes; single atomic write at the end. ChatContext overlays streamed content locally for smooth, character-by-character rendering.
 - **Cross-Session Context**: The AI sees the last 20 messages across all sessions in the thread for full conversational continuity.
 - **Session Snapshotting**: Dual snapshot (system prompt + knowledge) ensures consistency within a session.
 - **Smart Auto-scroll**: Auto-scrolls to bottom on new messages, with scroll-to-bottom button when scrolled up.
@@ -549,7 +568,7 @@ flowchart LR
 | Area                      | Detail                                                                                                  |
 | ------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Realtime**              | Convex reactive queries auto-update UI when DB changes -- no polling, no WebSocket management           |
-| **Streaming**             | SSE streaming with 100ms throttled writes to Convex; frontend derives `isGenerating` from message state |
+| **Streaming**             | HTTP streaming to client; local state overlay during generation; single DB write at end; frontend derives `isGenerating` from message state |
 | **Session snapshot**      | Dual snapshot (system prompt + knowledge) decouples running conversation from live changes              |
 | **Knowledge pipeline**    | Async hydrate on create → conversation → enqueue ingest on close → POST /ingest (202) → poll status → draft |
 | **Async job queue**       | Persistent `cortex_jobs` table; ingest: POST returns 202, poll GET /ingest/status (5m, 10m×5); retry on POST failure (5 attempts); real-time UI |
@@ -576,7 +595,8 @@ synapse-ai-chat/
 │   ├── threads.ts                # Thread CRUD + cascade delete
 │   ├── sessions.ts               # Session lifecycle (3h auto-close, dual snapshot, state machine, forceClose)
 │   ├── messages.ts               # Message mutations/queries (streaming support, analytics)
-│   ├── chat.ts                   # AI response generation (SSE streaming, throttled writes)
+│   ├── http.ts                   # HTTP streaming endpoint (direct client streaming, single DB write)
+│   ├── chat.ts                   # Context preparation for AI generation (session snapshot, R2 URL resolution)
 │   ├── cortex.ts                 # Cortex integration (hydrate only)
 │   ├── cortexJobs.ts             # Job queue management (enqueue, status, retry)
 │   ├── cortexProcessor.ts        # Job processor (ingest: POST + pollIngestStatus; correction; slow-backoff retry)
@@ -703,7 +723,8 @@ synapse-ai-chat/
 8. **Async job queue over fire-and-forget** — Cortex API calls (ingestion: 30-200s, corrections: 30-60s) are too slow and unreliable for synchronous execution. Ingest uses an async API: POST /ingest returns 202 immediately, and `pollIngestStatus` polls GET /ingest/status until completed (5m first, then 10m intervals, up to ~55 min). A persistent `cortex_jobs` table with a recursive processor gives resilience (slow-backoff retry on POST failures), observability (real-time UI), and auditability (job history). The "bouncer" pattern (enqueue + schedule immediately) minimizes latency while decoupling from the caller.
 9. **Routing:** `react-router-dom` with paths `/`, `/t/:threadId`, `/settings/personas`, and `/memory`. Sidebar persists via `AppLayout` with `<Outlet />`.
 10. **React performance patterns:** `content-visibility: auto` for message lists, `useTransition` for form submissions, `React.memo` for thread items, functional setState, passive scroll listeners.
-11. **Full-context injection over RAG** — see rationale below.
+11. **HTTP streaming for bandwidth optimization** — streaming bypasses the DB entirely during generation; content flows directly from Cortex to the client via HTTP. A single atomic write at the end persists the result. This reduces reactive query re-execution from N writes to 1, lowering Convex bandwidth usage.
+12. **Full-context injection over RAG** — see rationale below.
 
 ### Why Full-Context Injection Instead of RAG
 

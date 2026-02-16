@@ -5,7 +5,6 @@ import {
   internalMutation,
   internalQuery,
 } from "./_generated/server";
-import { internal } from "./_generated/api";
 import { getOrCreateUser, getCurrentUser } from "./users";
 import { getOrCreateActiveSession, touchSession } from "./sessions";
 import { r2 } from "./r2";
@@ -141,7 +140,7 @@ export const send = mutation({
       ...(hasImages ? { imageKeys: args.imageKeys } : {}),
     });
 
-    // Empty placeholder — content is streamed in by generateResponse
+    // Empty placeholder — content is streamed in by the HTTP /chat endpoint
     const assistantMessageId = await ctx.db.insert("messages", {
       threadId: args.threadId,
       sessionId: session._id,
@@ -156,13 +155,7 @@ export const send = mutation({
       lastMessageAt: Date.now(),
     });
 
-    await ctx.scheduler.runAfter(0, internal.chat.generateResponse, {
-      sessionId: session._id,
-      threadId: args.threadId,
-      assistantMessageId,
-    });
-
-    console.log("[messages.send] Message queued for processing", {
+    console.log("[messages.send] Message created — awaiting HTTP stream", {
       userId: user._id,
       threadId: args.threadId,
       sessionId: session._id,
@@ -254,33 +247,63 @@ export const deleteMessage = mutation({
   },
 });
 
+/**
+ * Report a client-side stream failure. Marks the assistant message as error
+ * so the UI stops showing "generating" and displays a retry-friendly message.
+ * Only the thread owner can call this.
+ */
+export const reportStreamFailure = mutation({
+  args: {
+    messageId: v.id("messages"),
+    errorMessage: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUser(ctx);
+
+    const message = await ctx.db.get(args.messageId);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    const thread = await ctx.db.get(message.threadId);
+    if (!thread || thread.userId !== user._id) {
+      throw new Error("Not authorized to report failure for this message");
+    }
+
+    if (message.role !== "assistant") {
+      throw new Error("Can only report failure for assistant messages");
+    }
+
+    const errorContent =
+      args.errorMessage ??
+      "I'm having trouble responding right now. Please try again.";
+
+    await ctx.db.patch(args.messageId, {
+      type: "error",
+      content: errorContent,
+      metadata: { errorCode: "CLIENT_STREAM_FAILURE" },
+      completedAt: Date.now(),
+    });
+
+    console.log("[messages.reportStreamFailure] Marked as failed", {
+      messageId: args.messageId,
+      threadId: message.threadId,
+    });
+  },
+});
+
 // =============================================================================
 // Internal Mutations
 // =============================================================================
 
-/** Update message content during streaming. Throws if message vanishes mid-stream. */
-export const updateContent = internalMutation({
+/**
+ * Persist final content + metadata in a single atomic write.
+ * Called by the HTTP streaming endpoint when generation completes (or on tab close).
+ */
+export const finalizeGeneration = internalMutation({
   args: {
     id: v.id("messages"),
     content: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const message = await ctx.db.get(args.id);
-    if (!message) {
-      console.error("[messages.updateContent] Message not found mid-stream", {
-        messageId: args.id,
-      });
-      throw new Error(`Message ${args.id} not found during streaming update`);
-    }
-
-    await ctx.db.patch(args.id, { content: args.content });
-  },
-});
-
-/** Finalize a successful generation with analytics metadata. */
-export const saveMetadata = internalMutation({
-  args: {
-    id: v.id("messages"),
     metadata: v.object({
       model: v.optional(v.string()),
       promptTokens: v.optional(v.number()),
@@ -295,19 +318,21 @@ export const saveMetadata = internalMutation({
   handler: async (ctx, args) => {
     const message = await ctx.db.get(args.id);
     if (!message) {
-      console.error("[messages.saveMetadata] Message not found", {
+      console.error("[messages.finalizeGeneration] Message not found", {
         messageId: args.id,
       });
       return;
     }
 
     await ctx.db.patch(args.id, {
+      content: args.content,
       metadata: args.metadata,
       completedAt: args.completedAt,
     });
 
-    console.log("[messages.saveMetadata] Generation completed", {
+    console.log("[messages.finalizeGeneration] Generation persisted", {
       messageId: args.id,
+      contentLength: args.content.length,
       model: args.metadata.model,
       tokens: args.metadata.totalTokens,
       latencyMs: args.metadata.latencyMs,

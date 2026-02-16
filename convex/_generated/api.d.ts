@@ -13,6 +13,7 @@ import type * as cortex from "../cortex.js";
 import type * as cortexJobs from "../cortexJobs.js";
 import type * as cortexProcessor from "../cortexProcessor.js";
 import type * as graph from "../graph.js";
+import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as personas from "../personas.js";
 import type * as r2 from "../r2.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   cortexJobs: typeof cortexJobs;
   cortexProcessor: typeof cortexProcessor;
   graph: typeof graph;
+  http: typeof http;
   messages: typeof messages;
   personas: typeof personas;
   r2: typeof r2;
