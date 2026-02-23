@@ -100,16 +100,17 @@ export function PersonaForm({
       {/* Name and Icon row */}
       <div className="flex gap-3">
         <div className="w-20">
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+          <label htmlFor="persona-icon" className="mb-1.5 block text-xs font-medium text-muted-foreground">
             Icon
           </label>
-          <EmojiPicker value={icon} onChange={setIcon} />
+          <EmojiPicker id="persona-icon" value={icon} onChange={setIcon} />
         </div>
         <div className="flex-1">
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+          <label htmlFor="persona-name" className="mb-1.5 block text-xs font-medium text-muted-foreground">
             Name
           </label>
           <input
+            id="persona-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -122,10 +123,11 @@ export function PersonaForm({
 
       {/* Language */}
       <div>
-        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+        <label htmlFor="persona-language" className="mb-1.5 block text-xs font-medium text-muted-foreground">
           Language
         </label>
         <select
+          id="persona-language"
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
           className="h-10 w-full rounded-lg border border-border/50 bg-card px-3 text-sm focus:border-primary/30 focus:outline-none focus:ring-2 focus:ring-ring/20"
@@ -140,11 +142,12 @@ export function PersonaForm({
 
       {/* Description */}
       <div>
-        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+        <label htmlFor="persona-description" className="mb-1.5 block text-xs font-medium text-muted-foreground">
           Description
           <span className="ml-1 text-muted-foreground/50">(optional)</span>
         </label>
         <input
+          id="persona-description"
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -156,10 +159,11 @@ export function PersonaForm({
 
       {/* System Prompt */}
       <div>
-        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+        <label htmlFor="persona-system-prompt" className="mb-1.5 block text-xs font-medium text-muted-foreground">
           System Prompt
         </label>
         <textarea
+          id="persona-system-prompt"
           value={systemPrompt}
           onChange={(e) => setSystemPrompt(e.target.value)}
           placeholder="Instructions for the AI persona..."

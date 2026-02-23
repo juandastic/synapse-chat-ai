@@ -16,7 +16,7 @@ function getDefaultOrigin(): string {
  * Security configuration for AI-generated content
  * More restrictive to protect against prompt injection attacks
  */
-export const aiSecurityConfig = {
+const aiSecurityConfig = {
   defaultOrigin: getDefaultOrigin(),
   allowedLinkPrefixes: [
     getDefaultOrigin(), // Allow links to your own app
@@ -35,7 +35,7 @@ export const aiSecurityConfig = {
  * Security configuration for user-generated content
  * Can be more permissive since users have more control
  */
-export const userSecurityConfig = {
+const userSecurityConfig = {
   defaultOrigin: getDefaultOrigin(),
   allowedLinkPrefixes: ["*"], // More permissive for user content
   allowedImagePrefixes: ["*"],
@@ -46,7 +46,7 @@ export const userSecurityConfig = {
 /**
  * Get security configuration based on content type
  */
-export function getSecurityConfig(isAIGenerated: boolean) {
+function getSecurityConfig(isAIGenerated: boolean) {
   return isAIGenerated ? aiSecurityConfig : userSecurityConfig;
 }
 

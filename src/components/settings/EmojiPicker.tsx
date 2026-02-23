@@ -50,9 +50,10 @@ const EMOJI_CATEGORIES = [
 interface EmojiPickerProps {
   value: string;
   onChange: (emoji: string) => void;
+  id?: string;
 }
 
-export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
+export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<(typeof EMOJI_CATEGORIES)[number]["id"]>(EMOJI_CATEGORIES[0].id);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,6 +105,7 @@ export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
     <div ref={containerRef} className="relative">
       {/* Trigger button */}
       <button
+        id={id}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn(

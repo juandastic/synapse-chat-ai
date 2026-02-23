@@ -82,7 +82,13 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex h-14 shrink-0 items-center gap-2.5 px-4 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleNewChat}>
+      <div
+        className="flex h-14 shrink-0 items-center gap-2.5 px-4 cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={handleNewChat}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleNewChat()}
+        role="button"
+        tabIndex={0}
+      >
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-accent/15">
           <Logo className="h-5 w-5" />
         </div>
@@ -152,7 +158,7 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
           </div>
         ) : (
           // Thread list
-          <nav className="space-y-0.5" onClick={onCloseMobile}>
+          <nav className="space-y-0.5" onClick={onCloseMobile} onKeyDown={onCloseMobile}>
             {threads.map((thread) => (
               <ThreadItem
                 key={thread._id}

@@ -137,6 +137,8 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
             ) : (
               <h1
                 onClick={handleTitleClick}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleTitleClick()}
+                tabIndex={0}
                 className="truncate font-display text-sm font-semibold tracking-tight text-foreground cursor-pointer hover:text-primary/80 transition-colors"
                 title="Click to edit title"
               >

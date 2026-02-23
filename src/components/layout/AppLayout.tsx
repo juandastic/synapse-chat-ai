@@ -35,6 +35,10 @@ export function AppLayout() {
         <div
           className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm md:hidden"
           onClick={closeSidebar}
+          onKeyDown={(e) => e.key === "Escape" && closeSidebar()}
+          role="presentation"
+          aria-hidden="true"
+          tabIndex={-1}
         />
       )}
 

@@ -92,9 +92,9 @@ export function NodeInspector({
           <div className="mb-5">
             <SectionLabel>Outgoing</SectionLabel>
             <ul className="space-y-2">
-              {outgoing.map((link, i) => (
+              {outgoing.map((link) => (
                 <RelationshipRow
-                  key={`out-${i}`}
+                  key={`out-${resolveId(link.source)}-${link.label}-${resolveId(link.target)}`}
                   direction="out"
                   label={link.label}
                   targetName={
@@ -113,9 +113,9 @@ export function NodeInspector({
           <div className="mb-5">
             <SectionLabel>Incoming</SectionLabel>
             <ul className="space-y-2">
-              {incoming.map((link, i) => (
+              {incoming.map((link) => (
                 <RelationshipRow
-                  key={`in-${i}`}
+                  key={`in-${resolveId(link.source)}-${link.label}-${resolveId(link.target)}`}
                   direction="in"
                   label={link.label}
                   targetName={

@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 
-export interface ChatContextValue {
+interface ChatContextValue {
   messages: Doc<"messages">[] | undefined;
   isGenerating: boolean;
   isLoading: boolean;

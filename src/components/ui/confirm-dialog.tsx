@@ -45,17 +45,7 @@ export function ConfirmDialog({
   variant = "danger",
   loading = false,
 }: ConfirmDialogProps) {
-  const confirmRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  // Focus the confirm button when opened
-  useEffect(() => {
-    if (open) {
-      // Small timeout to allow the animation to start
-      const timer = setTimeout(() => confirmRef.current?.focus(), 50);
-      return () => clearTimeout(timer);
-    }
-  }, [open]);
 
   // Close on Escape
   useEffect(() => {
@@ -88,6 +78,7 @@ export function ConfirmDialog({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={handleBackdropClick}
+      onKeyDown={(e) => e.key === "Escape" && onCancel()}
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
@@ -146,7 +137,6 @@ export function ConfirmDialog({
             {cancelLabel}
           </button>
           <button
-            ref={confirmRef}
             onClick={onConfirm}
             disabled={loading}
             className={cn(
