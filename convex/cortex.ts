@@ -3,12 +3,7 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-
-// =============================================================================
-// Configuration
-// =============================================================================
-
-const CORTEX_API_URL = "https://synapse-cortex.juandago.dev";
+import { CORTEX_API_BASE_URL } from "./cortexConfig";
 
 // =============================================================================
 // Error Helpers
@@ -70,7 +65,7 @@ export const hydrate = internalAction({
     try {
       let response: Response;
       try {
-        response = await fetch(`${CORTEX_API_URL}/hydrate`, {
+        response = await fetch(`${CORTEX_API_BASE_URL}/hydrate`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

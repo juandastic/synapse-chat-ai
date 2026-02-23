@@ -4,12 +4,7 @@ import { v } from "convex/values";
 import { action, ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-
-// =============================================================================
-// Configuration
-// =============================================================================
-
-const CORTEX_API_URL = "https://synapse-cortex.juandago.dev";
+import { CORTEX_API_BASE_URL } from "./cortexConfig";
 
 // =============================================================================
 // Types
@@ -89,7 +84,7 @@ export const fetch = action({
 
     try {
       const response = await globalThis.fetch(
-        `${CORTEX_API_URL}/v1/graph/${encodeURIComponent(userId)}`,
+        `${CORTEX_API_BASE_URL}/v1/graph/${encodeURIComponent(userId)}`,
         {
           method: "GET",
           headers: { "X-API-SECRET": apiSecret },

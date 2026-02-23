@@ -2,13 +2,14 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+import { CORTEX_API_BASE_URL } from "./cortexConfig";
+
 // =============================================================================
 // Configuration
 // =============================================================================
 
 const DEFAULT_MODEL = "gemini-3-pro-preview";
-const CORTEX_API_URL =
-  "https://synapse-cortex.juandago.dev/v1/chat/completions";
+const CORTEX_CHAT_COMPLETIONS_URL = `${CORTEX_API_BASE_URL}/v1/chat/completions`;
 
 // =============================================================================
 // Types
@@ -168,7 +169,7 @@ http.route({
       let finishReason = "stop";
 
       try {
-        const response = await fetch(CORTEX_API_URL, {
+        const response = await fetch(CORTEX_CHAT_COMPLETIONS_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
