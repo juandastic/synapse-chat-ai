@@ -2,7 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 
-import { CORTEX_API_BASE_URL } from "./cortexConfig";
+import { CompilationMetadata, CORTEX_API_BASE_URL } from "./cortexConfig";
 
 // =============================================================================
 // Configuration
@@ -103,6 +103,7 @@ http.route({
       }>;
       userId: string;
       requestId: string;
+      compilationMetadata?: CompilationMetadata;
     };
 
     try {
@@ -136,7 +137,7 @@ http.route({
       });
     }
 
-    const { apiMessages, userId, requestId } = context;
+    const { apiMessages, userId, requestId, compilationMetadata } = context;
 
     // ── Validate API secret ──────────────────────────────────────────────
     const apiSecret = process.env.SYNAPSE_CORTEX_API_SECRET;
@@ -179,6 +180,7 @@ http.route({
             model: DEFAULT_MODEL,
             messages: apiMessages,
             stream: true,
+            ...(compilationMetadata !== undefined && { compilationMetadata }),
           }),
         });
 

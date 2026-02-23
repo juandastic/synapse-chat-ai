@@ -3,7 +3,11 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { CORTEX_API_BASE_URL } from "./cortexConfig";
+import {
+  CompilationMetadata,
+  CORTEX_API_BASE_URL,
+  HYDRATION_VERSION,
+} from "./cortexConfig";
 
 // =============================================================================
 // Error Helpers
@@ -31,6 +35,7 @@ function extractErrorMessage(error: unknown): string {
 interface HydrateResponse {
   success: boolean;
   userKnowledgeCompilation?: string;
+  compilationMetadata?: CompilationMetadata | null;
   error?: string;
   code?: string;
 }
@@ -71,7 +76,10 @@ export const hydrate = internalAction({
             "Content-Type": "application/json",
             "X-API-SECRET": apiSecret,
           },
-          body: JSON.stringify({ userId: args.userId }),
+          body: JSON.stringify({
+            userId: args.userId,
+            version: HYDRATION_VERSION,
+          }),
         });
       } catch (fetchError) {
         console.warn("[cortex.hydrate] Network error", {
@@ -105,6 +113,7 @@ export const hydrate = internalAction({
       await ctx.runMutation(internal.sessions.patchKnowledge, {
         sessionId: args.sessionId,
         knowledge: data.userKnowledgeCompilation,
+        compilationMetadata: data.compilationMetadata ?? undefined,
       });
 
       console.log("[cortex.hydrate] Success", {

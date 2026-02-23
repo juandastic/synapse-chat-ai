@@ -5,6 +5,7 @@ import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { r2 } from "./r2";
+import { CompilationMetadata } from "./cortexConfig";
 
 // =============================================================================
 // Configuration
@@ -46,6 +47,7 @@ export const prepareContext = internalAction({
     apiMessages: ApiMessage[];
     userId: string;
     requestId: string;
+    compilationMetadata?: CompilationMetadata;
   }> => {
     const session: Doc<"sessions"> | null = await ctx.runQuery(
       internal.sessions.get,
@@ -127,6 +129,7 @@ export const prepareContext = internalAction({
       apiMessages,
       userId: session.userId,
       requestId,
+      compilationMetadata: session.compilationMetadata,
     };
   },
 });

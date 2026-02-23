@@ -57,6 +57,8 @@ export default defineSchema({
     ),
     /** Cortex-compiled user knowledge — undefined before first ingest */
     cachedUserKnowledge: v.optional(v.string()),
+    /** Opaque Cortex metadata that describes how knowledge was compiled */
+    compilationMetadata: v.optional(v.any()),
     /** Snapshot of persona + user instructions at session start */
     cachedSystemPrompt: v.string(),
     startedAt: v.number(),

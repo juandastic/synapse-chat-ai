@@ -5,6 +5,11 @@ import { ActionCtx, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import {
+  CompilationMetadata,
+  CORTEX_API_BASE_URL,
+  HYDRATION_VERSION,
+} from "./cortexConfig";
+import {
   RETRY_DELAYS_MS,
   POLL_DELAYS_MS,
   MAX_POLL_ATTEMPTS,
@@ -13,8 +18,6 @@ import {
 // =============================================================================
 // Configuration
 // =============================================================================
-
-const CORTEX_API_URL = "https://synapse-cortex.juandago.dev";
 
 // =============================================================================
 // Error Helpers
@@ -85,13 +88,15 @@ interface CorrectionPayload {
 interface IngestAcceptedResponse {
   jobId: string;
   status: "processing" | "skipped";
-  userKnowledgeCompilation?: string; // only when "skipped"
+  userKnowledgeCompilation?: string;
+  compilationMetadata?: CompilationMetadata | null;
 }
 
 interface IngestStatusResponse {
   jobId: string;
   status: "processing" | "completed" | "failed";
   userKnowledgeCompilation?: string; // only when "completed"
+  compilationMetadata?: CompilationMetadata | null;
   metadata?: IngestResponseMetadata; // only when "completed"
   error?: string; // only when "failed"
   code?: string; // only when "failed"
@@ -273,7 +278,7 @@ export const pollIngestStatus = internalAction({
         throw new Error("SYNAPSE_CORTEX_API_SECRET not set");
       }
 
-      const url = `${CORTEX_API_URL}/ingest/status/${args.jobId}`;
+      const url = `${CORTEX_API_BASE_URL}/ingest/status/${args.jobId}?version=${HYDRATION_VERSION}`;
       const response = await cortexFetch(url, {
         method: "GET",
         headers: {
@@ -308,7 +313,12 @@ export const pollIngestStatus = internalAction({
 
       if (data.status === "completed") {
         const knowledge = data.userKnowledgeCompilation ?? null;
-        await createDraft(ctx, payload, knowledge);
+        await createDraft(
+          ctx,
+          payload,
+          knowledge,
+          data.compilationMetadata ?? undefined
+        );
 
         if (payload.totalChars !== undefined) {
           try {
@@ -468,13 +478,19 @@ async function processIngest(
   }
 
   const fallbackKnowledge = session.cachedUserKnowledge ?? null;
+  const fallbackCompilationMetadata = session.compilationMetadata;
 
   const messages = await ctx.runQuery(internal.messages.getBySession, {
     sessionId: payload.closedSessionId,
   });
 
   if (messages.length === 0) {
-    await createDraft(ctx, payload, fallbackKnowledge);
+    await createDraft(
+      ctx,
+      payload,
+      fallbackKnowledge,
+      fallbackCompilationMetadata
+    );
     return "completed";
   }
 
@@ -504,7 +520,7 @@ async function processIngest(
     payloadSizeKb: Math.round(body.length / 1024),
   });
 
-  const url = `${CORTEX_API_URL}/ingest`;
+  const url = `${CORTEX_API_BASE_URL}/ingest`;
   const response = await cortexFetch(url, {
     method: "POST",
     headers: {
@@ -524,10 +540,12 @@ async function processIngest(
   const data: IngestAcceptedResponse = await response.json();
 
   if (data.status === "skipped") {
+    // Skipped ingest does not return compilation payloads; preserve prior cache.
     await createDraft(
       ctx,
       payload,
-      data.userKnowledgeCompilation ?? fallbackKnowledge
+      fallbackKnowledge,
+      fallbackCompilationMetadata
     );
     // Track usage for skipped (best-effort)
     if (payload.totalChars !== undefined) {
@@ -574,7 +592,7 @@ async function processCorrection(
     correctionLength: payload.correctionText.length,
   });
 
-  const url = `${CORTEX_API_URL}/v1/graph/correction`;
+  const url = `${CORTEX_API_BASE_URL}/v1/graph/correction`;
   const response = await cortexFetch(url, {
     method: "POST",
     headers: {
@@ -628,12 +646,14 @@ async function processCorrection(
 async function createDraft(
   ctx: ProcessorCtx,
   payload: IngestPayload,
-  knowledge: string | null
+  knowledge: string | null,
+  compilationMetadata?: CompilationMetadata | null
 ): Promise<void> {
   await ctx.runMutation(internal.sessions.createDraftSession, {
     userId: payload.userId,
     threadId: payload.threadId,
     knowledge,
+    compilationMetadata: compilationMetadata ?? undefined,
   });
 }
 
@@ -649,7 +669,12 @@ async function createFallbackDraft(
     const session = await ctx.runQuery(internal.sessions.get, {
       id: payload.closedSessionId,
     });
-    await createDraft(ctx, payload, session?.cachedUserKnowledge ?? null);
+    await createDraft(
+      ctx,
+      payload,
+      session?.cachedUserKnowledge ?? null,
+      session?.compilationMetadata
+    );
   } catch (error) {
     console.error("[cortexProcessor] Fallback draft failed", {
       error: error instanceof Error ? error.message : String(error),

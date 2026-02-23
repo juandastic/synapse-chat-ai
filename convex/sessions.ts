@@ -8,6 +8,7 @@ import {
 import { internal } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
 import { getOrCreateUser } from "./users";
+import { CompilationMetadata } from "./cortexConfig";
 
 // =============================================================================
 // Configuration
@@ -149,6 +150,8 @@ export async function getOrCreateActiveSession(
   if (existingSession?.cachedUserKnowledge) {
     cachedUserKnowledge = existingSession.cachedUserKnowledge;
   }
+  const compilationMetadata: CompilationMetadata | undefined =
+    existingSession?.compilationMetadata;
 
   // Create new session with snapshot
   const sessionId = await ctx.db.insert("sessions", {
@@ -157,6 +160,7 @@ export async function getOrCreateActiveSession(
     status: "active",
     cachedSystemPrompt,
     cachedUserKnowledge,
+    compilationMetadata,
     startedAt: now,
     lastMessageAt: now,
   });
@@ -179,6 +183,7 @@ export async function getOrCreateActiveSession(
     userId,
     hadPreviousSession: !!existingSession,
     hasInheritedKnowledge: !!cachedUserKnowledge,
+    hasInheritedCompilationMetadata: compilationMetadata !== undefined,
   });
 
   return newSession;
@@ -288,6 +293,7 @@ export const createDraftSession = internalMutation({
     userId: v.id("users"),
     threadId: v.id("threads"),
     knowledge: v.union(v.string(), v.null()),
+    compilationMetadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     // Check for race condition: user may have started chatting already
@@ -299,16 +305,27 @@ export const createDraftSession = internalMutation({
       .first();
 
     if (existingSession) {
-      // Update existing session with new knowledge (if available)
+      // Update existing session with any new draft memory payload.
+      const patch: {
+        cachedUserKnowledge?: string;
+        compilationMetadata?: unknown;
+      } = {};
       if (args.knowledge) {
-        await ctx.db.patch(existingSession._id, {
-          cachedUserKnowledge: args.knowledge,
-        });
+        patch.cachedUserKnowledge = args.knowledge;
+      }
+      if (args.compilationMetadata !== undefined) {
+        patch.compilationMetadata = args.compilationMetadata;
+      }
+
+      if (Object.keys(patch).length > 0) {
+        await ctx.db.patch(existingSession._id, patch);
         console.log("[sessions.createDraftSession] Updated existing session", {
           sessionId: existingSession._id,
           threadId: args.threadId,
           userId: args.userId,
-          knowledgeLength: args.knowledge.length,
+          hasKnowledge: !!args.knowledge,
+          hasCompilationMetadata: args.compilationMetadata !== undefined,
+          knowledgeLength: args.knowledge?.length ?? 0,
         });
       } else {
         console.log(
@@ -355,6 +372,7 @@ export const createDraftSession = internalMutation({
       status: "active",
       cachedSystemPrompt,
       cachedUserKnowledge: args.knowledge ?? undefined,
+      compilationMetadata: args.compilationMetadata,
       startedAt: now,
       lastMessageAt: now,
     });
@@ -364,6 +382,7 @@ export const createDraftSession = internalMutation({
       threadId: args.threadId,
       userId: args.userId,
       hasKnowledge: !!args.knowledge,
+      hasCompilationMetadata: args.compilationMetadata !== undefined,
       knowledgeLength: args.knowledge?.length ?? 0,
     });
 
@@ -438,6 +457,7 @@ export const patchKnowledge = internalMutation({
   args: {
     sessionId: v.id("sessions"),
     knowledge: v.string(),
+    compilationMetadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const session = await ctx.db.get(args.sessionId);
@@ -448,13 +468,19 @@ export const patchKnowledge = internalMutation({
       return;
     }
 
-    await ctx.db.patch(args.sessionId, {
-      cachedUserKnowledge: args.knowledge,
-    });
+    const patch: { cachedUserKnowledge: string; compilationMetadata?: unknown } =
+      {
+        cachedUserKnowledge: args.knowledge,
+      };
+    if (args.compilationMetadata !== undefined) {
+      patch.compilationMetadata = args.compilationMetadata;
+    }
+    await ctx.db.patch(args.sessionId, patch);
 
     console.log("[sessions.patchKnowledge] Patched knowledge", {
       sessionId: args.sessionId,
       knowledgeLength: args.knowledge.length,
+      hasCompilationMetadata: args.compilationMetadata !== undefined,
     });
   },
 });
