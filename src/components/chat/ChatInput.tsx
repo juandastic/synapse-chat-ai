@@ -41,6 +41,7 @@ export function ChatInput() {
   const [error, setError] = useState<string | null>(null);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -57,6 +58,15 @@ export function ChatInput() {
       images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    const updateMobileState = () => setIsMobileViewport(mediaQuery.matches);
+    updateMobileState();
+
+    mediaQuery.addEventListener("change", updateMobileState);
+    return () => mediaQuery.removeEventListener("change", updateMobileState);
   }, []);
 
   const adjustTextareaHeight = useCallback(() => {
@@ -257,12 +267,12 @@ export function ChatInput() {
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (!isMobileViewport && e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSubmit();
       }
     },
-    [handleSubmit]
+    [handleSubmit, isMobileViewport]
   );
 
   const openFilePicker = useCallback(() => {
@@ -458,8 +468,9 @@ export function ChatInput() {
       )}
 
       <p className="mt-2 text-center text-xs text-muted-foreground/60">
-        Press Enter to send, Shift+Enter for new line. Paste or drag images to
-        attach.
+        {isMobileViewport
+          ? "Tap send button to submit. Enter inserts a new line. Paste or drag images to attach."
+          : "Press Enter to send, Shift+Enter for new line. Paste or drag images to attach."}
       </p>
     </div>
   );

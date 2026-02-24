@@ -168,7 +168,7 @@ graph TD
 
 **Data flow summary:**
 
-1. **Frontend** communicates with Convex via reactive queries and mutations (real-time subscriptions).
+1. **Frontend** communicates with Convex through reactive queries/mutations, server actions, and the `/chat` HTTP streaming endpoint.
 2. **Convex backend** orchestrates session management, message persistence, and AI generation.
 3. **Cortex job queue** decouples heavy AI processing (ingestion, corrections) from the UI. Jobs are persisted in `cortex_jobs`. Ingest uses async API (POST 202 → poll status); failures retry with slow backoff.
 4. **Synapse Cortex** serves as the bridge to the Neo4j knowledge graph -- handling hydration (reads), ingestion (writes), graph queries, and NLP-based corrections.
@@ -183,7 +183,7 @@ erDiagram
     users {
         string tokenIdentifier
         string name
-        string customInstructions
+        string customInstructions_optional
     }
     personas {
         id userId
@@ -205,23 +205,26 @@ erDiagram
         id threadId
         string status
         string cachedUserKnowledge
+        any compilationMetadata
         string cachedSystemPrompt
         number startedAt
         number endedAt
         number lastMessageAt
+        id closerJobId
     }
     messages {
         id threadId
         id sessionId
         string role
         string content
+        array imageKeys
         string type
         number completedAt
         object metadata
     }
     cortex_jobs {
         id userId
-        id sessionId
+        id sessionId_optional
         string type
         any payload
         string status
@@ -232,23 +235,36 @@ erDiagram
         number createdAt
         number updatedAt
     }
+    monthly_usage {
+        id userId
+        string month
+        number totalChatMessages
+        number totalChatCharsGenerated
+        number totalInputTokens
+        number totalOutputTokens
+        number totalIngestions
+        number totalCorrections
+        number totalIngestedChars
+        any dailyStats
+    }
 
     users ||--o{ personas : owns
     users ||--o{ threads : owns
     users ||--o{ cortex_jobs : owns
+    users ||--o{ monthly_usage : tracks
     personas ||--o{ threads : "used by"
     threads ||--o{ sessions : contains
     threads ||--o{ messages : contains
     sessions ||--o{ messages : groups
-    sessions ||--o{ cortex_jobs : triggers
+    sessions ||--o{ cortex_jobs : "ingest jobs"
 ```
 
 Key points:
 
-- **Sessions** store `cachedSystemPrompt` and `cachedUserKnowledge` as snapshots -- decoupling the running conversation from live persona/knowledge changes.
+- **Sessions** store `cachedSystemPrompt`, `cachedUserKnowledge`, and `compilationMetadata` as snapshots -- decoupling the running conversation from live persona/knowledge changes.
 - **Messages** store analytics in `metadata`: token counts, latency, cost, finish reason, and error details.
 - **Cortex jobs** decouple heavy AI calls from the UI. Status lifecycle: `pending` → `processing` → `completed` | `failed`. Ingest: POST returns 202, poll GET /ingest/status (5m, 10m×5). Retry on POST failure: 0 → 2m → 10m → 30m → 30m.
-- Sessions use a status state machine: `active` → `processing` → `active` | `closed`.
+- **Session status** is primarily `active`/`closed` in runtime flow. `processing` exists in schema for guarded transitions but is not part of the current `/chat` streaming path.
 
 ---
 
@@ -325,8 +341,7 @@ stateDiagram-v2
     Created --> Active: Session created with dual snapshot
 
     Active --> Active: Messages sent (touch resets 3h timer)
-    Active --> Processing: AI generating response
-    Processing --> Active: Response complete
+    Active --> Active: AI response generation (/chat stream)
     Active --> Closed: 3h inactivity (autoClose scheduled job)
     Active --> Closed: Stale detection on next message
     Active --> Closed: Manual "Consolidate Memory" button
@@ -521,7 +536,7 @@ flowchart LR
 
 - **Multi-Thread Conversations**: Create multiple threads, each with a dedicated persona and independent history.
 - **Real-time Streaming**: HTTP streaming directly to the client with zero intermediate DB writes; single atomic write at the end. ChatContext overlays streamed content locally for smooth, character-by-character rendering.
-- **Cross-Session Context**: The AI sees the last 20 messages across all sessions in the thread for full conversational continuity.
+- **Session-Scoped Context**: The AI sees the last 20 messages from the current `sessionId`; cross-session continuity comes from `cachedUserKnowledge`.
 - **Session Snapshotting**: Dual snapshot (system prompt + knowledge) ensures consistency within a session.
 - **Smart Auto-scroll**: Auto-scrolls to bottom on new messages, with scroll-to-bottom button when scrolled up.
 - **Markdown Rendering**: Rich markdown support with streaming animation via Streamdown.
@@ -589,11 +604,11 @@ flowchart LR
 ```
 synapse-ai-chat/
 ├── convex/                       # Convex backend (serverless functions + database)
-│   ├── schema.ts                 # Database schema (6 tables, indexed)
+│   ├── schema.ts                 # Database schema (7 tables, indexed)
 │   ├── users.ts                  # User management + customInstructions
 │   ├── personas.ts               # Persona CRUD + default templates
 │   ├── threads.ts                # Thread CRUD + cascade delete
-│   ├── sessions.ts               # Session lifecycle (3h auto-close, dual snapshot, state machine, forceClose)
+│   ├── sessions.ts               # Session lifecycle (3h auto-close, dual snapshot, forceClose, draft creation)
 │   ├── messages.ts               # Message mutations/queries (streaming support, analytics)
 │   ├── http.ts                   # HTTP streaming endpoint (direct client streaming, single DB write)
 │   ├── chat.ts                   # Context preparation for AI generation (session snapshot, R2 URL resolution)
