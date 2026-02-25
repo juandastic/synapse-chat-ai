@@ -11,8 +11,6 @@ import { CompilationMetadata } from "./cortexConfig";
 // Configuration
 // =============================================================================
 
-const CONTEXT_MESSAGE_LIMIT = 20;
-
 // =============================================================================
 // Types
 // =============================================================================
@@ -59,8 +57,8 @@ export const prepareContext = internalAction({
     }
 
     const history: Doc<"messages">[] = await ctx.runQuery(
-      internal.messages.getRecent,
-      { sessionId: args.sessionId, limit: CONTEXT_MESSAGE_LIMIT }
+      internal.messages.getBySession,
+      { sessionId: args.sessionId }
     );
 
     const currentDateTime = new Date().toLocaleString("en-US", {

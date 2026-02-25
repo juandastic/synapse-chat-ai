@@ -77,7 +77,7 @@ export const getRecent = internalQuery({
   },
 });
 
-/** All messages for a session (used by Cortex ingest). */
+/** All messages for a session in chronological order. */
 export const getBySession = internalQuery({
   args: {
     sessionId: v.id("sessions"),
@@ -86,6 +86,7 @@ export const getBySession = internalQuery({
     return ctx.db
       .query("messages")
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .order("asc")
       .collect();
   },
 });
