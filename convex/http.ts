@@ -29,6 +29,13 @@ interface StreamChunk {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;
+    thoughts_tokens?: number | null;
+    cached_tokens?: number | null;
+    rag_enabled?: boolean;
+    rag_nodes?: number | null;
+    rag_edges?: number | null;
+    rag_search_ms?: number | null;
+    rag_context_chars?: number | null;
   };
 }
 
@@ -180,6 +187,7 @@ http.route({
             model: DEFAULT_MODEL,
             messages: apiMessages,
             stream: true,
+            user_id: userId,
             ...(compilationMetadata !== undefined && { compilationMetadata }),
           }),
         });
@@ -266,6 +274,13 @@ http.route({
             promptTokens: usage?.prompt_tokens,
             completionTokens: usage?.completion_tokens,
             totalTokens: usage?.total_tokens,
+            thoughtsTokens: usage?.thoughts_tokens ?? undefined,
+            cachedTokens: usage?.cached_tokens ?? undefined,
+            ragEnabled: usage?.rag_enabled,
+            ragNodes: usage?.rag_nodes ?? undefined,
+            ragEdges: usage?.rag_edges ?? undefined,
+            ragSearchMs: usage?.rag_search_ms ?? undefined,
+            ragContextChars: usage?.rag_context_chars ?? undefined,
             latencyMs: totalLatencyMs,
             finishReason,
           },
