@@ -5,6 +5,8 @@ import { cn, formatMessageTime } from "@/lib/utils";
 import { Doc } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
 import { createSecureRehypePlugins } from "@/lib/markdown-security";
+import { useChatContext } from "@/contexts/useChatContext";
+import { useStreamResponse } from "@/hooks/useStreamResponse";
 
 interface MessageItemProps {
   message: Doc<"messages">;
@@ -124,8 +126,11 @@ export const MessageItem = memo(function MessageItem({
             )}
           >
             <span>{formatMessageTime(message._creationTime)}</span>
-            {!isUser && !isEmpty && (
-              <CopyMarkdownButton content={message.content} />
+            {!isEmpty && (
+              <CopyButton content={message.content} isUserMessage={isUser} />
+            )}
+            {isUser && (
+              <RetryMessageButton userMessageId={message._id} />
             )}
             <DeleteMessageButton messageId={message._id} isUserMessage={isUser} />
           </div>
@@ -135,10 +140,12 @@ export const MessageItem = memo(function MessageItem({
   );
 });
 
-const CopyMarkdownButton = memo(function CopyMarkdownButton({
+const CopyButton = memo(function CopyButton({
   content,
+  isUserMessage,
 }: {
   content: string;
+  isUserMessage: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -153,9 +160,14 @@ const CopyMarkdownButton = memo(function CopyMarkdownButton({
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 transition-colors hover:bg-muted-foreground/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-      title="Copy as Markdown"
-      aria-label="Copy as Markdown"
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded px-1 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        isUserMessage
+          ? "hover:bg-primary-foreground/10"
+          : "hover:bg-muted-foreground/10"
+      )}
+      title={isUserMessage ? "Copy message" : "Copy as Markdown"}
+      aria-label={isUserMessage ? "Copy message" : "Copy as Markdown"}
     >
       {copied ? (
         <>
@@ -189,9 +201,86 @@ const CopyMarkdownButton = memo(function CopyMarkdownButton({
               d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
             />
           </svg>
-          <span className="text-[10px]">MD</span>
+          <span className="text-[10px]">{isUserMessage ? "Copy" : "MD"}</span>
         </>
       )}
+    </button>
+  );
+});
+
+const RetryMessageButton = memo(function RetryMessageButton({
+  userMessageId,
+}: {
+  userMessageId: Doc<"messages">["_id"];
+}) {
+  const [isRetrying, setIsRetrying] = useState(false);
+  const resendMessage = useMutation(api.messages.resend);
+  const { isGenerating, startStreaming } = useChatContext();
+  const streamResponse = useStreamResponse();
+
+  const isDisabled = isRetrying || isGenerating;
+
+  const handleRetry = useCallback(async () => {
+    if (isDisabled) return;
+    setIsRetrying(true);
+    try {
+      const result = await resendMessage({ userMessageId });
+      startStreaming(result.assistantMessageId);
+      void streamResponse(result.assistantMessageId, result.sessionId);
+    } catch (err) {
+      console.error("[RetryMessageButton] Failed to retry:", err);
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [isDisabled, resendMessage, userMessageId, startStreaming, streamResponse]);
+
+  return (
+    <button
+      type="button"
+      onClick={handleRetry}
+      disabled={isDisabled}
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded px-1 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-primary-foreground/10",
+        isDisabled && "opacity-50 cursor-not-allowed"
+      )}
+      title="Retry message"
+      aria-label="Retry message"
+    >
+      {isRetrying ? (
+        <svg
+          className="h-3 w-3 animate-spin"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="2"
+            fill="none"
+            strokeDasharray="31.4 31.4"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : (
+        <svg
+          className="h-3 w-3"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
+        </svg>
+      )}
+      <span className="text-[10px]">{isRetrying ? "Retrying" : "Retry"}</span>
     </button>
   );
 });

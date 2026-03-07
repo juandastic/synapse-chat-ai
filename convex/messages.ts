@@ -293,6 +293,73 @@ export const reportStreamFailure = mutation({
   },
 });
 
+/**
+ * Re-generate the assistant response for a given user message.
+ * If a paired assistant message exists (and is not currently streaming),
+ * it is deleted first. A fresh placeholder is created so the client can
+ * kick off a new streaming request.
+ */
+export const resend = mutation({
+  args: {
+    userMessageId: v.id("messages"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUser(ctx);
+
+    const userMessage = await ctx.db.get(args.userMessageId);
+    if (!userMessage) {
+      throw new Error("Message not found");
+    }
+    if (userMessage.role !== "user") {
+      throw new Error("Can only resend user messages");
+    }
+
+    const thread = await ctx.db.get(userMessage.threadId);
+    if (!thread || thread.userId !== user._id) {
+      throw new Error("Not authorized");
+    }
+
+    const allMessages = await ctx.db
+      .query("messages")
+      .withIndex("by_thread", (q) => q.eq("threadId", userMessage.threadId))
+      .order("asc")
+      .collect();
+
+    const idx = allMessages.findIndex((m) => m._id === args.userMessageId);
+    const nextMessage = idx !== -1 ? allMessages[idx + 1] : undefined;
+
+    if (nextMessage && nextMessage.role === "assistant") {
+      if (nextMessage.completedAt === undefined) {
+        throw new Error("Cannot retry while the response is still generating");
+      }
+      await ctx.db.delete(nextMessage._id);
+    }
+
+    const assistantMessageId = await ctx.db.insert("messages", {
+      threadId: userMessage.threadId,
+      sessionId: userMessage.sessionId,
+      role: "assistant",
+      content: "",
+      type: "text",
+    });
+
+    await touchSession(ctx, userMessage.sessionId);
+    await ctx.db.patch(userMessage.threadId, { lastMessageAt: Date.now() });
+
+    console.log("[messages.resend] Re-generating response", {
+      userMessageId: args.userMessageId,
+      deletedPreviousId: nextMessage?.role === "assistant" ? nextMessage._id : null,
+      assistantMessageId,
+      threadId: userMessage.threadId,
+    });
+
+    return {
+      assistantMessageId,
+      sessionId: userMessage.sessionId,
+    };
+  },
+});
+
 // =============================================================================
 // Internal Mutations
 // =============================================================================

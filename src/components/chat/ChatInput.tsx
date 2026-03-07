@@ -9,19 +9,12 @@ import {
   DragEvent,
 } from "react";
 import { useMutation } from "convex/react";
-import { useAuth } from "@clerk/clerk-react";
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Send, ImagePlus, X, Loader2 } from "lucide-react";
 import { useChatContext } from "@/contexts/useChatContext";
 import { useUploadFile } from "@convex-dev/r2/react";
-
-const CONVEX_SITE_URL = import.meta.env.VITE_CONVEX_URL.replace(
-  ".cloud",
-  ".site"
-);
+import { useStreamResponse } from "@/hooks/useStreamResponse";
 
 const MAX_IMAGES = 4;
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/gif,image/webp";
@@ -45,12 +38,10 @@ export function ChatInput() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { isGenerating, threadId, startStreaming, updateStreamedContent, stopStreaming } =
-    useChatContext();
+  const { isGenerating, threadId, startStreaming } = useChatContext();
   const sendMessage = useMutation(api.messages.send);
-  const reportStreamFailure = useMutation(api.messages.reportStreamFailure);
   const uploadFile = useUploadFile(api.r2);
-  const { getToken } = useAuth();
+  const streamResponse = useStreamResponse();
 
   // Cleanup on unmount only (not on every images change)
   useEffect(() => {
@@ -140,67 +131,6 @@ export function ChatInput() {
       return prev.filter((img) => img.id !== id);
     });
   }, []);
-
-  const streamResponse = useCallback(
-    async (
-      assistantMessageId: Id<"messages">,
-      sessionId: Id<"sessions">
-    ) => {
-      try {
-        const token = await getToken({ template: "convex" });
-        const response = await fetch(`${CONVEX_SITE_URL}/chat`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            sessionId,
-            threadId,
-            assistantMessageId,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error("Response body is empty");
-        }
-
-        const decoder = new TextDecoder();
-        let accumulated = "";
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            accumulated += decoder.decode(value, { stream: true });
-            updateStreamedContent(accumulated);
-          }
-        } finally {
-          reader.releaseLock();
-        }
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Stream failed. Please try again.";
-        console.error("[ChatInput] Stream failed:", err);
-        stopStreaming();
-        toast.error(message);
-        try {
-          await reportStreamFailure({
-            messageId: assistantMessageId,
-            errorMessage: "I'm having trouble responding right now. Please try again.",
-          });
-        } catch (reportErr) {
-          console.error("[ChatInput] Failed to report stream failure:", reportErr);
-        }
-      }
-    },
-    [getToken, threadId, updateStreamedContent, stopStreaming, reportStreamFailure]
-  );
 
   const handleSubmit = useCallback(async () => {
     const trimmedContent = content.trim();
