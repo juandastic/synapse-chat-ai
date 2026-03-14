@@ -16,6 +16,8 @@ import type * as cortexProcessor from "../cortexProcessor.js";
 import type * as graph from "../graph.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
+import type * as notion from "../notion.js";
+import type * as notionConfig from "../notionConfig.js";
 import type * as personas from "../personas.js";
 import type * as r2 from "../r2.js";
 import type * as sessions from "../sessions.js";
@@ -38,6 +40,8 @@ declare const fullApi: ApiFromModules<{
   graph: typeof graph;
   http: typeof http;
   messages: typeof messages;
+  notion: typeof notion;
+  notionConfig: typeof notionConfig;
   personas: typeof personas;
   r2: typeof r2;
   sessions: typeof sessions;

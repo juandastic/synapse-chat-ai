@@ -6,7 +6,7 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { ThreadItem } from "./ThreadItem";
 import { ConfirmDialog } from "../ui/confirm-dialog";
-import { Plus, Settings, Brain, Moon, Sun } from "lucide-react";
+import { Plus, Settings, Brain, Database, Moon, Sun } from "lucide-react";
 import { Logo } from "../ui/logo";
 import { useTheme } from "../../contexts/ThemeContext";
 
@@ -38,6 +38,11 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
 
   const handleSettings = () => {
     navigate("/settings/personas");
+    onCloseMobile();
+  };
+
+  const handleNotion = () => {
+    navigate("/notion");
     onCloseMobile();
   };
 
@@ -109,6 +114,12 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
           label="Memory"
           onClick={handleMemory}
           active={location.pathname === "/memory"}
+        />
+        <SidebarButton
+          icon={<Database className="h-4 w-4" />}
+          label="Notion Export"
+          onClick={handleNotion}
+          active={location.pathname === "/notion"}
         />
         <SidebarButton
           icon={<Settings className="h-4 w-4" />}

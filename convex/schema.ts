@@ -11,6 +11,10 @@ export default defineSchema({
     name: v.string(),
     /** Applied to all personas as extra system prompt context */
     customInstructions: v.optional(v.string()),
+    /** Notion integration config for knowledge graph export */
+    notionToken: v.optional(v.string()),
+    notionPageName: v.optional(v.string()),
+    notionLanguage: v.optional(v.string()),
   }).index("by_token", ["tokenIdentifier"]),
 
   // ===========================================================================

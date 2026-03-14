@@ -5,6 +5,7 @@ import { PersonaSelector } from "./components/chat/PersonaSelector";
 import { ChatView } from "./components/chat/ChatView";
 import { PersonaSettings } from "./components/settings/PersonaSettings";
 import { MemoryExplorer } from "./components/memory/MemoryExplorer";
+import { NotionExportPage } from "./components/notion/NotionExportPage";
 import { Toaster } from "./components/ui/sonner";
 import { Logo } from "./components/ui/logo";
 
@@ -21,6 +22,7 @@ function App() {
             <Route path="t/:threadId" element={<ChatView />} />
             <Route path="settings/personas" element={<PersonaSettings />} />
             <Route path="memory" element={<MemoryExplorer />} />
+            <Route path="notion" element={<NotionExportPage />} />
           </Route>
         </Routes>
       </SignedIn>
