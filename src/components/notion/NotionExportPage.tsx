@@ -23,6 +23,9 @@ import {
 
 const LANGUAGE_OPTIONS = ["English", "Español"];
 
+const STORAGE_KEY_EXPORT = "synapse:notion:exportJobId";
+const STORAGE_KEY_CORRECTIONS = "synapse:notion:correctionsJobId";
+
 const EXPORT_STEPS = [
   { key: "hydrating", label: "Reading your memory graph" },
   { key: "analyzing", label: "Designing database schemas" },
@@ -87,6 +90,7 @@ export function NotionExportPage() {
 
   // ── Shared lifecycle ───────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("config");
+  const [restoring, setRestoring] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [terminalError, setTerminalError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -117,6 +121,69 @@ export function NotionExportPage() {
     if (savedConfig.notionLanguage) setNotionLanguage(savedConfig.notionLanguage);
   }, [savedConfig]);
 
+  // ── Restore in-flight job from localStorage on mount ──────────────────────
+  useEffect(() => {
+    const storedExportId = localStorage.getItem(STORAGE_KEY_EXPORT);
+    const storedCorrectionsId = localStorage.getItem(STORAGE_KEY_CORRECTIONS);
+
+    if (!storedExportId && !storedCorrectionsId) {
+      setRestoring(false);
+      return;
+    }
+
+    const restore = async () => {
+      if (storedExportId) {
+        try {
+          const status = await getExportStatus({ jobId: storedExportId });
+          if (status.status === "processing") {
+            if (status.progress?.currentStep) setExportCurrentStep(status.progress.currentStep);
+            if (status.progress?.categoriesDesigned != null) setExportCategoriesDesigned(status.progress.categoriesDesigned);
+            if (status.progress?.entriesExtracted != null) setExportEntriesExtracted(status.progress.entriesExtracted);
+            setExportJobId(storedExportId);
+            setPhase("exporting");
+          } else if (status.status === "completed" && status.result) {
+            setExportResult(status.result);
+            setPhase("completed");
+            localStorage.removeItem(STORAGE_KEY_EXPORT);
+          } else if (status.status === "failed") {
+            setTerminalError(formatJobError(status.error, status.code, "Export failed"));
+            setPhase("failed");
+            localStorage.removeItem(STORAGE_KEY_EXPORT);
+          }
+        } catch {
+          localStorage.removeItem(STORAGE_KEY_EXPORT);
+        }
+      } else if (storedCorrectionsId) {
+        try {
+          const status = await getCorrectionsStatus({ jobId: storedCorrectionsId });
+          if (status.status === "processing") {
+            if (status.progress?.currentStep) setCorrectionsCurrentStep(status.progress.currentStep);
+            if (status.progress?.databasesScanned != null) setCorrectionsDatabasesScanned(status.progress.databasesScanned);
+            if (status.progress?.correctionsFound != null) setCorrectionsFound(status.progress.correctionsFound);
+            if (status.progress?.correctionsApplied != null) setCorrectionsApplied(status.progress.correctionsApplied);
+            if (status.progress?.correctionsFailed != null) setCorrectionsFailed(status.progress.correctionsFailed);
+            setCorrectionsJobId(storedCorrectionsId);
+            setPhase("correcting");
+          } else if (status.status === "completed" && status.result) {
+            setCorrectionsResult(status.result);
+            setPhase("corrections-completed");
+            localStorage.removeItem(STORAGE_KEY_CORRECTIONS);
+          } else if (status.status === "failed") {
+            setTerminalError(formatJobError(status.error, status.code, "Corrections failed"));
+            setPhase("corrections-failed");
+            localStorage.removeItem(STORAGE_KEY_CORRECTIONS);
+          }
+        } catch {
+          localStorage.removeItem(STORAGE_KEY_CORRECTIONS);
+        }
+      }
+      setRestoring(false);
+    };
+
+    restore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally runs once; action hooks are stable Convex references
+
   // ── Stop polling whenever phase leaves an active state ────────────────────
   useEffect(() => {
     if (phase !== "exporting" && phase !== "correcting" && pollRef.current) {
@@ -145,16 +212,19 @@ export function NotionExportPage() {
 
         if (status.status === "completed" && status.result) {
           clearInterval(pollRef.current!);
+          localStorage.removeItem(STORAGE_KEY_EXPORT);
           setExportResult(status.result);
           setPhase("completed");
         } else if (status.status === "failed") {
           clearInterval(pollRef.current!);
+          localStorage.removeItem(STORAGE_KEY_EXPORT);
           setTerminalError(formatJobError(status.error, status.code, "Export failed"));
           setPhase("failed");
         }
       } catch (err) {
         if (isJobExpiredError(err)) {
           clearInterval(pollRef.current!);
+          localStorage.removeItem(STORAGE_KEY_EXPORT);
           setTerminalError("Export result expired. Please start a new export.");
           setPhase("failed");
           return;
@@ -194,16 +264,19 @@ export function NotionExportPage() {
 
         if (status.status === "completed" && status.result) {
           clearInterval(pollRef.current!);
+          localStorage.removeItem(STORAGE_KEY_CORRECTIONS);
           setCorrectionsResult(status.result);
           setPhase("corrections-completed");
         } else if (status.status === "failed") {
           clearInterval(pollRef.current!);
+          localStorage.removeItem(STORAGE_KEY_CORRECTIONS);
           setTerminalError(formatJobError(status.error, status.code, "Corrections failed"));
           setPhase("corrections-failed");
         }
       } catch (err) {
         if (isJobExpiredError(err)) {
           clearInterval(pollRef.current!);
+          localStorage.removeItem(STORAGE_KEY_CORRECTIONS);
           setTerminalError("Corrections job expired. Please try again.");
           setPhase("corrections-failed");
           return;
@@ -253,6 +326,7 @@ export function NotionExportPage() {
           notionPageName: fields.page,
           notionLanguage,
         });
+        localStorage.setItem(STORAGE_KEY_EXPORT, response.jobId);
         setExportJobId(response.jobId);
         setPhase("exporting");
       } catch (err) {
@@ -278,6 +352,7 @@ export function NotionExportPage() {
         notionPageName: fields.page,
         notionLanguage,
       });
+      localStorage.setItem(STORAGE_KEY_CORRECTIONS, response.jobId);
       setCorrectionsJobId(response.jobId);
       setPhase("correcting");
     } catch (err) {
@@ -289,6 +364,8 @@ export function NotionExportPage() {
   }, [notionToken, notionPageName, notionLanguage, startCorrectionsAction]);
 
   const handleReset = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY_EXPORT);
+    localStorage.removeItem(STORAGE_KEY_CORRECTIONS);
     setPhase("config");
     setSubmitError(null);
     setTerminalError(null);
@@ -326,7 +403,15 @@ export function NotionExportPage() {
         </h1>
       </header>
 
+      {/* Restoring spinner — shown briefly while we check localStorage on mount */}
+      {restoring && (
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+        </div>
+      )}
+
       {/* Scrollable content */}
+      {!restoring && (
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-xl space-y-8 px-6 py-8">
           {/* Hero */}
@@ -438,6 +523,7 @@ export function NotionExportPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
