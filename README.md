@@ -19,6 +19,7 @@ A multi-thread, persona-based conversational interface with **deep memory**. Eac
   - [Conversational AI](#conversational-ai)
   - [Knowledge Graph & Deep Memory](#knowledge-graph--deep-memory)
   - [Memory Explorer](#memory-explorer)
+  - [Notion Export & Corrections](#notion-export--corrections)
   - [Persona System](#persona-system)
   - [UI & UX](#ui--ux)
 - [Technical Highlights](#technical-highlights)
@@ -73,12 +74,14 @@ graph TD
         PersonaSelector["PersonaSelector"]
         ChatView["ChatView"]
         MemoryExplorer["MemoryExplorer"]
+        NotionExportPage["NotionExportPage"]
         PersonaSettings["PersonaSettings"]
 
         AppLayout --> Sidebar
         AppLayout --> PersonaSelector
         AppLayout --> ChatView
         AppLayout --> MemoryExplorer
+        AppLayout --> NotionExportPage
     end
 
     subgraph convex ["Convex Backend (serverless + realtime)"]
@@ -92,6 +95,8 @@ graph TD
         GraphAPI["graph.ts"]
         CortexJobs["cortexJobs.ts"]
         CortexProcessor["cortexProcessor.ts"]
+        NotionAPI["notion.ts"]
+        NotionConfigAPI["notionConfig.ts"]
     end
 
     subgraph cortex ["Synapse Cortex (external)"]
@@ -101,6 +106,10 @@ graph TD
         IngestStatusEndpoint["GET /ingest/status"]
         GraphEndpoint["/v1/graph"]
         CorrectionEndpoint["/v1/graph/correction"]
+        NotionExportEndpoint["POST /v1/notion/export"]
+        NotionExportStatusEndpoint["GET /v1/notion/export/status"]
+        NotionCorrectionsEndpoint["POST /v1/notion/corrections"]
+        NotionCorrectionsStatusEndpoint["GET /v1/notion/corrections/status"]
     end
 
     subgraph db ["Convex Database"]
@@ -127,6 +136,9 @@ graph TD
     MemoryExplorer -->|"fetch graph"| GraphAPI
     MemoryExplorer -->|"submit correction"| GraphAPI
     MemoryExplorer -->|"subscribe job status"| CortexJobs
+    NotionExportPage -->|"read/save config"| NotionConfigAPI
+    NotionExportPage -->|"start export / poll status"| NotionAPI
+    NotionExportPage -->|"start corrections / poll status"| NotionAPI
     PersonaSettings -->|"CRUD"| PersonasAPI
 
     %% Backend orchestration
@@ -137,6 +149,10 @@ graph TD
     SessionsAPI -->|"schedule hydrate"| CortexAPI
     SessionsAPI -->|"enqueue ingest"| CortexJobs
     GraphAPI -->|"enqueue correction"| CortexJobs
+    NotionAPI -->|"POST export"| NotionExportEndpoint
+    NotionAPI -->|"GET export status"| NotionExportStatusEndpoint
+    NotionAPI -->|"POST corrections"| NotionCorrectionsEndpoint
+    NotionAPI -->|"GET corrections status"| NotionCorrectionsStatusEndpoint
 
     %% Async job queue
     CortexJobs -->|"schedule"| CortexProcessor
@@ -184,6 +200,9 @@ erDiagram
         string tokenIdentifier
         string name
         string customInstructions_optional
+        string notionToken_optional
+        string notionPageName_optional
+        string notionLanguage_optional
     }
     personas {
         id userId
@@ -567,6 +586,18 @@ flowchart LR
 - **Responsive Layout**: Desktop shows entity list + graph + inspector side by side. Mobile uses full-width graph with bottom-sheet inspector.
 - **Custom Rendering**: Nodes sized by connection count, selection highlighting with glow effects, labels appear on zoom.
 
+### Notion Export & Corrections
+
+- **Knowledge Graph Export**: Export the full user knowledge graph into structured Notion databases. Synapse Cortex reads the Neo4j graph, designs AI-tailored schemas per category (using Gemini structured output), creates one Notion database per category under a parent page, populates all rows via the Notion MCP server, and generates a "Knowledge Graph Overview" summary page with links.
+- **Async Export Pipeline**: Export is a 6-step async job (`hydrating → analyzing → extracting_entries → creating_databases → populating → summarizing`). The UI polls `GET /v1/notion/export/status/{jobId}` every 30 seconds, showing live step progress and running stats (categories designed, entries extracted).
+- **Sync Corrections from Notion**: After an export, users can flag rows in Notion as "Needs Review" and then trigger a corrections sync. Cortex scans all exported databases for flagged rows, applies each correction back to the knowledge graph via Graphiti (`add_episode`), and updates or archives the Notion row via MCP.
+- **Corrections Pipeline**: Corrections run as a 2-step async job (`scanning → applying`). The UI polls `GET /v1/notion/corrections/status/{jobId}`, showing live counts of databases scanned, corrections found, and corrections applied. Partial failures are surfaced per-row (category, title, error).
+- **Config Persistence**: Notion integration token, parent page name, and output language are saved to the user record on first export and pre-filled on every subsequent visit.
+- **In-app Setup Guide**: A modal explains how to create a Notion internal integration, copy the token, and grant page access — with a direct link to `notion.so/profile/integrations/internal`.
+- **Graceful Error Handling**: Token/page validation errors from Cortex (400) surface immediately in the config form. Job 404s (job consumed after terminal state) stop polling without infinite retries.
+
+---
+
 ### Persona System
 
 - **Template Personas**: Pre-built personalities (Therapist, Coach, Friend) with tailored system prompts.
@@ -604,7 +635,7 @@ flowchart LR
 ```
 synapse-ai-chat/
 ├── convex/                       # Convex backend (serverless functions + database)
-│   ├── schema.ts                 # Database schema (7 tables, indexed)
+│   ├── schema.ts                 # Database schema (7 tables, indexed; users has Notion config fields)
 │   ├── users.ts                  # User management + customInstructions
 │   ├── personas.ts               # Persona CRUD + default templates
 │   ├── threads.ts                # Thread CRUD + cascade delete
@@ -616,6 +647,8 @@ synapse-ai-chat/
 │   ├── cortexJobs.ts             # Job queue management (enqueue, status, retry)
 │   ├── cortexProcessor.ts        # Job processor (ingest: POST + pollIngestStatus; correction; slow-backoff retry)
 │   ├── graph.ts                  # Knowledge graph queries + NLP corrections (enqueues correction jobs)
+│   ├── notion.ts                 # Notion actions ("use node"): startExport, getExportStatus, startCorrections, getCorrectionsStatus
+│   ├── notionConfig.ts           # Notion config query/mutation (getNotionConfig, saveNotionConfig, saveNotionConfigInternal)
 │   └── auth.config.ts            # Clerk auth configuration
 ├── src/
 │   ├── components/
@@ -634,6 +667,8 @@ synapse-ai-chat/
 │   │   │   ├── MemoryCorrection.tsx   # NLP correction input
 │   │   │   ├── CortexJobStatus.tsx    # Real-time async job status panel
 │   │   │   └── types.ts              # Graph data types
+│   │   ├── notion/               # Notion export & corrections
+│   │   │   └── NotionExportPage.tsx   # Full page (route: /notion): config form, export pipeline, corrections pipeline
 │   │   ├── layout/
 │   │   │   └── AppLayout.tsx          # Sidebar + outlet shell (responsive)
 │   │   ├── settings/
@@ -650,7 +685,7 @@ synapse-ai-chat/
 │   ├── lib/
 │   │   ├── utils.ts               # Utility functions
 │   │   └── markdown-security.ts   # Markdown sanitization
-│   ├── App.tsx                    # Routes (/, /t/:threadId, /settings/personas, /memory)
+│   ├── App.tsx                    # Routes (/, /t/:threadId, /settings/personas, /memory, /notion)
 │   ├── main.tsx                   # Entry point (BrowserRouter + providers)
 │   └── index.css                  # Global styles + Tailwind
 └── package.json
@@ -736,7 +771,7 @@ synapse-ai-chat/
 6. **Thread deletion cascade** — deletes all sessions + messages for the thread in a single mutation.
 7. **NLP-based memory corrections** — instead of manual entity editing, users submit natural language corrections that Graphiti processes through its entity resolution pipeline.
 8. **Async job queue over fire-and-forget** — Cortex API calls (ingestion: 30-200s, corrections: 30-60s) are too slow and unreliable for synchronous execution. Ingest uses an async API: POST /ingest returns 202 immediately, and `pollIngestStatus` polls GET /ingest/status until completed (5m first, then 10m intervals, up to ~55 min). A persistent `cortex_jobs` table with a recursive processor gives resilience (slow-backoff retry on POST failures), observability (real-time UI), and auditability (job history). The "bouncer" pattern (enqueue + schedule immediately) minimizes latency while decoupling from the caller.
-9. **Routing:** `react-router-dom` with paths `/`, `/t/:threadId`, `/settings/personas`, and `/memory`. Sidebar persists via `AppLayout` with `<Outlet />`.
+9. **Routing:** `react-router-dom` with paths `/`, `/t/:threadId`, `/settings/personas`, `/memory`, and `/notion`. Sidebar persists via `AppLayout` with `<Outlet />`.
 10. **React performance patterns:** `content-visibility: auto` for message lists, `useTransition` for form submissions, `React.memo` for thread items, functional setState, passive scroll listeners.
 11. **HTTP streaming for bandwidth optimization** — streaming bypasses the DB entirely during generation; content flows directly from Cortex to the client via HTTP. A single atomic write at the end persists the result. This reduces reactive query re-execution from N writes to 1, lowering Convex bandwidth usage.
 12. **Full-context injection over RAG** — see rationale below.
