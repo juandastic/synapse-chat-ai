@@ -1,4 +1,5 @@
-import { SignInButton, SignedIn, SignedOut } from "@clerk/clerk-react";
+import { useState } from "react";
+import { SignInButton, SignedIn, SignedOut, useSignIn } from "@clerk/clerk-react";
 import { Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
 import { PersonaSelector } from "./components/chat/PersonaSelector";
@@ -8,6 +9,9 @@ import { MemoryExplorer } from "./components/memory/MemoryExplorer";
 import { NotionExportPage } from "./components/notion/NotionExportPage";
 import { Toaster } from "./components/ui/sonner";
 import { Logo } from "./components/ui/logo";
+
+const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL as string | undefined;
+const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD as string | undefined;
 
 function App() {
   return (
@@ -32,6 +36,30 @@ function App() {
 }
 
 function LandingPage() {
+  const { signIn, setActive } = useSignIn();
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
+
+  const demoAvailable = Boolean(DEMO_EMAIL && DEMO_PASSWORD);
+
+  const handleTryDemo = async () => {
+    if (!signIn || !setActive || !DEMO_EMAIL || !DEMO_PASSWORD) return;
+    setDemoLoading(true);
+    setDemoError(null);
+    try {
+      const result = await signIn.create({
+        identifier: DEMO_EMAIL,
+        password: DEMO_PASSWORD,
+      });
+      if (result.createdSessionId) {
+        await setActive({ session: result.createdSessionId });
+      }
+    } catch {
+      setDemoError("Unable to load demo. Please try again.");
+      setDemoLoading(false);
+    }
+  };
+
   return (
     <div className="flex h-full flex-col items-center justify-center px-6">
       {/* Subtle background gradient */}
@@ -52,7 +80,7 @@ function LandingPage() {
           present.
         </p>
 
-        <div className="mt-10">
+        <div className="mt-10 flex flex-col items-center gap-3">
           <SignInButton mode="modal">
             <button className="group relative inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               Begin your journey
@@ -71,6 +99,28 @@ function LandingPage() {
               </svg>
             </button>
           </SignInButton>
+
+          {demoAvailable && (
+            <>
+              <button
+                onClick={handleTryDemo}
+                disabled={demoLoading}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-border/50 bg-transparent px-6 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:border-primary/30 hover:text-foreground hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+              >
+                {demoLoading ? (
+                  <>
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Loading demo...
+                  </>
+                ) : (
+                  "Try the demo"
+                )}
+              </button>
+              {demoError && (
+                <p className="text-xs text-destructive">{demoError}</p>
+              )}
+            </>
+          )}
         </div>
 
         <p className="mt-6 text-xs text-muted-foreground/60">

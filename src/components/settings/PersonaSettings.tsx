@@ -7,6 +7,7 @@ import { PersonaForm } from "./PersonaForm";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Pencil, Trash2, Plus } from "lucide-react";
+import { useIsDemoUser } from "../layout/AppLayout";
 
 type ViewState =
   | { mode: "list" }
@@ -25,6 +26,7 @@ type DeleteDialogState =
  */
 export function PersonaSettings() {
   const navigate = useNavigate();
+  const isDemoUser = useIsDemoUser();
   const personas = useQuery(api.personas.list);
   const createPersona = useMutation(api.personas.create);
   const updatePersona = useMutation(api.personas.update);
@@ -230,16 +232,18 @@ export function PersonaSettings() {
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
-                <button
-                  onClick={() =>
-                    handleDeleteClick(persona._id, persona.name)
-                  }
-                  disabled={deletePending}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                  aria-label={`Delete ${persona.name}`}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {!isDemoUser && (
+                  <button
+                    onClick={() =>
+                      handleDeleteClick(persona._id, persona.name)
+                    }
+                    disabled={deletePending}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                    aria-label={`Delete ${persona.name}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

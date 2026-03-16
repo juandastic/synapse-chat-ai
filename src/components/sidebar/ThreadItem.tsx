@@ -10,6 +10,8 @@ interface ThreadItemProps {
   lastMessageAt: number;
   /** Called when the user clicks the delete button */
   onDelete: (threadId: string, title: string) => void;
+  /** Hide the delete button (e.g. for demo accounts) */
+  hideDelete?: boolean;
 }
 
 /**
@@ -22,6 +24,7 @@ export const ThreadItem = memo(function ThreadItem({
   personaIcon,
   lastMessageAt,
   onDelete,
+  hideDelete,
 }: ThreadItemProps) {
   const relativeTime = getRelativeTime(lastMessageAt);
 
@@ -49,18 +52,20 @@ export const ThreadItem = memo(function ThreadItem({
         </div>
       </NavLink>
 
-      {/* Delete button — visible on hover */}
-      <button
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onDelete(threadId, title);
-        }}
-        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground/0 transition-all group-hover:text-muted-foreground hover:!bg-destructive/10 hover:!text-destructive"
-        aria-label={`Delete ${title}`}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
+      {/* Delete button — visible on hover, hidden for demo users */}
+      {!hideDelete && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDelete(threadId, title);
+          }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground/0 transition-all group-hover:text-muted-foreground hover:!bg-destructive/10 hover:!text-destructive"
+          aria-label={`Delete ${title}`}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 });

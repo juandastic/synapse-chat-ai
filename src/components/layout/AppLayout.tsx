@@ -1,8 +1,16 @@
 import { useState, useCallback, useEffect } from "react";
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, Link, useOutletContext } from "react-router-dom";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { Sidebar } from "../sidebar/Sidebar";
+import { DemoBanner } from "../ui/DemoBanner";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Moon, Sun } from "lucide-react";
+
+/** Hook for child routes to check if current user is the demo account. */
+export function useIsDemoUser(): boolean {
+  return useOutletContext<boolean>() ?? false;
+}
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -27,9 +35,12 @@ export function AppLayout() {
   }, [sidebarOpen, closeSidebar]);
 
   const { theme, toggleTheme } = useTheme();
+  const isDemoUser = useQuery(api.demo.isDemoUserQuery) ?? false;
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col">
+      {isDemoUser && <DemoBanner />}
+      <div className="flex min-h-0 flex-1">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -50,7 +61,7 @@ export function AppLayout() {
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        <Sidebar onCloseMobile={closeSidebar} />
+        <Sidebar onCloseMobile={closeSidebar} isDemoUser={isDemoUser} />
       </aside>
 
       {/* Main content area */}
@@ -93,8 +104,9 @@ export function AppLayout() {
           </button>
         </div>
 
-        <Outlet />
+        <Outlet context={isDemoUser} />
       </main>
+      </div>
     </div>
   );
 }

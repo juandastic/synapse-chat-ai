@@ -12,13 +12,14 @@ import { useTheme } from "../../contexts/ThemeContext";
 
 interface SidebarProps {
   onCloseMobile: () => void;
+  isDemoUser?: boolean;
 }
 
 type DeleteDialogState =
   | { type: "closed" }
   | { type: "confirm"; threadId: Id<"threads">; threadTitle: string };
 
-export function Sidebar({ onCloseMobile }: SidebarProps) {
+export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
   const threads = useQuery(api.threads.list);
   const removeThread = useMutation(api.threads.remove);
   const navigate = useNavigate();
@@ -178,6 +179,7 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
                 personaIcon={thread.persona.icon}
                 lastMessageAt={thread.lastMessageAt}
                 onDelete={handleDeleteClick}
+                hideDelete={isDemoUser}
               />
             ))}
           </nav>

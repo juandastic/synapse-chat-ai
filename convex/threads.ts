@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getCurrentUser, getOrCreateUser } from "./users";
+import { isDemoUser } from "./demo";
 
 // =============================================================================
 // Configuration
@@ -190,6 +191,10 @@ export const remove = mutation({
     const thread = await ctx.db.get(args.threadId);
     if (!thread || thread.userId !== user._id) {
       throw new Error("Thread not found");
+    }
+
+    if (isDemoUser(user)) {
+      throw new Error("Cannot delete threads in demo mode");
     }
 
     // Cascade delete: messages first, then sessions, then thread
