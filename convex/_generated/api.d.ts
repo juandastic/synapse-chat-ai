@@ -20,11 +20,13 @@ import type * as messages from "../messages.js";
 import type * as notion from "../notion.js";
 import type * as notionConfig from "../notionConfig.js";
 import type * as personas from "../personas.js";
+import type * as plans from "../plans.js";
 import type * as r2 from "../r2.js";
 import type * as seed_seedDemoData from "../seed/seedDemoData.js";
 import type * as sessions from "../sessions.js";
 import type * as threads from "../threads.js";
 import type * as usage from "../usage.js";
+import type * as usageLimits from "../usageLimits.js";
 import type * as users from "../users.js";
 
 import type {
@@ -46,11 +48,13 @@ declare const fullApi: ApiFromModules<{
   notion: typeof notion;
   notionConfig: typeof notionConfig;
   personas: typeof personas;
+  plans: typeof plans;
   r2: typeof r2;
   "seed/seedDemoData": typeof seed_seedDemoData;
   sessions: typeof sessions;
   threads: typeof threads;
   usage: typeof usage;
+  usageLimits: typeof usageLimits;
   users: typeof users;
 }>;
 

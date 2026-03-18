@@ -3,6 +3,7 @@ import {
   mutation,
   query,
   internalQuery,
+  internalMutation,
   QueryCtx,
   MutationCtx,
 } from "./_generated/server";
@@ -186,5 +187,32 @@ export const updateProfile = mutation({
     });
 
     return ctx.db.get(user._id);
+  },
+});
+
+// =============================================================================
+// Internal Mutations
+// =============================================================================
+
+/**
+ * Manually set a user's plan tier.
+ * Run from the Convex dashboard for one-off upgrades/downgrades.
+ */
+export const setUserPlan = internalMutation({
+  args: {
+    userId: v.id("users"),
+    plan: v.union(v.literal("unlimited"), v.literal("pro"), v.literal("free")),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(args.userId, { plan: args.plan });
+
+    console.log("[users.setUserPlan] Plan updated", {
+      userId: args.userId,
+      previousPlan: user.plan ?? "free",
+      newPlan: args.plan,
+    });
   },
 });

@@ -9,6 +9,8 @@ export default defineSchema({
   users: defineTable({
     tokenIdentifier: v.string(),
     name: v.string(),
+    /** Plan tier — undefined defaults to "free" */
+    plan: v.optional(v.union(v.literal("unlimited"), v.literal("pro"), v.literal("free"))),
     /** Applied to all personas as extra system prompt context */
     customInstructions: v.optional(v.string()),
     /** Notion integration config for knowledge graph export */

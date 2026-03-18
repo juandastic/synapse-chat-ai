@@ -7,6 +7,7 @@ import {
 } from "./_generated/server";
 import { getOrCreateUser, getCurrentUser } from "./users";
 import { getOrCreateActiveSession, touchSession } from "./sessions";
+import { checkDailyUsage } from "./usageLimits";
 import { r2 } from "./r2";
 
 // =============================================================================
@@ -120,6 +121,12 @@ export const send = mutation({
     }
 
     const user = await getOrCreateUser(ctx);
+
+    // Usage limit check — blocks before any DB writes
+    const usageCheck = await checkDailyUsage(ctx, user);
+    if (!usageCheck.allowed) {
+      throw new Error(usageCheck.reason);
+    }
 
     const thread = await ctx.db.get(args.threadId);
     if (!thread || thread.userId !== user._id) {
@@ -305,6 +312,12 @@ export const resend = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getOrCreateUser(ctx);
+
+    // Usage limit check — blocks before creating new assistant placeholder
+    const usageCheck = await checkDailyUsage(ctx, user);
+    if (!usageCheck.allowed) {
+      throw new Error(usageCheck.reason);
+    }
 
     const userMessage = await ctx.db.get(args.userMessageId);
     if (!userMessage) {

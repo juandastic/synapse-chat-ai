@@ -37,6 +37,12 @@ export function useStreamResponse() {
         });
 
         if (!response.ok) {
+          if (response.status === 429) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(
+              data.error || "Usage limit reached"
+            );
+          }
           throw new Error(`HTTP ${response.status}`);
         }
 

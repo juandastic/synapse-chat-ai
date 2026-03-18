@@ -8,7 +8,7 @@ import {
   ClipboardEvent,
   DragEvent,
 } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { Send, ImagePlus, X, Loader2 } from "lucide-react";
@@ -42,6 +42,7 @@ export function ChatInput() {
   const sendMessage = useMutation(api.messages.send);
   const uploadFile = useUploadFile(api.r2);
   const streamResponse = useStreamResponse();
+  const usageStatus = useQuery(api.usageLimits.getUsageStatus);
 
   // Cleanup on unmount only (not on every images change)
   useEffect(() => {
@@ -264,7 +265,15 @@ export function ChatInput() {
     [processAndAddImages]
   );
 
-  const isDisabled = isSubmitting || isGenerating;
+  // Usage limits
+  const msgLimit = usageStatus?.dailyMessages;
+  const isUnlimited = msgLimit?.limit === -1;
+  const isAtLimit =
+    !isUnlimited && msgLimit != null && msgLimit.used >= msgLimit.limit;
+  const usagePercent =
+    !isUnlimited && msgLimit ? msgLimit.used / msgLimit.limit : 0;
+
+  const isDisabled = isSubmitting || isGenerating || isAtLimit;
   const canSubmit =
     (content.trim().length > 0 || images.length > 0) && !isDisabled;
   const canAttach = images.length < MAX_IMAGES && !isDisabled;
@@ -382,7 +391,7 @@ export function ChatInput() {
           >
             {isUploading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isDisabled ? (
+            ) : isSubmitting || isGenerating ? (
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
             ) : (
               <Send className="h-4 w-4" />
@@ -395,6 +404,46 @@ export function ChatInput() {
         <p className="mt-2 text-center text-xs text-destructive" role="alert">
           {error}
         </p>
+      )}
+
+      {/* Usage indicator — hidden for unlimited plans */}
+      {!isUnlimited && msgLimit != null && (
+        isAtLimit ? (
+          <div className="mt-2 text-center text-xs space-y-1">
+            <p className="text-destructive font-medium">
+              You've reached your daily limit of {msgLimit.limit} messages.
+            </p>
+            <p className="text-muted-foreground/60">
+              {usageStatus?.resetInfo}. For higher limits, reach out at{" "}
+              <a
+                href={usageStatus?.contactInfo.x}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground transition-colors"
+              >
+                x.com/juandastic
+              </a>
+              {" "}or{" "}
+              <a
+                href={`mailto:${usageStatus?.contactInfo.email}`}
+                className="underline hover:text-foreground transition-colors"
+              >
+                {usageStatus?.contactInfo.email}
+              </a>
+            </p>
+          </div>
+        ) : (
+          <p
+            className={cn(
+              "mt-2 text-center text-xs",
+              usagePercent >= 0.8
+                ? "text-amber-500"
+                : "text-muted-foreground/60"
+            )}
+          >
+            {msgLimit.used} / {msgLimit.limit} messages today
+          </p>
+        )
       )}
 
       <p className="mt-2 text-center text-xs text-muted-foreground/60">
