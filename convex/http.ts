@@ -9,6 +9,7 @@ import { CompilationMetadata, CORTEX_API_BASE_URL } from "./cortexConfig";
 // =============================================================================
 
 const DEFAULT_MODEL = "gemini-3.1-pro-preview";
+const FALLBACK_MODEL = "gemini-3-pro-preview";
 const CORTEX_CHAT_COMPLETIONS_URL = `${CORTEX_API_BASE_URL}/v1/chat/completions`;
 
 // =============================================================================
@@ -173,10 +174,14 @@ http.route({
 
     const streamData = async () => {
       let content = "";
-      let usage: StreamChunk["usage"] = undefined;
+      let usage: StreamChunk["usage"];
       let finishReason = "stop";
+      let modelUsed = DEFAULT_MODEL;
+      let usedFallback = false;
 
-      try {
+      // Performs the fetch + SSE streaming for a given model.
+      // Writes content chunks to the stream and returns the final usage stats.
+      const attemptStream = async (model: string): Promise<StreamChunk["usage"]> => {
         const response = await fetch(CORTEX_CHAT_COMPLETIONS_URL, {
           method: "POST",
           headers: {
@@ -184,7 +189,7 @@ http.route({
             "X-API-SECRET": apiSecret,
           },
           body: JSON.stringify({
-            model: DEFAULT_MODEL,
+            model,
             messages: apiMessages,
             stream: true,
             user_id: userId,
@@ -203,6 +208,7 @@ http.route({
 
         console.log("[http /chat] API connected", {
           requestId,
+          model,
           status: response.status,
           apiLatencyMs: Date.now() - startTime,
         });
@@ -212,6 +218,7 @@ http.route({
 
         const decoder = new TextDecoder();
         let buffer = "";
+        let localUsage: StreamChunk["usage"];
 
         try {
           while (true) {
@@ -247,7 +254,7 @@ http.route({
                 }
 
                 if (chunk.usage) {
-                  usage = chunk.usage;
+                  localUsage = chunk.usage;
                 }
               } catch (e) {
                 if (
@@ -263,6 +270,35 @@ http.route({
           reader.releaseLock();
         }
 
+        return localUsage;
+      };
+
+      try {
+        try {
+          usage = await attemptStream(DEFAULT_MODEL);
+          modelUsed = DEFAULT_MODEL;
+        } catch (primaryError) {
+          if (content.length > 0) {
+            // Already streamed bytes — can't retry, re-throw to error handler
+            throw primaryError;
+          }
+
+          const primaryMessage =
+            primaryError instanceof Error
+              ? primaryError.message
+              : String(primaryError);
+
+          console.warn("[http /chat] Primary model failed, retrying with fallback", {
+            requestId,
+            primaryError: primaryMessage,
+            fallbackModel: FALLBACK_MODEL,
+          });
+
+          usage = await attemptStream(FALLBACK_MODEL);
+          modelUsed = FALLBACK_MODEL;
+          usedFallback = true;
+        }
+
         // ── Single DB write — persist final content + metadata ───────────
         const totalLatencyMs = Date.now() - startTime;
 
@@ -270,7 +306,8 @@ http.route({
           id: assistantMessageId as never,
           content,
           metadata: {
-            model: DEFAULT_MODEL,
+            model: modelUsed,
+            usedFallback,
             promptTokens: usage?.prompt_tokens,
             completionTokens: usage?.completion_tokens,
             totalTokens: usage?.total_tokens,
@@ -311,6 +348,8 @@ http.route({
 
         console.log("[http /chat] Completed", {
           requestId,
+          model: modelUsed,
+          usedFallback,
           latencyMs: totalLatencyMs,
           contentLength: content.length,
           tokens: usage?.total_tokens,
@@ -335,7 +374,8 @@ http.route({
             id: assistantMessageId as never,
             content,
             metadata: {
-              model: DEFAULT_MODEL,
+              model: modelUsed,
+              usedFallback,
               latencyMs,
               finishReason: "error",
             },

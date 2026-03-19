@@ -400,6 +400,7 @@ export const finalizeGeneration = internalMutation({
       cost: v.optional(v.number()),
       latencyMs: v.optional(v.number()),
       finishReason: v.optional(v.string()),
+      usedFallback: v.optional(v.boolean()),
     }),
     completedAt: v.number(),
   },

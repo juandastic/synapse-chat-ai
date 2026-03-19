@@ -136,6 +136,7 @@ export default defineSchema({
         cost: v.optional(v.number()),
         latencyMs: v.optional(v.number()),
         finishReason: v.optional(v.string()),
+        usedFallback: v.optional(v.boolean()),
         error: v.optional(v.string()),
         errorCode: v.optional(v.string()),
       })
