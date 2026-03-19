@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getCurrentUser, getOrCreateUser } from "./users";
 import { isDemoUser } from "./demo";
 
@@ -199,6 +200,17 @@ export const create = mutation({
       isDefault,
     });
 
+    // PostHog: track custom persona creation
+    await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+      distinctId: user._id,
+      event: "persona created",
+      properties: {
+        persona_name: name,
+        language: args.language.trim() || "English",
+        is_default: isDefault,
+      },
+    });
+
     return personaId;
   },
 });
@@ -322,6 +334,15 @@ export const remove = mutation({
       userId: user._id,
       name: persona.name,
     });
+
+    // PostHog: track persona deletion
+    await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+      distinctId: user._id,
+      event: "persona deleted",
+      properties: {
+        persona_name: persona.name,
+      },
+    });
   },
 });
 
@@ -365,6 +386,17 @@ export const createFromTemplate = mutation({
       userId: user._id,
       templateKey: args.templateKey,
       isDefault,
+    });
+
+    // PostHog: track persona creation from template
+    await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+      distinctId: user._id,
+      event: "persona created from template",
+      properties: {
+        template_key: args.templateKey,
+        persona_name: template.name,
+        is_default: isDefault,
+      },
     });
 
     return personaId;

@@ -7,6 +7,7 @@ import {
   QueryCtx,
   MutationCtx,
 } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 // =============================================================================
 // Configuration
@@ -88,6 +89,20 @@ export async function getOrCreateUser(ctx: MutationCtx) {
   console.log("[users.getOrCreateUser] Created new user", {
     userId: newUser._id,
     name: displayName,
+  });
+
+  // PostHog: identify new user and capture signup event
+  await ctx.scheduler.runAfter(0, internal.analytics.identify, {
+    distinctId: newUser._id,
+    properties: {
+      name: displayName,
+      created_at: new Date().toISOString(),
+    },
+  });
+  await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+    distinctId: newUser._id,
+    event: "user created",
+    properties: { name: displayName },
   });
 
   return newUser;
@@ -184,6 +199,15 @@ export const updateProfile = mutation({
       userId: user._id,
       previousName,
       newName: name,
+    });
+
+    // PostHog: track profile update and refresh person properties
+    await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+      distinctId: user._id,
+      event: "profile updated",
+      properties: {
+        $set: { name },
+      },
     });
 
     return ctx.db.get(user._id);

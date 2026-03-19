@@ -355,6 +355,28 @@ http.route({
           tokens: usage?.total_tokens,
           finishReason,
         });
+
+        // PostHog: track successful message generation
+        try {
+          await ctx.runAction(internal.analytics.capture, {
+            distinctId: userId,
+            event: "message sent",
+            properties: {
+              model: modelUsed,
+              used_fallback: usedFallback,
+              prompt_tokens: usage?.prompt_tokens,
+              completion_tokens: usage?.completion_tokens,
+              total_tokens: usage?.total_tokens,
+              latency_ms: totalLatencyMs,
+              finish_reason: finishReason,
+              rag_enabled: usage?.rag_enabled ?? false,
+              thread_id: threadId,
+              session_id: sessionId,
+            },
+          });
+        } catch {
+          // Analytics failure must never affect the user experience
+        }
       } catch (error) {
         const message =
           error instanceof Error ? error.message : String(error);
@@ -367,6 +389,24 @@ http.route({
           latencyMs,
           contentLength: content.length,
         });
+
+        // PostHog: track generation failure
+        try {
+          await ctx.runAction(internal.analytics.capture, {
+            distinctId: userId,
+            event: "message generation failed",
+            properties: {
+              error_code: isProviderError ? "PROVIDER_ERROR" : "STREAM_ERROR",
+              latency_ms: latencyMs,
+              thread_id: threadId,
+              session_id: sessionId,
+              model: modelUsed,
+              partial_content: content.length > 0,
+            },
+          });
+        } catch {
+          // Analytics failure must never affect the user experience
+        }
 
         if (content) {
           // Save whatever content was accumulated before the error

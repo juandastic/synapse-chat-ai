@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getCurrentUser, getOrCreateUser } from "./users";
 import { isDemoUser } from "./demo";
 
@@ -142,6 +143,16 @@ export const create = mutation({
       title,
     });
 
+    // PostHog: track new thread creation
+    await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+      distinctId: user._id,
+      event: "thread created",
+      properties: {
+        persona_id: args.personaId,
+        persona_name: persona.name,
+      },
+    });
+
     return threadId;
   },
 });
@@ -227,6 +238,16 @@ export const remove = mutation({
       userId: user._id,
       messagesDeleted: messages.length,
       sessionsDeleted: sessions.length,
+    });
+
+    // PostHog: track thread deletion
+    await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+      distinctId: user._id,
+      event: "thread deleted",
+      properties: {
+        messages_deleted: messages.length,
+        sessions_deleted: sessions.length,
+      },
     });
   },
 });

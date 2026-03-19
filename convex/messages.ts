@@ -5,6 +5,7 @@ import {
   internalMutation,
   internalQuery,
 } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getOrCreateUser, getCurrentUser } from "./users";
 import { getOrCreateActiveSession, touchSession } from "./sessions";
 import { checkDailyUsage } from "./usageLimits";
@@ -125,6 +126,15 @@ export const send = mutation({
     // Usage limit check — blocks before any DB writes
     const usageCheck = await checkDailyUsage(ctx, user);
     if (!usageCheck.allowed) {
+      // PostHog: track usage limit hit
+      await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+        distinctId: user._id,
+        event: "usage limit reached",
+        properties: {
+          plan: user.plan ?? "free",
+          reason: usageCheck.reason,
+        },
+      });
       throw new Error(usageCheck.reason);
     }
 
@@ -316,6 +326,16 @@ export const resend = mutation({
     // Usage limit check — blocks before creating new assistant placeholder
     const usageCheck = await checkDailyUsage(ctx, user);
     if (!usageCheck.allowed) {
+      // PostHog: track usage limit hit on resend
+      await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+        distinctId: user._id,
+        event: "usage limit reached",
+        properties: {
+          plan: user.plan ?? "free",
+          reason: usageCheck.reason,
+          action: "resend",
+        },
+      });
       throw new Error(usageCheck.reason);
     }
 

@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { Outlet, Link, useOutletContext } from "react-router-dom";
 import { useQuery } from "convex/react";
+import { useUser } from "@clerk/clerk-react";
+import posthog from "posthog-js";
 import { api } from "../../../convex/_generated/api";
 import { Sidebar } from "../sidebar/Sidebar";
 import { DemoBanner } from "../ui/DemoBanner";
@@ -36,6 +38,19 @@ export function AppLayout() {
 
   const { theme, toggleTheme } = useTheme();
   const isDemoUser = useQuery(api.demo.isDemoUserQuery) ?? false;
+  const { user } = useUser();
+  const convexUser = useQuery(api.users.me);
+  const usageStatus = useQuery(api.usageLimits.getUsageStatus);
+
+  useEffect(() => {
+    if (convexUser && user) {
+      posthog.identify(convexUser._id, {
+        email: user.primaryEmailAddress?.emailAddress,
+        name: convexUser.name,
+      });
+      posthog.setPersonProperties({ plan: usageStatus?.plan ?? "free" });
+    }
+  }, [convexUser?._id, usageStatus?.plan]);
 
   return (
     <div className="flex h-full flex-col">

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as analytics from "../analytics.js";
 import type * as chat from "../chat.js";
 import type * as cortex from "../cortex.js";
 import type * as cortexConfig from "../cortexConfig.js";
@@ -36,6 +37,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  analytics: typeof analytics;
   chat: typeof chat;
   cortex: typeof cortex;
   cortexConfig: typeof cortexConfig;

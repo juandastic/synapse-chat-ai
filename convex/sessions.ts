@@ -546,6 +546,16 @@ export const forceClose = mutation({
       threadId: args.threadId,
     });
 
+    // PostHog: track manual memory consolidation
+    await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+      distinctId: user._id,
+      event: "memory consolidated",
+      properties: {
+        thread_id: args.threadId,
+        session_id: activeSession._id,
+      },
+    });
+
     return { success: true, message: "Memory consolidation started" };
   },
 });
