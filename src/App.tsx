@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { SignInButton, SignedIn, SignedOut, useSignIn } from "@clerk/clerk-react";
+import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import { Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
 import { PersonaSelector } from "./components/chat/PersonaSelector";
@@ -8,125 +7,28 @@ import { PersonaSettings } from "./components/settings/PersonaSettings";
 import { MemoryExplorer } from "./components/memory/MemoryExplorer";
 import { NotionExportPage } from "./components/notion/NotionExportPage";
 import { Toaster } from "./components/ui/sonner";
-import { Logo } from "./components/ui/logo";
-
-const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL as string | undefined;
-const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD as string | undefined;
+import LandingPage from "./components/landing/LandingPage";
 
 function App() {
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
+    <div className="h-screen w-screen bg-background">
       <SignedOut>
         <LandingPage />
       </SignedOut>
       <SignedIn>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route index element={<PersonaSelector />} />
-            <Route path="t/:threadId" element={<ChatView />} />
-            <Route path="settings/personas" element={<PersonaSettings />} />
-            <Route path="memory" element={<MemoryExplorer />} />
-            <Route path="notion" element={<NotionExportPage />} />
-          </Route>
-        </Routes>
+        <div className="h-full overflow-hidden">
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route index element={<PersonaSelector />} />
+              <Route path="t/:threadId" element={<ChatView />} />
+              <Route path="settings/personas" element={<PersonaSettings />} />
+              <Route path="memory" element={<MemoryExplorer />} />
+              <Route path="notion" element={<NotionExportPage />} />
+            </Route>
+          </Routes>
+        </div>
       </SignedIn>
       <Toaster />
-    </div>
-  );
-}
-
-function LandingPage() {
-  const { signIn, setActive } = useSignIn();
-  const [demoLoading, setDemoLoading] = useState(false);
-  const [demoError, setDemoError] = useState<string | null>(null);
-
-  const demoAvailable = Boolean(DEMO_EMAIL && DEMO_PASSWORD);
-
-  const handleTryDemo = async () => {
-    if (!signIn || !setActive || !DEMO_EMAIL || !DEMO_PASSWORD) return;
-    setDemoLoading(true);
-    setDemoError(null);
-    try {
-      const result = await signIn.create({
-        identifier: DEMO_EMAIL,
-        password: DEMO_PASSWORD,
-      });
-      if (result.createdSessionId) {
-        await setActive({ session: result.createdSessionId });
-      }
-    } catch {
-      setDemoError("Unable to load demo. Please try again.");
-      setDemoLoading(false);
-    }
-  };
-
-  return (
-    <div className="flex h-full flex-col items-center justify-center px-6">
-      {/* Subtle background gradient */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent" />
-
-      <div className="relative z-10 max-w-md text-center">
-        {/* Logo mark */}
-        <div className="mx-auto mb-8 h-28 w-28 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 p-4">
-          <Logo />
-        </div>
-
-        <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-          Synapse
-        </h1>
-
-        <p className="mt-4 text-lg text-muted-foreground text-balance">
-          A continuous conversation that remembers you. Deep memory, always
-          present.
-        </p>
-
-        <div className="mt-10 flex flex-col items-center gap-3">
-          <SignInButton mode="modal">
-            <button className="group relative inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-              Begin your journey
-              <svg
-                className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M13 7l5 5m0 0l-5 5m5-5H6"
-                />
-              </svg>
-            </button>
-          </SignInButton>
-
-          {demoAvailable && (
-            <>
-              <button
-                onClick={handleTryDemo}
-                disabled={demoLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-border/50 bg-transparent px-6 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:border-primary/30 hover:text-foreground hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-              >
-                {demoLoading ? (
-                  <>
-                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Loading demo...
-                  </>
-                ) : (
-                  "Try the demo"
-                )}
-              </button>
-              {demoError && (
-                <p className="text-xs text-destructive">{demoError}</p>
-              )}
-            </>
-          )}
-        </div>
-
-        <p className="mt-6 text-xs text-muted-foreground/60">
-          Your conversations are private and encrypted
-        </p>
-      </div>
     </div>
   );
 }
