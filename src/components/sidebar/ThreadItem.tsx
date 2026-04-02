@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
 
@@ -26,7 +27,8 @@ export const ThreadItem = memo(function ThreadItem({
   onDelete,
   hideDelete,
 }: ThreadItemProps) {
-  const relativeTime = getRelativeTime(lastMessageAt);
+  const { t } = useTranslation("sidebar");
+  const relativeTime = getRelativeTime(lastMessageAt, t);
 
   return (
     <div className="group relative">
@@ -61,7 +63,7 @@ export const ThreadItem = memo(function ThreadItem({
             onDelete(threadId, title);
           }}
           className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground/0 transition-all group-hover:text-muted-foreground hover:!bg-destructive/10 hover:!text-destructive"
-          aria-label={`Delete ${title}`}
+          aria-label={t("deleteAriaLabel", { title })}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
@@ -72,20 +74,20 @@ export const ThreadItem = memo(function ThreadItem({
 
 /**
  * Simple relative time formatter.
- * Returns "just now", "Xm ago", "Xh ago", "Xd ago", etc.
+ * Returns translated "just now", "Xm ago", "Xh ago", "Xd ago", etc.
  */
-function getRelativeTime(timestamp: number): string {
+function getRelativeTime(timestamp: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const now = Date.now();
   const diffMs = now - timestamp;
   const diffSec = Math.floor(diffMs / 1000);
 
-  if (diffSec < 60) return "just now";
+  if (diffSec < 60) return t("time.justNow");
   const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 60) return t("time.minutesAgo", { count: diffMin });
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffHour < 24) return t("time.hoursAgo", { count: diffHour });
   const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 30) return `${diffDay}d ago`;
+  if (diffDay < 30) return t("time.daysAgo", { count: diffDay });
   const diffMonth = Math.floor(diffDay / 30);
-  return `${diffMonth}mo ago`;
+  return t("time.monthsAgo", { count: diffMonth });
 }

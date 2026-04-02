@@ -1,4 +1,5 @@
 import { useState, useTransition, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "convex/react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
@@ -37,6 +38,8 @@ export function PersonaSettings() {
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
     type: "closed",
   });
+  const { t } = useTranslation("settings");
+  const tc = useTranslation("common").t;
 
   const editingPersona =
     view.mode === "edit" && personas
@@ -109,8 +112,7 @@ export function PersonaSettings() {
         if (raw.includes("thread")) {
           setDeleteDialog({
             type: "error",
-            message:
-              "This persona is being used by one or more threads.\n\nTo delete it, first delete the threads that use this persona from the sidebar, then try again.",
+            message: t("personaSettings.personaInUse"),
           });
         } else {
           setDeleteDialog({ type: "error", message: raw });
@@ -123,13 +125,13 @@ export function PersonaSettings() {
   if (view.mode === "create") {
     return (
       <SettingsShell
-        title="Create Persona"
+        title={t("personaSettings.createTitle")}
         onBack={() => setView({ mode: "list" })}
       >
         <PersonaForm
           onSubmit={handleCreate}
           onCancel={() => setView({ mode: "list" })}
-          submitLabel="Create"
+          submitLabel={t("personaSettings.createButton")}
         />
       </SettingsShell>
     );
@@ -138,7 +140,7 @@ export function PersonaSettings() {
   if (view.mode === "edit" && editingPersona) {
     return (
       <SettingsShell
-        title="Edit Persona"
+        title={t("personaSettings.editTitle")}
         onBack={() => setView({ mode: "list" })}
       >
         <PersonaForm
@@ -151,7 +153,7 @@ export function PersonaSettings() {
           }}
           onSubmit={handleUpdate}
           onCancel={() => setView({ mode: "list" })}
-          submitLabel="Save Changes"
+          submitLabel={t("personaSettings.saveChanges")}
         />
       </SettingsShell>
     );
@@ -159,7 +161,7 @@ export function PersonaSettings() {
 
   // List view
   return (
-    <SettingsShell title="Personas" onBack={() => navigate("/")}>
+    <SettingsShell title={t("personaSettings.title")} onBack={() => navigate("/")}>
       {/* Create button */}
       <button
         onClick={() => setView({ mode: "create" })}
@@ -169,7 +171,7 @@ export function PersonaSettings() {
         )}
       >
         <Plus className="h-4 w-4" />
-        Create New Persona
+        {t("personaSettings.createNew")}
       </button>
 
       {/* Loading state */}
@@ -188,8 +190,7 @@ export function PersonaSettings() {
       {personas && personas.length === 0 && (
         <div className="py-12 text-center">
           <p className="text-sm text-muted-foreground">
-            No custom personas yet. Create one or use a template from the new
-            chat screen.
+            {t("personaSettings.emptyState")}
           </p>
         </div>
       )}
@@ -212,7 +213,7 @@ export function PersonaSettings() {
                   </p>
                   {persona.isDefault && (
                     <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                      Default
+                      {t("personaSettings.default")}
                     </span>
                   )}
                 </div>
@@ -228,7 +229,7 @@ export function PersonaSettings() {
                     setView({ mode: "edit", personaId: persona._id })
                   }
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  aria-label={`Edit ${persona.name}`}
+                  aria-label={t("personaSettings.editAriaLabel", { name: persona.name })}
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
@@ -239,7 +240,7 @@ export function PersonaSettings() {
                     }
                     disabled={deletePending}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                    aria-label={`Delete ${persona.name}`}
+                    aria-label={t("personaSettings.deleteAriaLabel", { name: persona.name })}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -256,12 +257,12 @@ export function PersonaSettings() {
         onCancel={() => setDeleteDialog({ type: "closed" })}
         title={
           deleteDialog.type === "confirm"
-            ? `Delete "${deleteDialog.personaName}"?`
+            ? t("personaSettings.deleteTitle", { name: deleteDialog.personaName })
             : ""
         }
-        description="This persona will be permanently deleted. This action cannot be undone."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        description={t("personaSettings.deleteDescription")}
+        confirmLabel={tc("delete")}
+        cancelLabel={tc("cancel")}
         variant="danger"
         loading={deletePending}
       />
@@ -271,12 +272,12 @@ export function PersonaSettings() {
         open={deleteDialog.type === "error"}
         onConfirm={() => setDeleteDialog({ type: "closed" })}
         onCancel={() => setDeleteDialog({ type: "closed" })}
-        title="Cannot delete persona"
+        title={t("personaSettings.cannotDelete")}
         description={
           deleteDialog.type === "error" ? deleteDialog.message : ""
         }
-        confirmLabel="Understood"
-        cancelLabel="Close"
+        confirmLabel={t("personaSettings.understood")}
+        cancelLabel={tc("close")}
         variant="info"
       />
     </SettingsShell>
@@ -296,6 +297,7 @@ function SettingsShell({
   onBack: () => void;
   children: React.ReactNode;
 }) {
+  const { t: tc } = useTranslation("common");
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       {/* Header */}
@@ -303,7 +305,7 @@ function SettingsShell({
         <button
           onClick={onBack}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label="Go back"
+          aria-label={tc("goBack")}
         >
           <ArrowLeft className="h-4 w-4" />
         </button>

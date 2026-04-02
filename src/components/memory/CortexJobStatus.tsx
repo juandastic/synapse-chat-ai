@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
@@ -64,7 +65,10 @@ function JobStatusRow({
   nextRetryAt,
   onRetry,
 }: JobStatusRowProps) {
-  const label = type === "ingest" ? "memory graph" : "memory correction";
+  const { t } = useTranslation("memory");
+  const tc = useTranslation("common").t;
+
+  const label = type === "ingest" ? t("cortexJob.memoryGraph") : t("cortexJob.memoryCorrection");
   const isRetrying =
     status === "processing" && nextRetryAt && nextRetryAt > Date.now();
 
@@ -74,7 +78,7 @@ function JobStatusRow({
       <div className="flex items-center gap-2 text-xs">
         <AlertCircle className="h-3.5 w-3.5 shrink-0 text-destructive" />
         <span className="text-destructive">
-          Failed to update {label}.
+          {t("cortexJob.failedToUpdate", { label })}
           {lastError && (
             <span className="text-destructive/70"> ({lastError.slice(0, 60)})</span>
           )}
@@ -88,7 +92,7 @@ function JobStatusRow({
           )}
         >
           <RefreshCw className="h-3 w-3" />
-          Retry
+          {tc("retry")}
         </button>
       </div>
     );
@@ -106,12 +110,12 @@ function JobStatusRow({
         <Clock className="h-3.5 w-3.5 shrink-0 text-amber-500" />
         <span className="text-muted-foreground">
           {isActualRetry
-            ? `AI overloaded. Retrying ${label} in ~${minutesLeft}m...`
-            : `Processing ${label}... next check in ~${minutesLeft}m`}
+            ? t("cortexJob.retrying", { label, minutes: minutesLeft })
+            : t("cortexJob.processing", { label, minutes: minutesLeft })}
           {isActualRetry && (
             <span className="text-muted-foreground/50">
               {" "}
-              (attempt {attempts}/{maxAttempts})
+              {t("cortexJob.attempt", { current: attempts, max: maxAttempts })}
             </span>
           )}
         </span>
@@ -124,11 +128,11 @@ function JobStatusRow({
     <div className="flex items-center gap-2 text-xs">
       <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
       <span className="text-muted-foreground">
-        Updating {label}...
+        {t("cortexJob.updating", { label })}
         {attempts > 0 && (
           <span className="text-muted-foreground/50">
             {" "}
-            (attempt {attempts + 1}/{maxAttempts})
+            {t("cortexJob.attempt", { current: attempts + 1, max: maxAttempts })}
           </span>
         )}
       </span>

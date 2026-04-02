@@ -5,12 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Map i18n language codes to full locale codes */
+function resolveLocale(lang?: string): string | undefined {
+  if (!lang) return undefined;
+  const map: Record<string, string> = { en: "en-US", es: "es-ES" };
+  return map[lang] ?? undefined;
+}
+
 /**
  * Format a full date/time for session dividers
  */
-export function formatSessionDate(timestamp: number): string {
+export function formatSessionDate(timestamp: number, locale?: string): string {
   const date = new Date(timestamp);
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(resolveLocale(locale), {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -22,9 +29,9 @@ export function formatSessionDate(timestamp: number): string {
 /**
  * Format a message timestamp to show the time (e.g., "2:30 PM")
  */
-export function formatMessageTime(timestamp: number): string {
+export function formatMessageTime(timestamp: number, locale?: string): string {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString(undefined, {
+  return date.toLocaleTimeString(resolveLocale(locale), {
     hour: "numeric",
     minute: "2-digit",
   });

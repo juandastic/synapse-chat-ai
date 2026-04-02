@@ -1,0 +1,26 @@
+{
+  "newChat": "New chat",
+  "memory": "Memory",
+  "notionExport": "Notion Export",
+  "personas": "Personas",
+  "noConversations": "No conversations yet",
+  "startNewChat": "Start a new chat above",
+  "deleteThreadTitle": "Delete \"{{title}}\"?",
+  "deleteThreadDescription": "All messages in this thread will be permanently deleted. This action cannot be undone.",
+  "deleteThreadHint": "What Synapse learned from these conversations remains stored in memory and will continue to enrich future sessions.",
+  "deleteThread": "Delete Thread",
+  "deleteAriaLabel": "Delete {{title}}",
+  "toggleSidebar": "Toggle sidebar",
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "monthsAgo": "{{count}}mo ago"
+  },
+  "demo": {
+    "exploringMessage": "You're exploring a demo account",
+    "signUp": "Sign up for your own",
+    "dismiss": "Dismiss banner"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "cancel": "Cancelar",
+  "save": "Guardar",
+  "delete": "Eliminar",
+  "confirm": "Confirmar",
+  "close": "Cerrar",
+  "loading": "Cargando...",
+  "goBack": "Volver",
+  "tryAgain": "Intentar de nuevo",
+  "retry": "Reintentar",
+  "done": "Listo",
+  "deleting": "Eliminando…",
+  "synapse": "Synapse",
+  "switchToLightMode": "Cambiar a modo claro",
+  "switchToDarkMode": "Cambiar a modo oscuro"
+}

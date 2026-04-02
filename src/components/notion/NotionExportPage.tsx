@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
 import {
@@ -27,19 +28,19 @@ const STORAGE_KEY_EXPORT = "synapse:notion:exportJobId";
 const STORAGE_KEY_CORRECTIONS = "synapse:notion:correctionsJobId";
 
 const EXPORT_STEPS = [
-  { key: "hydrating", label: "Reading your memory graph" },
-  { key: "analyzing", label: "Designing database schemas" },
-  { key: "extracting_entries", label: "Extracting entries" },
-  { key: "creating_databases", label: "Creating Notion databases" },
-  { key: "populating", label: "Populating databases" },
-  { key: "summarizing", label: "Creating summary page" },
-  { key: "done", label: "Done" },
+  { key: "hydrating", labelKey: "steps.hydrating" },
+  { key: "analyzing", labelKey: "steps.analyzing" },
+  { key: "extracting_entries", labelKey: "steps.extracting_entries" },
+  { key: "creating_databases", labelKey: "steps.creating_databases" },
+  { key: "populating", labelKey: "steps.populating" },
+  { key: "summarizing", labelKey: "steps.summarizing" },
+  { key: "done", labelKey: "steps.done" },
 ];
 
 const CORRECTION_STEPS = [
-  { key: "scanning", label: "Scanning Notion databases" },
-  { key: "applying", label: "Applying corrections to graph" },
-  { key: "done", label: "Done" },
+  { key: "scanning", labelKey: "steps.scanning" },
+  { key: "applying", labelKey: "steps.applying" },
+  { key: "done", labelKey: "steps.done" },
 ];
 
 type Phase =
@@ -83,10 +84,13 @@ export function NotionExportPage() {
   const startCorrectionsAction = useAction(api.notion.startCorrections);
   const getCorrectionsStatus = useAction(api.notion.getCorrectionsStatus);
 
+  const { t, i18n } = useTranslation("notion");
+  const tc = useTranslation("common").t;
+
   // ── Form fields ────────────────────────────────────────────────────────────
   const [notionToken, setNotionToken] = useState("");
   const [notionPageName, setNotionPageName] = useState("");
-  const [notionLanguage, setNotionLanguage] = useState("English");
+  const [notionLanguage, setNotionLanguage] = useState(i18n.language === "es" ? "Español" : "English");
 
   // ── Shared lifecycle ───────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("config");
@@ -225,7 +229,7 @@ export function NotionExportPage() {
         if (isJobExpiredError(err)) {
           clearInterval(pollRef.current!);
           localStorage.removeItem(STORAGE_KEY_EXPORT);
-          setTerminalError("Export result expired. Please start a new export.");
+          setTerminalError(t("failed.exportExpired"));
           setPhase("failed");
           return;
         }
@@ -277,7 +281,7 @@ export function NotionExportPage() {
         if (isJobExpiredError(err)) {
           clearInterval(pollRef.current!);
           localStorage.removeItem(STORAGE_KEY_CORRECTIONS);
-          setTerminalError("Corrections job expired. Please try again.");
+          setTerminalError(t("failed.correctionsExpired"));
           setPhase("corrections-failed");
           return;
         }
@@ -296,11 +300,11 @@ export function NotionExportPage() {
     const token = notionToken.trim();
     const page = notionPageName.trim();
     if (!token) {
-      setSubmitError("Notion integration token is required");
+      setSubmitError(t("config.tokenRequired"));
       return null;
     }
     if (!page) {
-      setSubmitError("Parent page name is required");
+      setSubmitError(t("config.pageNameRequired"));
       return null;
     }
     return { token, page };
@@ -330,7 +334,7 @@ export function NotionExportPage() {
         setExportJobId(response.jobId);
         setPhase("exporting");
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Failed to start export");
+        setSubmitError(err instanceof Error ? err.message : t("export.failed"));
       } finally {
         setIsSubmittingExport(false);
       }
@@ -356,7 +360,7 @@ export function NotionExportPage() {
       setCorrectionsJobId(response.jobId);
       setPhase("correcting");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to start corrections");
+      setSubmitError(err instanceof Error ? err.message : t("export.correctionsFailed"));
     } finally {
       setIsSubmittingCorrections(false);
     }
@@ -394,12 +398,12 @@ export function NotionExportPage() {
         <button
           onClick={() => navigate("/")}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label="Go back"
+          aria-label={tc("goBack")}
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <h1 className="font-display text-sm font-semibold tracking-tight text-foreground">
-          Notion Export
+          {t("title")}
         </h1>
       </header>
 
@@ -421,12 +425,10 @@ export function NotionExportPage() {
             </div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-foreground">
-                Export Your Memory to Notion
+                {t("hero.title")}
               </h2>
               <p className="mt-2 text-balance text-sm leading-relaxed text-muted-foreground">
-                Synapse will read your entire knowledge graph and transform it into
-                structured, browsable Notion databases — one per category — all
-                organized under a single parent page you choose.
+                {t("hero.description")}
               </p>
             </div>
           </div>
@@ -435,18 +437,18 @@ export function NotionExportPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <FeatureCard
               icon={<Network className="h-4 w-4 text-primary" />}
-              title="Full graph read"
-              description="Every entity, relationship, and insight stored in your memory"
+              title={t("features.fullGraph")}
+              description={t("features.fullGraphDesc")}
             />
             <FeatureCard
               icon={<Sparkles className="h-4 w-4 text-primary" />}
-              title="AI-designed schemas"
-              description="Gemini designs custom database columns tailored to your data"
+              title={t("features.aiSchemas")}
+              description={t("features.aiSchemasDesc")}
             />
             <FeatureCard
               icon={<LayoutGrid className="h-4 w-4 text-primary" />}
-              title="Structured databases"
-              description="People, projects, health, goals — each in its own Notion database"
+              title={t("features.structured")}
+              description={t("features.structuredDesc")}
             />
           </div>
 
@@ -471,13 +473,13 @@ export function NotionExportPage() {
 
             {phase === "exporting" && (
               <PipelineSection
-                title="Exporting…"
-                subtitle="This can take a few minutes. You can leave this page and come back."
+                title={t("pipeline.exporting")}
+                subtitle={t("pipeline.exportingDescription")}
                 steps={EXPORT_STEPS}
                 currentStep={exportCurrentStep}
                 stats={[
-                  { label: "Categories", value: exportCategoriesDesigned },
-                  { label: "Entries", value: exportEntriesExtracted },
+                  { label: t("stats.categories"), value: exportCategoriesDesigned },
+                  { label: t("stats.entries"), value: exportEntriesExtracted },
                 ]}
               />
             )}
@@ -488,7 +490,7 @@ export function NotionExportPage() {
 
             {phase === "failed" && (
               <FailedSection
-                title="Export failed"
+                title={t("failed.exportFailed")}
                 error={terminalError}
                 onReset={handleReset}
               />
@@ -496,15 +498,15 @@ export function NotionExportPage() {
 
             {phase === "correcting" && (
               <PipelineSection
-                title="Syncing corrections…"
-                subtitle="Reading flagged rows from Notion and applying them to your graph."
+                title={t("pipeline.correcting")}
+                subtitle={t("pipeline.correctingDescription")}
                 steps={CORRECTION_STEPS}
                 currentStep={correctionsCurrentStep}
                 stats={[
-                  { label: "Databases", value: correctionsDatabasesScanned },
-                  { label: "Found", value: correctionsFound },
-                  { label: "Applied", value: correctionsApplied },
-                  { label: "Failed", value: correctionsFailed },
+                  { label: t("stats.databases"), value: correctionsDatabasesScanned },
+                  { label: t("stats.found"), value: correctionsFound },
+                  { label: t("stats.applied"), value: correctionsApplied },
+                  { label: t("stats.failed"), value: correctionsFailed },
                 ]}
               />
             )}
@@ -515,7 +517,7 @@ export function NotionExportPage() {
 
             {phase === "corrections-failed" && (
               <FailedSection
-                title="Corrections sync failed"
+                title={t("failed.correctionsFailed")}
                 error={terminalError}
                 onReset={handleReset}
               />
@@ -608,6 +610,8 @@ function ConfigSection({
   isSubmittingCorrections,
   hasSavedConfig,
 }: ConfigSectionProps) {
+  const { t } = useTranslation("notion");
+  const tc = useTranslation("common").t;
   const [helpOpen, setHelpOpen] = useState(false);
   const isBusy = isSubmittingExport || isSubmittingCorrections;
 
@@ -625,50 +629,47 @@ function ConfigSection({
           >
             <div className="flex items-center justify-between border-b border-border/40 px-5 py-4">
               <h3 className="text-sm font-semibold text-foreground">
-                How to get your integration token
+                {t("help.title")}
               </h3>
               <button
                 type="button"
                 onClick={() => setHelpOpen(false)}
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label="Close"
+                aria-label={tc("close")}
               >
                 ✕
               </button>
             </div>
             <ol className="space-y-4 px-5 py-5 text-sm text-muted-foreground">
               <HelpStep n={1}>
-                Open{" "}
+                {t("help.step1_open")}{" "}
                 <a
                   href="https://www.notion.so/profile/integrations/internal"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-0.5 text-primary underline underline-offset-2"
                 >
-                  Notion Internal Integrations
+                  {t("help.step1_link")}
                   <ExternalLink className="h-3 w-3" />
                 </a>{" "}
-                and create a new integration.
+                {t("help.step1_suffix")}
               </HelpStep>
               <HelpStep n={2}>
-                Copy the{" "}
-                <strong className="text-foreground/80">Internal Integration Secret</strong> —
-                it starts with <code className="font-mono text-foreground/70">ntn_</code>.
+                {t("help.step2_prefix")}{" "}
+                <strong className="text-foreground/80">{t("help.step2_bold")}</strong> {t("help.step2_suffix")} <code className="font-mono text-foreground/70">ntn_</code>.
               </HelpStep>
               <HelpStep n={3}>
-                Create or open the Notion page you want as the parent (e.g.{" "}
-                <strong className="text-foreground/80">"Synapse"</strong>).
+                {t("help.step3")}
               </HelpStep>
               <HelpStep n={4}>
-                Grant access to that page. From the integrations page go to{" "}
-                <strong className="text-foreground/80">Content access</strong> and add the
-                page — or open the page in Notion, click{" "}
-                <strong className="text-foreground/80">···</strong> →{" "}
-                <strong className="text-foreground/80">Connections</strong> → select your
-                integration.
+                {t("help.step4_prefix")}{" "}
+                <strong className="text-foreground/80">{t("help.step4_bold1")}</strong>{" "}
+                {t("help.step4_middle")}{" "}
+                <strong className="text-foreground/80">{t("help.step4_bold2")}</strong> {t("help.step4_arrow")}{" "}
+                <strong className="text-foreground/80">{t("help.step4_bold3")}</strong> {t("help.step4_suffix")}
               </HelpStep>
               <HelpStep n={5}>
-                Paste the token above and enter the exact page name.
+                {t("help.step5")}
               </HelpStep>
             </ol>
           </div>
@@ -677,9 +678,9 @@ function ConfigSection({
 
       <form onSubmit={onExport} className="divide-y divide-border/40">
         <div className="px-5 py-4">
-          <h3 className="text-sm font-semibold text-foreground">Configuration</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("config.title")}</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Your credentials are saved and pre-filled for future exports.
+            {t("config.description")}
           </p>
         </div>
 
@@ -694,14 +695,14 @@ function ConfigSection({
           <div>
             <div className="mb-1.5 flex items-center justify-between">
               <label htmlFor="notion-token" className="text-xs font-medium text-muted-foreground">
-                Integration Token
+                {t("config.tokenLabel")}
               </label>
               <button
                 type="button"
                 onClick={() => setHelpOpen(true)}
                 className="text-[11px] text-primary underline-offset-2 hover:underline"
               >
-                How to get a token?
+                {t("config.howToGetToken")}
               </button>
             </div>
             <input
@@ -709,7 +710,7 @@ function ConfigSection({
               type="password"
               value={notionToken}
               onChange={(e) => onTokenChange(e.target.value)}
-              placeholder="ntn_..."
+              placeholder={t("config.tokenPlaceholder")}
               autoComplete="off"
               className="h-10 w-full rounded-lg border border-border/50 bg-background px-3 font-mono text-sm focus:border-primary/30 focus:outline-none focus:ring-2 focus:ring-ring/20"
             />
@@ -719,20 +720,20 @@ function ConfigSection({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="notion-page" className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                Parent Page Name
+                {t("config.pageNameLabel")}
               </label>
               <input
                 id="notion-page"
                 type="text"
                 value={notionPageName}
                 onChange={(e) => onPageNameChange(e.target.value)}
-                placeholder="e.g. Synapse"
+                placeholder={t("config.pageNamePlaceholder")}
                 className="h-10 w-full rounded-lg border border-border/50 bg-background px-3 text-sm focus:border-primary/30 focus:outline-none focus:ring-2 focus:ring-ring/20"
               />
             </div>
             <div>
               <label htmlFor="notion-language" className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                Output Language
+                {t("config.languageLabel")}
               </label>
               <select
                 id="notion-language"
@@ -764,12 +765,12 @@ function ConfigSection({
             {isSubmittingExport ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Starting export…
+                {t("export.startingExport")}
               </>
             ) : (
               <>
                 <Database className="h-4 w-4" />
-                Export to Notion
+                {t("export.exportButton")}
               </>
             )}
           </button>
@@ -788,12 +789,12 @@ function ConfigSection({
               {isSubmittingCorrections ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Starting sync…
+                  {t("export.startingSync")}
                 </>
               ) : (
                 <>
                   <RefreshCw className="h-4 w-4" />
-                  Sync Corrections from Notion
+                  {t("export.syncButton")}
                 </>
               )}
             </button>
@@ -828,12 +829,13 @@ interface PipelineStat {
 interface PipelineSectionProps {
   title: string;
   subtitle: string;
-  steps: Array<{ key: string; label: string }>;
+  steps: Array<{ key: string; labelKey: string }>;
   currentStep: string | null;
   stats: PipelineStat[];
 }
 
 function PipelineSection({ title, subtitle, steps, currentStep, stats }: PipelineSectionProps) {
+  const { t } = useTranslation("notion");
   const currentIdx = currentStep ? steps.findIndex((s) => s.key === currentStep) : -1;
   const visibleStats = stats.filter((s) => s.value != null);
 
@@ -870,7 +872,7 @@ function PipelineSection({ title, subtitle, steps, currentStep, stats }: Pipelin
                     !isDone && !isActive && "text-muted-foreground/35"
                   )}
                 >
-                  {step.label}
+                  {t(step.labelKey)}
                 </span>
               </div>
             );
@@ -908,6 +910,7 @@ function ExportCompletedSection({
   result: ExportResult;
   onReset: () => void;
 }) {
+  const { t } = useTranslation("notion");
   const minutes = Math.round(result.durationMs / 60_000);
 
   return (
@@ -917,10 +920,9 @@ function ExportCompletedSection({
           <CheckCircle2 className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Export complete</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("completed.exportComplete")}</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            {result.categoriesCount} database{result.categoriesCount !== 1 ? "s" : ""} ·{" "}
-            {result.entriesCount} entries · {minutes > 0 ? `${minutes}m` : "<1m"}
+            {t("completed.exportStats", { count: result.categoriesCount, entries: result.entriesCount, duration: minutes > 0 ? `${minutes}m` : "<1m" })}
           </p>
         </div>
       </div>
@@ -935,14 +937,14 @@ function ExportCompletedSection({
             "hover:bg-primary/90 active:scale-[0.98]"
           )}
         >
-          Open in Notion
+          {t("completed.openInNotion")}
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
         <button
           onClick={onReset}
           className="w-full rounded-xl px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          New Export
+          {t("completed.newExport")}
         </button>
       </div>
     </div>
@@ -960,6 +962,8 @@ function CorrectionsCompletedSection({
   result: CorrectionsResult;
   onReset: () => void;
 }) {
+  const { t } = useTranslation("notion");
+  const tc = useTranslation("common").t;
   const minutes = Math.round(result.durationMs / 60_000);
   const failedList = result.failedCorrections ?? [];
 
@@ -970,10 +974,10 @@ function CorrectionsCompletedSection({
           <CheckCircle2 className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Corrections applied</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("completed.correctionsApplied")}</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            {result.correctionsApplied} applied · {result.correctionsFound} found
-            {result.correctionsFailed > 0 && ` · ${result.correctionsFailed} failed`}
+            {t("completed.correctionsStats", { applied: result.correctionsApplied, found: result.correctionsFound })}
+            {result.correctionsFailed > 0 && t("completed.correctionsStatsFailed", { failed: result.correctionsFailed })}
             {" · "}
             {minutes > 0 ? `${minutes}m` : "<1m"}
           </p>
@@ -982,7 +986,7 @@ function CorrectionsCompletedSection({
 
       {failedList.length > 0 && (
         <div className="space-y-1.5 px-5 py-3">
-          <p className="text-[11px] font-medium text-muted-foreground">Failed corrections</p>
+          <p className="text-[11px] font-medium text-muted-foreground">{t("completed.failedCorrections")}</p>
           {failedList.map((fc, i) => (
             <div
               key={i}
@@ -1002,7 +1006,7 @@ function CorrectionsCompletedSection({
           onClick={onReset}
           className="w-full rounded-xl px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          Done
+          {tc("done")}
         </button>
       </div>
     </div>
@@ -1022,6 +1026,7 @@ function FailedSection({
   error: string | null;
   onReset: () => void;
 }) {
+  const { t: tc } = useTranslation("common");
   return (
     <div className="divide-y divide-border/40">
       <div className="flex flex-col items-center gap-3 px-5 py-5 text-center">
@@ -1042,7 +1047,7 @@ function FailedSection({
             "hover:bg-primary/90 active:scale-[0.98]"
           )}
         >
-          Try Again
+          {tc("tryAgain")}
         </button>
       </div>
     </div>

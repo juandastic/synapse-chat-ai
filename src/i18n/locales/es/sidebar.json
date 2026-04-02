@@ -1,0 +1,26 @@
+{
+  "newChat": "Nuevo chat",
+  "memory": "Memoria",
+  "notionExport": "Exportar a Notion",
+  "personas": "Personas",
+  "noConversations": "Aún no hay conversaciones",
+  "startNewChat": "Inicia un nuevo chat arriba",
+  "deleteThreadTitle": "¿Eliminar \"{{title}}\"?",
+  "deleteThreadDescription": "Todos los mensajes de este hilo se eliminarán permanentemente. Esta acción no se puede deshacer.",
+  "deleteThreadHint": "Lo que Synapse aprendió de estas conversaciones permanece almacenado en la memoria y seguirá enriqueciendo futuras sesiones.",
+  "deleteThread": "Eliminar hilo",
+  "deleteAriaLabel": "Eliminar {{title}}",
+  "toggleSidebar": "Alternar barra lateral",
+  "time": {
+    "justNow": "ahora",
+    "minutesAgo": "hace {{count}}m",
+    "hoursAgo": "hace {{count}}h",
+    "daysAgo": "hace {{count}}d",
+    "monthsAgo": "hace {{count}}me"
+  },
+  "demo": {
+    "exploringMessage": "Estás explorando una cuenta de demostración",
+    "signUp": "Regístrate para tu propia cuenta",
+    "dismiss": "Cerrar banner"
+  }
+}

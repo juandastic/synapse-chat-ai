@@ -1,0 +1,100 @@
+{
+  "nav": {
+    "githubAriaLabel": "View source on GitHub",
+    "tryDemo": "Try demo",
+    "signIn": "Sign in"
+  },
+  "hero": {
+    "tagline": "Beyond chat history",
+    "title1": "What if your AI",
+    "title2": "actually understood",
+    "title3": "who you are?",
+    "description": "Synapse turns your conversations into a knowledge graph. People, places, goals, emotions, patterns. All structured, all connected. An AI that learns who you are, not just what you said last.",
+    "getStarted": "Get started",
+    "experienceDemo": "Experience the demo",
+    "demoError": "Unable to load demo. Please try again."
+  },
+  "pullQuote": "\"Most AI forgets you when the conversation ends. Synapse builds a map of your world and uses it to actually help you, not just respond to you.\"",
+  "comparison": {
+    "tagline": "The Difference",
+    "title": "Context changes everything",
+    "description": "Same conversation. One AI has context, the other doesn't. The difference is obvious.",
+    "regularAI": "Regular AI",
+    "synapse": "Synapse",
+    "graphStats": "Drawing from 47 entities · 83 relationships"
+  },
+  "conversations": {
+    "regular": [
+      { "role": "user", "text": "I've been stressed about the project deadline." },
+      { "role": "ai", "text": "I understand deadlines can be stressful. Have you tried breaking the work into smaller tasks?" },
+      { "role": "user", "text": "I mentioned last week that my manager changed the scope..." },
+      { "role": "ai", "text": "I don't have context from our previous conversations. Could you tell me more about the scope change?" }
+    ],
+    "synapse": [
+      { "role": "user", "text": "I've been stressed about the project deadline." },
+      { "role": "ai", "text": "Your manager at TechCorp expanded the scope last Tuesday, and you've mentioned before that your anxiety spikes around big deliverables. Let's focus on what you can control. Your marathon training structure could work here: progressive milestones." },
+      { "role": "user", "text": "That's actually a great way to think about it." },
+      { "role": "ai", "text": "Sarah noticed you sleeping poorly again. Your meditation practice helped last time. Want me to add 10-minute sessions before your standups this week?" }
+    ]
+  },
+  "pipeline": {
+    "tagline": "How It Works",
+    "title": "Memory engineering, not memorization",
+    "description": "Four steps from conversation to structured knowledge.",
+    "step": "Step {{number}}",
+    "steps": [
+      { "title": "Converse", "desc": "Talk about your day, your goals, your worries. Every session gets captured automatically." },
+      { "title": "Ingest", "desc": "Sessions are processed through Graphiti, extracting entities and relationships into Neo4j." },
+      { "title": "Compile", "desc": "Your knowledge graph is compiled and injected into future sessions as structured context." },
+      { "title": "Evolve", "desc": "Each conversation refines the graph. The more you talk, the better it gets." }
+    ]
+  },
+  "personas": {
+    "tagline": "Perspectives",
+    "title": "One story, many readers",
+    "description": "Every persona reads the same knowledge graph but brings its own expertise. Clinical depth, strategic clarity, or everyday warmth.",
+    "list": [
+      { "emoji": "🧠", "name": "Therapist", "desc": "Sees emotional patterns. Connects your anxiety to last month's scope change. Uses ACT to reframe." },
+      { "emoji": "🎯", "name": "Coach", "desc": "Tracks real progress. Knows you're ahead on marathon pace. Applies the same discipline to your deadline." },
+      { "emoji": "💬", "name": "Companion", "desc": "Remembers Sarah's ceramics hobby. Notices you sleep better after hiking. Suggests what actually helps." }
+    ]
+  },
+  "transparency": {
+    "tagline": "Trust",
+    "title": "You see everything it knows",
+    "description": "The Memory Explorer shows your full knowledge graph. Inspect it, correct it, or delete from it. You're always in control.",
+    "features": [
+      { "title": "Explore your graph", "desc": "Interactive visualization of every entity and relationship in your graph." },
+      { "title": "Correct in plain English", "desc": "\"I left TechCorp.\" The graph updates. No forms, no menus." },
+      { "title": "Fully open source", "desc": "The entire codebase is public. See how it works, fork it, contribute." },
+      { "title": "Export to Notion", "desc": "Sync your graph to Notion. Review offline. Push corrections back." }
+    ]
+  },
+  "cta": {
+    "title1": "The conversation",
+    "title2": "that remembers",
+    "description": "Start talking. The graph builds itself. The AI gets better the more you use it.",
+    "begin": "Begin",
+    "tryDemo": "Try the demo",
+    "personal": "Personal.",
+    "openSource": "Open source"
+  },
+  "templates": {
+    "psicogemini": {
+      "name": "PsicoGemini",
+      "description": "ACT/DBT psychotherapist with a neuroaffirmative approach"
+    },
+    "therapist": {
+      "name": "Therapist",
+      "description": "ACT/DBT therapist with expertise in neurodivergent support"
+    },
+    "coach": {
+      "name": "Coach",
+      "description": "Life and productivity coach for goals and growth"
+    },
+    "friend": {
+      "name": "Friend",
+      "description": "Casual supportive companion for everyday conversations"
+    }
+  }
+}

@@ -8,6 +8,7 @@ import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { Brain, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 /**
  * Thread chat view rendered at /t/:threadId.
@@ -15,12 +16,13 @@ import { toast } from "sonner";
  */
 export function ChatView() {
   const { threadId } = useParams<{ threadId: string }>();
+  const { t } = useTranslation("chat");
 
   // Validate threadId param
   if (!threadId) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
-        <p className="text-sm">Thread not found</p>
+        <p className="text-sm">{t("chatView.threadNotFound")}</p>
       </div>
     );
   }
@@ -34,6 +36,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
   const thread = useQuery(api.threads.get, { threadId });
   const forceClose = useMutation(api.sessions.forceClose);
   const updateTitle = useMutation(api.threads.updateTitle);
+  const { t } = useTranslation("chat");
   const [consolidating, setConsolidating] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -45,12 +48,12 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
     try {
       const result = await forceClose({ threadId });
       if (result.success) {
-        toast.success("Memory consolidation started...");
+        toast.success(t("chatView.consolidationStarted"));
       } else {
         toast.info(result.message);
       }
     } catch {
-      toast.error("Failed to start consolidation");
+      toast.error(t("chatView.consolidationFailed"));
     } finally {
       setConsolidating(false);
     }
@@ -69,7 +72,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
       try {
         await updateTitle({ threadId, title: trimmed });
       } catch {
-        toast.error("Failed to update title");
+        toast.error(t("chatView.updateTitleFailed"));
       }
     }
     setIsEditingTitle(false);
@@ -100,7 +103,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
       <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          <span className="text-sm">Loading thread...</span>
+          <span className="text-sm">{t("chatView.loadingThread")}</span>
         </div>
       </div>
     );
@@ -110,7 +113,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
   if (thread === null) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
-        <p className="text-sm">Thread not found or access denied</p>
+        <p className="text-sm">{t("chatView.threadAccessDenied")}</p>
       </div>
     );
   }
@@ -140,7 +143,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleTitleClick()}
                 tabIndex={0}
                 className="truncate font-display text-sm font-semibold tracking-tight text-foreground cursor-pointer hover:text-primary/80 transition-colors"
-                title="Click to edit title"
+                title={t("chatView.editTitleHint")}
               >
                 {thread.title}
               </h1>
@@ -158,14 +161,14 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
           onClick={handleConsolidate}
           disabled={consolidating}
           className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Consolidate Memory"
+          title={t("chatView.consolidateMemory")}
         >
           {consolidating ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
             <Brain className="h-3.5 w-3.5" />
           )}
-          <span className="hidden sm:inline">Consolidate</span>
+          <span className="hidden sm:inline">{t("chatView.consolidate")}</span>
         </button>
       </header>
 

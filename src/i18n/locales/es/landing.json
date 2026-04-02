@@ -1,0 +1,100 @@
+{
+  "nav": {
+    "githubAriaLabel": "Ver código fuente en GitHub",
+    "tryDemo": "Probar demo",
+    "signIn": "Iniciar sesión"
+  },
+  "hero": {
+    "tagline": "Más allá del historial de chat",
+    "title1": "¿Y si tu IA",
+    "title2": "realmente entendiera",
+    "title3": "quién eres?",
+    "description": "Synapse convierte tus conversaciones en un grafo de conocimiento. Personas, lugares, metas, emociones, patrones. Todo estructurado, todo conectado. Una IA que aprende quién eres, no solo lo que dijiste la última vez.",
+    "getStarted": "Comenzar",
+    "experienceDemo": "Probar la demo",
+    "demoError": "No se pudo cargar la demo. Por favor intenta de nuevo."
+  },
+  "pullQuote": "\"La mayoría de las IA te olvidan cuando la conversación termina. Synapse construye un mapa de tu mundo y lo usa para realmente ayudarte, no solo responderte.\"",
+  "comparison": {
+    "tagline": "La diferencia",
+    "title": "El contexto lo cambia todo",
+    "description": "La misma conversación. Una IA tiene contexto, la otra no. La diferencia es obvia.",
+    "regularAI": "IA regular",
+    "synapse": "Synapse",
+    "graphStats": "Basado en 47 entidades · 83 relaciones"
+  },
+  "conversations": {
+    "regular": [
+      { "role": "user", "text": "He estado estresado por la fecha límite del proyecto." },
+      { "role": "ai", "text": "Entiendo que las fechas límite pueden ser estresantes. ¿Has intentado dividir el trabajo en tareas más pequeñas?" },
+      { "role": "user", "text": "Mencioné la semana pasada que mi jefe cambió el alcance..." },
+      { "role": "ai", "text": "No tengo contexto de nuestras conversaciones anteriores. ¿Podrías contarme más sobre el cambio de alcance?" }
+    ],
+    "synapse": [
+      { "role": "user", "text": "He estado estresado por la fecha límite del proyecto." },
+      { "role": "ai", "text": "Tu jefe en TechCorp amplió el alcance el martes pasado, y has mencionado antes que tu ansiedad aumenta con los grandes entregables. Enfoquémonos en lo que puedes controlar. Tu estructura de entrenamiento de maratón podría funcionar aquí: hitos progresivos." },
+      { "role": "user", "text": "Es una muy buena forma de pensarlo." },
+      { "role": "ai", "text": "Sarah notó que estás durmiendo mal de nuevo. Tu práctica de meditación ayudó la última vez. ¿Quieres que agregue sesiones de 10 minutos antes de tus standups esta semana?" }
+    ]
+  },
+  "pipeline": {
+    "tagline": "Cómo funciona",
+    "title": "Ingeniería de memoria, no memorización",
+    "description": "Cuatro pasos de conversación a conocimiento estructurado.",
+    "step": "Paso {{number}}",
+    "steps": [
+      { "title": "Conversa", "desc": "Habla sobre tu día, tus metas, tus preocupaciones. Cada sesión se captura automáticamente." },
+      { "title": "Ingesta", "desc": "Las sesiones se procesan a través de Graphiti, extrayendo entidades y relaciones en Neo4j." },
+      { "title": "Compila", "desc": "Tu grafo de conocimiento se compila e inyecta en futuras sesiones como contexto estructurado." },
+      { "title": "Evoluciona", "desc": "Cada conversación refina el grafo. Mientras más hables, mejor se vuelve." }
+    ]
+  },
+  "personas": {
+    "tagline": "Perspectivas",
+    "title": "Una historia, muchos lectores",
+    "description": "Cada persona lee el mismo grafo de conocimiento pero aporta su propia experiencia. Profundidad clínica, claridad estratégica o calidez cotidiana.",
+    "list": [
+      { "emoji": "🧠", "name": "Terapeuta", "desc": "Ve patrones emocionales. Conecta tu ansiedad con el cambio de alcance del mes pasado. Usa ACT para reencuadrar." },
+      { "emoji": "🎯", "name": "Coach", "desc": "Rastrea el progreso real. Sabe que vas adelantado en tu ritmo de maratón. Aplica la misma disciplina a tu fecha límite." },
+      { "emoji": "💬", "name": "Compañero", "desc": "Recuerda el hobby de cerámica de Sarah. Nota que duermes mejor después de hacer senderismo. Sugiere lo que realmente ayuda." }
+    ]
+  },
+  "transparency": {
+    "tagline": "Confianza",
+    "title": "Ves todo lo que sabe",
+    "description": "El Explorador de Memoria muestra tu grafo de conocimiento completo. Inspecciónalo, corrígelo o elimina de él. Siempre tienes el control.",
+    "features": [
+      { "title": "Explora tu grafo", "desc": "Visualización interactiva de cada entidad y relación en tu grafo." },
+      { "title": "Corrige en lenguaje natural", "desc": "\"Dejé TechCorp.\" El grafo se actualiza. Sin formularios, sin menús." },
+      { "title": "Completamente open source", "desc": "Todo el código es público. Ve cómo funciona, haz un fork, contribuye." },
+      { "title": "Exportar a Notion", "desc": "Sincroniza tu grafo con Notion. Revisa sin conexión. Envía correcciones de vuelta." }
+    ]
+  },
+  "cta": {
+    "title1": "La conversación",
+    "title2": "que recuerda",
+    "description": "Empieza a hablar. El grafo se construye solo. La IA mejora mientras más la uses.",
+    "begin": "Comenzar",
+    "tryDemo": "Probar la demo",
+    "personal": "Personal.",
+    "openSource": "Open source"
+  },
+  "templates": {
+    "psicogemini": {
+      "name": "PsicoGemini",
+      "description": "Psicoterapeuta con formación en terapias de tercera generación (ACT, DBT) y enfoque neuroafirmativo"
+    },
+    "therapist": {
+      "name": "Terapeuta",
+      "description": "Terapeuta ACT/DBT con experiencia en apoyo neurodivergente"
+    },
+    "coach": {
+      "name": "Coach",
+      "description": "Coach de vida y productividad para metas y crecimiento"
+    },
+    "friend": {
+      "name": "Amigo",
+      "description": "Compañero casual de apoyo para conversaciones cotidianas"
+    }
+  }
+}

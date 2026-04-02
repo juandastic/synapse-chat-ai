@@ -1,0 +1,59 @@
+{
+  "personaSelector": {
+    "title": "Start a new conversation",
+    "subtitle": "Choose a persona to begin. Each brings a unique perspective and communication style.",
+    "templates": "Templates",
+    "creating": "Creating your conversation..."
+  },
+  "chatView": {
+    "threadNotFound": "Thread not found",
+    "loadingThread": "Loading thread...",
+    "threadAccessDenied": "Thread not found or access denied",
+    "editTitleHint": "Click to edit title",
+    "consolidateMemory": "Consolidate Memory",
+    "consolidationStarted": "Memory consolidation started...",
+    "consolidationFailed": "Failed to start consolidation",
+    "updateTitleFailed": "Failed to update title",
+    "consolidate": "Consolidate"
+  },
+  "chatInput": {
+    "waitingForResponse": "Waiting for response...",
+    "placeholder": "Share what's on your mind...",
+    "attachmentPreview": "Attachment preview",
+    "removeImage": "Remove image",
+    "attachImages": "Attach images",
+    "maxImages": "Maximum {{count}} images",
+    "sendMessage": "Send message",
+    "dailyLimitReached": "You've reached your daily limit of {{limit}} messages.",
+    "resetInfo": "{{info}}. For higher limits, reach out at",
+    "or": "or",
+    "messagesUsage": "{{used}} / {{limit}} messages today",
+    "desktopHint": "Press Enter to send, Shift+Enter for new line. Paste or drag images to attach.",
+    "mobileHint": "Tap send button to submit. Enter inserts a new line. Paste or drag images to attach.",
+    "fileSizeExceeded": "{{filename}} exceeds 10MB limit"
+  },
+  "messageItem": {
+    "error": "Error",
+    "copyMessage": "Copy message",
+    "copyAsMarkdown": "Copy as Markdown",
+    "copied": "Copied",
+    "copy": "Copy",
+    "md": "MD",
+    "retryMessage": "Retry message",
+    "retrying": "Retrying",
+    "retry": "Retry",
+    "confirmDelete": "Click again to confirm",
+    "deleteMessage": "Delete message",
+    "confirmDeleteMessage": "Confirm delete",
+    "sure": "Sure?",
+    "delete": "Delete",
+    "attachedImage": "Attached image"
+  },
+  "messageList": {
+    "loadingConversation": "Loading conversation...",
+    "startConversationWith": "Start your conversation with {{name}}",
+    "startConversation": "Start your conversation",
+    "emptyStateDescription": "Share what's on your mind, and we'll explore it together.",
+    "scrollToBottom": "Scroll to bottom"
+  }
+}

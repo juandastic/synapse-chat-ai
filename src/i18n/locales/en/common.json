@@ -1,0 +1,16 @@
+{
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "confirm": "Confirm",
+  "close": "Close",
+  "loading": "Loading...",
+  "goBack": "Go back",
+  "tryAgain": "Try again",
+  "retry": "Retry",
+  "done": "Done",
+  "deleting": "Deleting…",
+  "synapse": "Synapse",
+  "switchToLightMode": "Switch to light mode",
+  "switchToDarkMode": "Switch to dark mode"
+}

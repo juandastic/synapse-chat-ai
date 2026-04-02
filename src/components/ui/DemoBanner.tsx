@@ -1,6 +1,7 @@
 import { useClerk } from "@clerk/clerk-react";
 import { X } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 /**
  * Persistent banner shown to demo account users.
@@ -10,6 +11,7 @@ import { useState } from "react";
 export function DemoBanner() {
   const { signOut, openSignUp } = useClerk();
   const [dismissed, setDismissed] = useState(false);
+  const { t } = useTranslation("sidebar");
 
   if (dismissed) return null;
 
@@ -21,18 +23,18 @@ export function DemoBanner() {
   return (
     <div className="relative flex items-center justify-center gap-3 bg-primary/10 px-4 py-2 text-sm">
       <span className="text-foreground/80">
-        You're exploring a demo account
+        {t("demo.exploringMessage")}
       </span>
       <button
         onClick={handleSignUp}
         className="rounded-full bg-primary px-4 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
       >
-        Sign up for your own
+        {t("demo.signUp")}
       </button>
       <button
         onClick={() => setDismissed(true)}
         className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        aria-label="Dismiss banner"
+        aria-label={t("demo.dismiss")}
       >
         <X className="h-3.5 w-3.5" />
       </button>

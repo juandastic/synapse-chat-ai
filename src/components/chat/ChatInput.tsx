@@ -15,6 +15,7 @@ import { Send, ImagePlus, X, Loader2 } from "lucide-react";
 import { useChatContext } from "@/contexts/useChatContext";
 import { useUploadFile } from "@convex-dev/r2/react";
 import { useStreamResponse } from "@/hooks/useStreamResponse";
+import { useTranslation } from "react-i18next";
 
 const MAX_IMAGES = 4;
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/gif,image/webp";
@@ -43,6 +44,7 @@ export function ChatInput() {
   const uploadFile = useUploadFile(api.r2);
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
+  const { t } = useTranslation("chat");
 
   // Cleanup on unmount only (not on every images change)
   useEffect(() => {
@@ -80,7 +82,7 @@ export function ChatInput() {
       if (validImages.length >= MAX_IMAGES) break;
 
       if (file.size > MAX_FILE_SIZE) {
-        sizeError = `${file.name} exceeds 10MB limit`;
+        sizeError = t("chatInput.fileSizeExceeded", { filename: file.name });
         continue;
       }
 
@@ -314,8 +316,8 @@ export function ChatInput() {
             onPaste={handlePaste}
             placeholder={
               isGenerating
-                ? "Waiting for response..."
-                : "Share what's on your mind..."
+                ? t("chatInput.waitingForResponse")
+                : t("chatInput.placeholder")
             }
             disabled={isDisabled}
             rows={1}
@@ -335,13 +337,13 @@ export function ChatInput() {
               >
                 <img
                   src={img.previewUrl}
-                  alt="Attachment preview"
+                  alt={t("chatInput.attachmentPreview")}
                   className="h-full w-full object-cover"
                 />
                 <button
                   onClick={() => handleRemoveImage(img.id)}
                   className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
-                  aria-label="Remove image"
+                  aria-label={t("chatInput.removeImage")}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -361,11 +363,11 @@ export function ChatInput() {
                   ? "text-muted-foreground hover:bg-muted hover:text-foreground"
                   : "text-muted-foreground/30 cursor-not-allowed"
               )}
-              aria-label="Attach images"
+              aria-label={t("chatInput.attachImages")}
               title={
                 canAttach
-                  ? "Attach images"
-                  : `Maximum ${MAX_IMAGES} images`
+                  ? t("chatInput.attachImages")
+                  : t("chatInput.maxImages", { count: MAX_IMAGES })
               }
             >
               <ImagePlus className="h-5 w-5" />
@@ -387,7 +389,7 @@ export function ChatInput() {
                 ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-95"
                 : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
-            aria-label="Send message"
+            aria-label={t("chatInput.sendMessage")}
           >
             {isUploading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -411,10 +413,10 @@ export function ChatInput() {
         isAtLimit ? (
           <div className="mt-2 text-center text-xs space-y-1">
             <p className="text-destructive font-medium">
-              You've reached your daily limit of {msgLimit.limit} messages.
+              {t("chatInput.dailyLimitReached", { limit: msgLimit.limit })}
             </p>
             <p className="text-muted-foreground/60">
-              {usageStatus?.resetInfo}. For higher limits, reach out at{" "}
+              {t("chatInput.resetInfo", { info: usageStatus?.resetInfo })}{" "}
               <a
                 href={usageStatus?.contactInfo.x}
                 target="_blank"
@@ -423,7 +425,7 @@ export function ChatInput() {
               >
                 x.com/juandastic
               </a>
-              {" "}or{" "}
+              {" "}{t("chatInput.or")}{" "}
               <a
                 href={`mailto:${usageStatus?.contactInfo.email}`}
                 className="underline hover:text-foreground transition-colors"
@@ -441,15 +443,15 @@ export function ChatInput() {
                 : "text-muted-foreground/60"
             )}
           >
-            {msgLimit.used} / {msgLimit.limit} messages today
+            {t("chatInput.messagesUsage", { used: msgLimit.used, limit: msgLimit.limit })}
           </p>
         )
       )}
 
       <p className="mt-2 text-center text-xs text-muted-foreground/60">
         {isMobileViewport
-          ? "Tap send button to submit. Enter inserts a new line. Paste or drag images to attach."
-          : "Press Enter to send, Shift+Enter for new line. Paste or drag images to attach."}
+          ? t("chatInput.mobileHint")
+          : t("chatInput.desktopHint")}
       </p>
     </div>
   );

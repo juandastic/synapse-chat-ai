@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { useTranslation } from "react-i18next";
 import { formatSessionDate } from "@/lib/utils";
 
 interface SessionDividerProps {
@@ -8,6 +9,7 @@ interface SessionDividerProps {
 export const SessionDivider = memo(function SessionDivider({
   timestamp,
 }: SessionDividerProps) {
+  const { i18n } = useTranslation();
   return (
     <div className="flex items-center gap-4 py-6">
       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
@@ -25,7 +27,7 @@ export const SessionDivider = memo(function SessionDivider({
             d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
-        <span className="font-medium">{formatSessionDate(timestamp)}</span>
+        <span className="font-medium">{formatSessionDate(timestamp, i18n.language)}</span>
       </div>
       <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-transparent" />
     </div>

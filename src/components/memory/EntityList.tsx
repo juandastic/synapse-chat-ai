@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
 import type { GraphNode } from "./types";
@@ -24,6 +25,8 @@ export function EntityList({
 }: EntityListProps) {
   const [query, setQuery] = useState("");
 
+  const { t } = useTranslation("memory");
+
   const filtered = useMemo(() => {
     const sorted = [...nodes].sort((a, b) => b.val - a.val);
     if (!query.trim()) return sorted;
@@ -46,7 +49,7 @@ export function EntityList({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter entities..."
+            placeholder={t("entityList.filterPlaceholder")}
             className={cn(
               "w-full rounded-lg border border-border/50 bg-background py-1.5 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground/40",
               "focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20"
@@ -59,7 +62,7 @@ export function EntityList({
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 && (
           <p className="px-3 py-6 text-center text-[11px] text-muted-foreground/50">
-            {query ? "No matches" : "No entities"}
+            {query ? t("entityList.noMatches") : t("entityList.noEntities")}
           </p>
         )}
 
@@ -113,7 +116,7 @@ export function EntityList({
       {/* Footer count */}
       <div className="shrink-0 border-t border-border/50 px-3 py-1.5">
         <p className="text-[10px] text-muted-foreground/40">
-          {filtered.length} of {nodes.length} entities
+          {t("entityList.entityCount", { filtered: filtered.length, total: nodes.length })}
         </p>
       </div>
     </div>

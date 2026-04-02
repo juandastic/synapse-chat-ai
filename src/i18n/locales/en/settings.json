@@ -1,0 +1,35 @@
+{
+  "personaForm": {
+    "iconLabel": "Icon",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g., My Therapist",
+    "languageLabel": "Language",
+    "descriptionLabel": "Description",
+    "optional": "(optional)",
+    "descriptionPlaceholder": "Short description of what this persona does",
+    "systemPromptLabel": "System Prompt",
+    "systemPromptPlaceholder": "Instructions for the AI persona...",
+    "characterCount": "{{count}}/10,000 characters",
+    "nameRequired": "Name is required",
+    "promptRequired": "System prompt is required",
+    "iconRequired": "Icon is required",
+    "submitError": "Something went wrong"
+  },
+  "personaSettings": {
+    "title": "Personas",
+    "createTitle": "Create Persona",
+    "createButton": "Create",
+    "editTitle": "Edit Persona",
+    "saveChanges": "Save Changes",
+    "createNew": "Create New Persona",
+    "emptyState": "No custom personas yet. Create one or use a template from the new chat screen.",
+    "default": "Default",
+    "editAriaLabel": "Edit {{name}}",
+    "deleteAriaLabel": "Delete {{name}}",
+    "deleteTitle": "Delete \"{{name}}\"?",
+    "deleteDescription": "This persona will be permanently deleted. This action cannot be undone.",
+    "cannotDelete": "Cannot delete persona",
+    "personaInUse": "This persona is being used by one or more threads.\n\nTo delete it, first delete the threads that use this persona from the sidebar, then try again.",
+    "understood": "Understood"
+  }
+}

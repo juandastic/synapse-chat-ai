@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
 import { SignInButton, useSignIn } from "@clerk/clerk-react";
+import { useTranslation } from "react-i18next";
 import { Logo } from "@/components/ui/logo";
 import {
   ArrowRight,
@@ -8,6 +9,7 @@ import {
   Eye,
   GitBranch,
   Github,
+  Globe,
   MessageSquare,
   Network,
   Pencil,
@@ -152,40 +154,10 @@ function ConnectionLines() {
 /*  Data                                                              */
 /* ------------------------------------------------------------------ */
 
-const CONVERSATIONS = {
-  regular: [
-    { role: "user" as const, text: "I've been stressed about the project deadline." },
-    { role: "ai" as const, text: "I understand deadlines can be stressful. Have you tried breaking the work into smaller tasks?" },
-    { role: "user" as const, text: "I mentioned last week that my manager changed the scope..." },
-    { role: "ai" as const, text: "I don't have context from our previous conversations. Could you tell me more about the scope change?" },
-  ],
-  synapse: [
-    { role: "user" as const, text: "I've been stressed about the project deadline." },
-    { role: "ai" as const, text: "Your manager at TechCorp expanded the scope last Tuesday, and you've mentioned before that your anxiety spikes around big deliverables. Let's focus on what you can control. Your marathon training structure could work here: progressive milestones." },
-    { role: "user" as const, text: "That's actually a great way to think about it." },
-    { role: "ai" as const, text: "Sarah noticed you sleeping poorly again. Your meditation practice helped last time. Want me to add 10-minute sessions before your standups this week?" },
-  ],
-};
+const PIPELINE_ICONS = [Brain, Network, GitBranch, Sparkles];
+const PIPELINE_STEP_NUMBERS = ["01", "02", "03", "04"];
 
-const PIPELINE_STEPS = [
-  { icon: Brain, step: "01", title: "Converse", desc: "Talk about your day, your goals, your worries. Every session gets captured automatically." },
-  { icon: Network, step: "02", title: "Ingest", desc: "Sessions are processed through Graphiti, extracting entities and relationships into Neo4j." },
-  { icon: GitBranch, step: "03", title: "Compile", desc: "Your knowledge graph is compiled and injected into future sessions as structured context." },
-  { icon: Sparkles, step: "04", title: "Evolve", desc: "Each conversation refines the graph. The more you talk, the better it gets." },
-];
-
-const PERSONAS = [
-  { emoji: "🧠", name: "Therapist", desc: "Sees emotional patterns. Connects your anxiety to last month's scope change. Uses ACT to reframe." },
-  { emoji: "🎯", name: "Coach", desc: "Tracks real progress. Knows you're ahead on marathon pace. Applies the same discipline to your deadline." },
-  { emoji: "💬", name: "Companion", desc: "Remembers Sarah's ceramics hobby. Notices you sleep better after hiking. Suggests what actually helps." },
-];
-
-const TRANSPARENCY_FEATURES = [
-  { icon: Eye, title: "Explore your graph", desc: "Interactive visualization of every entity and relationship in your graph." },
-  { icon: Pencil, title: "Correct in plain English", desc: '"I left TechCorp." The graph updates. No forms, no menus.' },
-  { icon: Code, title: "Fully open source", desc: "The entire codebase is public. See how it works, fork it, contribute." },
-  { icon: Sparkles, title: "Export to Notion", desc: "Sync your graph to Notion. Review offline. Push corrections back." },
-];
+const TRANSPARENCY_ICONS = [Eye, Pencil, Code, Sparkles];
 
 /* ------------------------------------------------------------------ */
 /*  Landing page                                                      */
@@ -195,6 +167,19 @@ export default function LandingPage() {
   const { signIn, setActive } = useSignIn();
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
+  const { t, i18n } = useTranslation("landing");
+
+  const toggleLanguage = useCallback(() => {
+    i18n.changeLanguage(i18n.language === "es" ? "en" : "es");
+  }, [i18n]);
+
+  const conversations = t("conversations", { returnObjects: true }) as {
+    regular: Array<{ role: string; text: string }>;
+    synapse: Array<{ role: string; text: string }>;
+  };
+  const pipelineSteps = t("pipeline.steps", { returnObjects: true }) as Array<{ title: string; desc: string }>;
+  const personas = t("personas.list", { returnObjects: true }) as Array<{ emoji: string; name: string; desc: string }>;
+  const transparencyFeatures = t("transparency.features", { returnObjects: true }) as Array<{ title: string; desc: string }>;
 
   const handleTryDemo = async () => {
     if (!signIn || !setActive || !DEMO_EMAIL || !DEMO_PASSWORD) return;
@@ -209,7 +194,7 @@ export default function LandingPage() {
         await setActive({ session: result.createdSessionId });
       }
     } catch {
-      setDemoError("Unable to load demo. Please try again.");
+      setDemoError(t("hero.demoError"));
       setDemoLoading(false);
     }
   };
@@ -265,12 +250,22 @@ export default function LandingPage() {
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="View source on GitHub"
+            aria-label={t("nav.githubAriaLabel")}
             className="transition-opacity hover:opacity-70"
             style={{ color: color.inkMuted }}
           >
             <Github className="h-4 w-4" />
           </a>
+
+          <button
+            onClick={toggleLanguage}
+            className="flex h-8 items-center gap-1 rounded-full px-2 text-xs font-semibold transition-opacity hover:opacity-70"
+            style={{ color: color.inkMuted }}
+            aria-label={i18n.language === "en" ? "Cambiar a Español" : "Switch to English"}
+          >
+            <Globe className="h-3.5 w-3.5" />
+            {i18n.language === "en" ? "ES" : "EN"}
+          </button>
 
           {DEMO_AVAILABLE && (
             <button
@@ -279,7 +274,7 @@ export default function LandingPage() {
               className="hidden sm:inline-flex text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
               style={{ color: color.inkMuted }}
             >
-              {demoLoading ? "Loading..." : "Try demo"}
+              {demoLoading ? t("nav.signIn") + "..." : t("nav.tryDemo")}
             </button>
           )}
 
@@ -288,7 +283,7 @@ export default function LandingPage() {
               className="rounded-full px-5 py-1.5 text-sm font-medium transition-opacity hover:opacity-85"
               style={{ background: color.ink, color: color.paper }}
             >
-              Sign in
+              {t("nav.signIn")}
             </button>
           </SignInButton>
         </div>
@@ -303,7 +298,7 @@ export default function LandingPage() {
             className="mb-5 text-xs font-semibold uppercase tracking-[0.2em]"
             style={{ color: color.accent }}
           >
-            Beyond chat history
+            {t("hero.tagline")}
           </p>
         </Reveal>
 
@@ -312,11 +307,11 @@ export default function LandingPage() {
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.08] tracking-tight"
             style={{ fontFamily: "'Fraunces', Georgia, serif" }}
           >
-            What if your AI
+            {t("hero.title1")}
             <br />
-            <span style={{ color: color.accent }}>actually understood</span>
+            <span style={{ color: color.accent }}>{t("hero.title2")}</span>
             <br />
-            who you are?
+            {t("hero.title3")}
           </h1>
         </Reveal>
 
@@ -325,9 +320,7 @@ export default function LandingPage() {
             className="mx-auto mt-6 max-w-lg text-base leading-relaxed sm:text-lg"
             style={{ color: color.inkMuted }}
           >
-            Synapse turns your conversations into a knowledge graph. People,
-            places, goals, emotions, patterns. All structured, all connected. An
-            AI that learns who you are, not just what you said last.
+            {t("hero.description")}
           </p>
         </Reveal>
 
@@ -338,7 +331,7 @@ export default function LandingPage() {
                 className="group inline-flex items-center gap-2.5 rounded-full px-8 py-3 text-sm font-medium shadow-sm transition-opacity hover:opacity-85"
                 style={{ background: color.ink, color: color.paper }}
               >
-                Get started
+                {t("hero.getStarted")}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
             </SignInButton>
@@ -350,7 +343,7 @@ export default function LandingPage() {
                 className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm transition-opacity hover:opacity-70 disabled:opacity-50"
                 style={{ border: `1px solid ${color.rule}`, color: color.inkMuted }}
               >
-                {demoLoading ? "Loading..." : "Experience the demo"}
+                {demoLoading ? "..." : t("hero.experienceDemo")}
               </button>
             )}
           </div>
@@ -379,9 +372,7 @@ export default function LandingPage() {
                 fontWeight: 400,
               }}
             >
-              "Most AI forgets you when the conversation ends. Synapse builds a
-              map of your world and uses it to actually help you, not just
-              respond to you."
+              {t("pullQuote")}
             </p>
           </blockquote>
         </section>
@@ -398,20 +389,19 @@ export default function LandingPage() {
             className="mb-3 text-xs font-semibold uppercase tracking-[0.2em]"
             style={{ color: color.accent }}
           >
-            The Difference
+            {t("comparison.tagline")}
           </p>
           <h2
             className="text-2xl sm:text-3xl font-semibold tracking-tight"
             style={{ fontFamily: "'Fraunces', Georgia, serif" }}
           >
-            Context changes everything
+            {t("comparison.title")}
           </h2>
           <p
             className="mt-3 max-w-md text-sm leading-relaxed mb-10"
             style={{ color: color.inkMuted }}
           >
-            Same conversation. One AI has context, the other doesn't. The
-            difference is obvious.
+            {t("comparison.description")}
           </p>
         </Reveal>
 
@@ -419,7 +409,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 gap-6">
             {(["regular", "synapse"] as const).map((type) => {
               const isSynapse = type === "synapse";
-              const messages = CONVERSATIONS[type];
+              const messages = conversations[type];
 
               return (
                 <div
@@ -441,12 +431,12 @@ export default function LandingPage() {
                       {isSynapse ? (
                         <>
                           <Brain className="inline h-3.5 w-3.5 mr-1" />
-                          Synapse
+                          {t("comparison.synapse")}
                         </>
                       ) : (
                         <>
                           <MessageSquare className="inline h-3.5 w-3.5 mr-1" />
-                          Regular AI
+                          {t("comparison.regularAI")}
                         </>
                       )}
                     </span>
@@ -484,7 +474,7 @@ export default function LandingPage() {
                         className="text-[10px]"
                         style={{ color: `${color.accent}99` }}
                       >
-                        Drawing from 47 entities · 83 relationships
+                        {t("comparison.graphStats")}
                       </span>
                     </div>
                   )}
@@ -506,25 +496,27 @@ export default function LandingPage() {
             className="mb-3 text-xs font-semibold uppercase tracking-[0.2em]"
             style={{ color: color.accent }}
           >
-            How It Works
+            {t("pipeline.tagline")}
           </p>
           <h2
             className="text-2xl sm:text-3xl font-semibold tracking-tight"
             style={{ fontFamily: "'Fraunces', Georgia, serif" }}
           >
-            Memory engineering, not memorization
+            {t("pipeline.title")}
           </h2>
           <p
             className="mt-3 max-w-md text-sm leading-relaxed"
             style={{ color: color.inkMuted }}
           >
-            Four steps from conversation to structured knowledge.
+            {t("pipeline.description")}
           </p>
         </Reveal>
 
         <div className="mt-10 grid sm:grid-cols-2 gap-5">
-          {PIPELINE_STEPS.map((s, i) => (
-            <Reveal key={s.step} delay={i * 0.08}>
+          {pipelineSteps.map((s, i) => {
+            const Icon = PIPELINE_ICONS[i];
+            return (
+            <Reveal key={i} delay={i * 0.08}>
               <div
                 className="rounded-xl p-5 transition-colors"
                 style={{ border: `1px solid ${color.rule}` }}
@@ -540,13 +532,13 @@ export default function LandingPage() {
                     className="flex h-9 w-9 items-center justify-center rounded-lg"
                     style={{ background: color.accentLight }}
                   >
-                    <s.icon className="h-4 w-4" style={{ color: color.accent }} />
+                    <Icon className="h-4 w-4" style={{ color: color.accent }} />
                   </div>
                   <span
                     className="text-[10px] font-semibold"
                     style={{ color: color.inkDim }}
                   >
-                    Step {s.step}
+                    {t("pipeline.step", { number: PIPELINE_STEP_NUMBERS[i] })}
                   </span>
                 </div>
                 <h3
@@ -563,7 +555,8 @@ export default function LandingPage() {
                 </p>
               </div>
             </Reveal>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -578,26 +571,25 @@ export default function LandingPage() {
             className="mb-3 text-xs font-semibold uppercase tracking-[0.2em]"
             style={{ color: color.accent }}
           >
-            Perspectives
+            {t("personas.tagline")}
           </p>
           <h2
             className="text-2xl sm:text-3xl font-semibold tracking-tight"
             style={{ fontFamily: "'Fraunces', Georgia, serif" }}
           >
-            One story, many readers
+            {t("personas.title")}
           </h2>
           <p
             className="mt-3 max-w-md text-sm leading-relaxed"
             style={{ color: color.inkMuted }}
           >
-            Every persona reads the same knowledge graph but brings its own
-            expertise. Clinical depth, strategic clarity, or everyday warmth.
+            {t("personas.description")}
           </p>
         </Reveal>
 
         <div className="mt-10 grid sm:grid-cols-3 gap-5">
-          {PERSONAS.map((p, i) => (
-            <Reveal key={p.name} delay={i * 0.08}>
+          {personas.map((p, i) => (
+            <Reveal key={i} delay={i * 0.08}>
               <div
                 className="rounded-xl p-6 transition-colors"
                 style={{
@@ -641,31 +633,32 @@ export default function LandingPage() {
             className="mb-3 text-xs font-semibold uppercase tracking-[0.2em]"
             style={{ color: color.accent }}
           >
-            Trust
+            {t("transparency.tagline")}
           </p>
           <h2
             className="text-2xl sm:text-3xl font-semibold tracking-tight"
             style={{ fontFamily: "'Fraunces', Georgia, serif" }}
           >
-            You see everything it knows
+            {t("transparency.title")}
           </h2>
           <p
             className="mt-3 max-w-md text-sm leading-relaxed"
             style={{ color: color.inkMuted }}
           >
-            The Memory Explorer shows your full knowledge graph. Inspect it,
-            correct it, or delete from it. You're always in control.
+            {t("transparency.description")}
           </p>
         </Reveal>
 
         <div className="mt-8 grid sm:grid-cols-2 gap-4">
-          {TRANSPARENCY_FEATURES.map((f, i) => (
-            <Reveal key={f.title} delay={i * 0.06}>
+          {transparencyFeatures.map((f, i) => {
+            const Icon = TRANSPARENCY_ICONS[i];
+            return (
+            <Reveal key={i} delay={i * 0.06}>
               <div
                 className="flex items-start gap-3 rounded-lg p-4"
                 style={{ border: `1px solid ${color.rule}` }}
               >
-                <f.icon
+                <Icon
                   className="h-4 w-4 mt-0.5 shrink-0"
                   style={{ color: color.accent }}
                 />
@@ -685,7 +678,8 @@ export default function LandingPage() {
                 </div>
               </div>
             </Reveal>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -707,9 +701,9 @@ export default function LandingPage() {
             className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight"
             style={{ fontFamily: "'Fraunces', Georgia, serif" }}
           >
-            The conversation
+            {t("cta.title1")}
             <br />
-            <span style={{ color: color.accent }}>that remembers</span>
+            <span style={{ color: color.accent }}>{t("cta.title2")}</span>
           </h2>
         </Reveal>
 
@@ -718,8 +712,7 @@ export default function LandingPage() {
             className="mt-4 max-w-md mx-auto text-sm leading-relaxed"
             style={{ color: color.inkMuted }}
           >
-            Start talking. The graph builds itself. The AI gets better the more
-            you use it.
+            {t("cta.description")}
           </p>
         </Reveal>
 
@@ -730,7 +723,7 @@ export default function LandingPage() {
                 className="group inline-flex items-center gap-2.5 rounded-full px-8 py-3 text-sm font-medium shadow-sm transition-opacity hover:opacity-85"
                 style={{ background: color.ink, color: color.paper }}
               >
-                Begin
+                {t("cta.begin")}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
             </SignInButton>
@@ -742,7 +735,7 @@ export default function LandingPage() {
                 className="text-sm transition-opacity hover:opacity-70 disabled:opacity-50"
                 style={{ color: color.inkDim }}
               >
-                {demoLoading ? "Loading..." : "Try the demo"}
+                {demoLoading ? "..." : t("cta.tryDemo")}
               </button>
             )}
           </div>
@@ -763,14 +756,14 @@ export default function LandingPage() {
               fontStyle: "italic",
             }}
           >
-            Personal.{" "}
+            {t("cta.personal")}{" "}
             <a
               href={GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-[3px] transition-opacity hover:opacity-70"
             >
-              Open source
+              {t("cta.openSource")}
             </a>
             .
           </p>

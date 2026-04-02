@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
@@ -34,6 +35,9 @@ export function MemoryExplorer() {
   // Entity list visibility (defaults open on desktop)
   const [entityListOpen, setEntityListOpen] = useState(true);
 
+  const { t } = useTranslation("memory");
+  const tc = useTranslation("common").t;
+
   // Graph canvas ref for imperative centering
   const canvasRef = useRef<GraphCanvasHandle>(null);
 
@@ -50,7 +54,7 @@ export function MemoryExplorer() {
         setSelectedNode(null);
       }
     } catch {
-      setError("Failed to load memory graph");
+      setError(t("explorer.failedToLoad"));
     } finally {
       setLoading(false);
     }
@@ -92,20 +96,16 @@ export function MemoryExplorer() {
         <button
           onClick={() => navigate("/")}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label="Go back"
+          aria-label={tc("goBack")}
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <h1 className="font-display text-sm font-semibold tracking-tight text-foreground">
-          Memory Explorer
+          {t("explorer.title")}
         </h1>
         {graphData && !loading && (
           <span className="text-[11px] text-muted-foreground/50">
-            {graphData.nodes.length} node
-            {graphData.nodes.length !== 1 ? "s" : ""}
-            {" · "}
-            {graphData.links.length} relationship
-            {graphData.links.length !== 1 ? "s" : ""}
+            {t("explorer.node", { count: graphData.nodes.length })} {" · "} {t("explorer.relationship", { count: graphData.links.length })}
           </span>
         )}
 
@@ -114,7 +114,7 @@ export function MemoryExplorer() {
           <button
             onClick={() => setEntityListOpen((v) => !v)}
             className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label={entityListOpen ? "Hide entity list" : "Show entity list"}
+            aria-label={entityListOpen ? t("explorer.hideEntityList") : t("explorer.showEntityList")}
           >
             {entityListOpen ? (
               <X className="h-4 w-4" />
@@ -136,7 +136,7 @@ export function MemoryExplorer() {
             <div className="text-center">
               <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-muted border-t-primary" />
               <p className="text-sm text-muted-foreground">
-                Loading your memory graph...
+                {t("explorer.loading")}
               </p>
             </div>
           </div>
@@ -151,7 +151,7 @@ export function MemoryExplorer() {
                 onClick={loadGraph}
                 className="mt-3 text-xs font-medium text-primary underline-offset-2 hover:underline"
               >
-                Try again
+                {tc("tryAgain")}
               </button>
             </div>
           </div>
@@ -174,10 +174,10 @@ export function MemoryExplorer() {
                 </svg>
               </div>
               <p className="text-sm font-medium text-foreground/80">
-                No memories yet
+                {t("explorer.noMemoriesTitle")}
               </p>
               <p className="mt-1 text-xs text-muted-foreground/60">
-                Start chatting to build your knowledge graph.
+                {t("explorer.noMemoriesDescription")}
               </p>
             </div>
           </div>
@@ -207,7 +207,7 @@ export function MemoryExplorer() {
               {loading && (
                 <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-lg bg-card/80 px-2.5 py-1.5 text-[11px] text-muted-foreground backdrop-blur-sm">
                   <div className="h-3 w-3 animate-spin rounded-full border border-muted border-t-primary" />
-                  Refreshing...
+                  {t("explorer.refreshing")}
                 </div>
               )}
               <GraphCanvas

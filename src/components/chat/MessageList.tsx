@@ -1,4 +1,5 @@
 import { useEffect, useRef, Fragment, useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useChatContext } from "@/contexts/useChatContext";
 import { MessageItem } from "./MessageItem";
 import { SessionDivider } from "./SessionDivider";
@@ -11,6 +12,7 @@ interface MessageListProps {
 
 export function MessageList({ personaIcon, personaName }: MessageListProps) {
   const { messages } = useChatContext();
+  const { t } = useTranslation("chat");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
@@ -69,7 +71,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
       <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          <span className="text-sm">Loading conversation...</span>
+          <span className="text-sm">{t("messageList.loadingConversation")}</span>
         </div>
       </div>
     );
@@ -101,11 +103,11 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
 
           <h2 className="font-display text-xl font-semibold text-foreground">
             {personaName
-              ? `Start your conversation with ${personaName}`
-              : "Start your conversation"}
+              ? t("messageList.startConversationWith", { name: personaName })
+              : t("messageList.startConversation")}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground text-balance">
-            Share what's on your mind, and we'll explore it together.
+            {t("messageList.emptyStateDescription")}
           </p>
         </div>
       </div>
@@ -151,7 +153,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
             }}
             size="icon"
             className="pointer-events-auto h-10 w-10 rounded-full shadow-lg transition-all hover:scale-110"
-            aria-label="Scroll to bottom"
+            aria-label={t("messageList.scrollToBottom")}
           >
             <svg
               viewBox="0 0 24 24"

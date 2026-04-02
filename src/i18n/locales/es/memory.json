@@ -1,0 +1,48 @@
+{
+  "explorer": {
+    "title": "Explorador de memoria",
+    "node_one": "{{count}} nodo",
+    "node_other": "{{count}} nodos",
+    "relationship_one": "{{count}} relación",
+    "relationship_other": "{{count}} relaciones",
+    "hideEntityList": "Ocultar lista de entidades",
+    "showEntityList": "Mostrar lista de entidades",
+    "loading": "Cargando tu grafo de memoria...",
+    "failedToLoad": "Error al cargar el grafo de memoria",
+    "noMemoriesTitle": "Aún no hay memorias",
+    "noMemoriesDescription": "Empieza a chatear para construir tu grafo de conocimiento.",
+    "refreshing": "Actualizando..."
+  },
+  "inspector": {
+    "clickToInspect": "Haz clic en un nodo para inspeccionarlo",
+    "closeInspector": "Cerrar inspector",
+    "summary": "Resumen",
+    "connections": "Conexiones",
+    "relationship_one": "{{count}} relación",
+    "relationship_other": "{{count}} relaciones",
+    "outgoing": "Salientes",
+    "incoming": "Entrantes"
+  },
+  "entityList": {
+    "filterPlaceholder": "Filtrar entidades...",
+    "noMatches": "Sin coincidencias",
+    "noEntities": "Sin entidades",
+    "entityCount": "{{filtered}} de {{total}} entidades"
+  },
+  "correction": {
+    "hint": "¿Algo es incorrecto? Describe el cambio con tus propias palabras y Synapse actualizará su memoria.",
+    "placeholder": "ej. \"Ya no trabajo en Acme Corp, me uní a NewCo el mes pasado.\"",
+    "sendCorrection": "Enviar corrección",
+    "success": "Corrección en cola. Procesando en segundo plano...",
+    "error": "Error al enviar la corrección. Por favor intenta de nuevo."
+  },
+  "cortexJob": {
+    "memoryGraph": "grafo de memoria",
+    "memoryCorrection": "corrección de memoria",
+    "failedToUpdate": "Error al actualizar {{label}}.",
+    "retrying": "IA sobrecargada. Reintentando {{label}} en ~{{minutes}}m...",
+    "processing": "Procesando {{label}}... próxima verificación en ~{{minutes}}m",
+    "attempt": "(intento {{current}}/{{max}})",
+    "updating": "Actualizando {{label}}..."
+  }
+}

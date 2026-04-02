@@ -7,6 +7,7 @@ import { api } from "../../../convex/_generated/api";
 import { createSecureRehypePlugins } from "@/lib/markdown-security";
 import { useChatContext } from "@/contexts/useChatContext";
 import { useStreamResponse } from "@/hooks/useStreamResponse";
+import { useTranslation } from "react-i18next";
 
 interface MessageItemProps {
   message: Doc<"messages">;
@@ -22,6 +23,7 @@ export const MessageItem = memo(function MessageItem({
   const isEmpty = message.content === "";
   const prevContentRef = useRef(message.content);
   const isContentChanging = message.content !== prevContentRef.current;
+  const { t, i18n } = useTranslation("chat");
   const hasImages =
     isUser && message.imageKeys !== undefined && message.imageKeys.length > 0;
 
@@ -112,7 +114,7 @@ export const MessageItem = memo(function MessageItem({
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
-            <span>Error</span>
+            <span>{t("messageItem.error")}</span>
           </div>
         )}
 
@@ -125,7 +127,7 @@ export const MessageItem = memo(function MessageItem({
                 : "text-muted-foreground"
             )}
           >
-            <span>{formatMessageTime(message._creationTime)}</span>
+            <span>{formatMessageTime(message._creationTime, i18n.language)}</span>
             {!isEmpty && (
               <CopyButton content={message.content} isUserMessage={isUser} />
             )}
@@ -147,6 +149,7 @@ const CopyButton = memo(function CopyButton({
   content: string;
   isUserMessage: boolean;
 }) {
+  const { t } = useTranslation("chat");
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
@@ -166,8 +169,8 @@ const CopyButton = memo(function CopyButton({
           ? "hover:bg-primary-foreground/10"
           : "hover:bg-muted-foreground/10"
       )}
-      title={isUserMessage ? "Copy message" : "Copy as Markdown"}
-      aria-label={isUserMessage ? "Copy message" : "Copy as Markdown"}
+      title={isUserMessage ? t("messageItem.copyMessage") : t("messageItem.copyAsMarkdown")}
+      aria-label={isUserMessage ? t("messageItem.copyMessage") : t("messageItem.copyAsMarkdown")}
     >
       {copied ? (
         <>
@@ -184,7 +187,7 @@ const CopyButton = memo(function CopyButton({
               d="M5 13l4 4L19 7"
             />
           </svg>
-          <span className="text-[10px]">Copied</span>
+          <span className="text-[10px]">{t("messageItem.copied")}</span>
         </>
       ) : (
         <>
@@ -201,7 +204,7 @@ const CopyButton = memo(function CopyButton({
               d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
             />
           </svg>
-          <span className="text-[10px]">{isUserMessage ? "Copy" : "MD"}</span>
+          <span className="text-[10px]">{isUserMessage ? t("messageItem.copy") : t("messageItem.md")}</span>
         </>
       )}
     </button>
@@ -213,6 +216,7 @@ const RetryMessageButton = memo(function RetryMessageButton({
 }: {
   userMessageId: Doc<"messages">["_id"];
 }) {
+  const { t } = useTranslation("chat");
   const [isRetrying, setIsRetrying] = useState(false);
   const resendMessage = useMutation(api.messages.resend);
   const { isGenerating, startStreaming } = useChatContext();
@@ -243,8 +247,8 @@ const RetryMessageButton = memo(function RetryMessageButton({
         "inline-flex items-center gap-0.5 rounded px-1 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-primary-foreground/10",
         isDisabled && "opacity-50 cursor-not-allowed"
       )}
-      title="Retry message"
-      aria-label="Retry message"
+      title={t("messageItem.retryMessage")}
+      aria-label={t("messageItem.retryMessage")}
     >
       {isRetrying ? (
         <svg
@@ -280,7 +284,7 @@ const RetryMessageButton = memo(function RetryMessageButton({
           />
         </svg>
       )}
-      <span className="text-[10px]">{isRetrying ? "Retrying" : "Retry"}</span>
+      <span className="text-[10px]">{isRetrying ? t("messageItem.retrying") : t("messageItem.retry")}</span>
     </button>
   );
 });
@@ -292,6 +296,7 @@ const DeleteMessageButton = memo(function DeleteMessageButton({
   messageId: Doc<"messages">["_id"];
   isUserMessage: boolean;
 }) {
+  const { t } = useTranslation("chat");
   const [confirming, setConfirming] = useState(false);
   const deleteMessage = useMutation(api.messages.deleteMessage);
 
@@ -322,8 +327,8 @@ const DeleteMessageButton = memo(function DeleteMessageButton({
             : "bg-destructive/20 text-destructive hover:bg-destructive/30"
           : "hover:bg-muted-foreground/10"
       )}
-      title={confirming ? "Click again to confirm" : "Delete message"}
-      aria-label={confirming ? "Confirm delete" : "Delete message"}
+      title={confirming ? t("messageItem.confirmDelete") : t("messageItem.deleteMessage")}
+      aria-label={confirming ? t("messageItem.confirmDeleteMessage") : t("messageItem.deleteMessage")}
     >
       <svg
         className="h-3 w-3"
@@ -338,7 +343,7 @@ const DeleteMessageButton = memo(function DeleteMessageButton({
           d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
         />
       </svg>
-      <span className="text-[10px]">{confirming ? "Sure?" : "Delete"}</span>
+      <span className="text-[10px]">{confirming ? t("messageItem.sure") : t("messageItem.delete")}</span>
     </button>
   );
 });
@@ -348,6 +353,7 @@ const MessageImage = memo(function MessageImage({
 }: {
   imageKey: string;
 }) {
+  const { t } = useTranslation("chat");
   const imageUrl = useQuery(api.messages.getImageUrl, { key: imageKey });
 
   if (!imageUrl) {
@@ -365,7 +371,7 @@ const MessageImage = memo(function MessageImage({
     >
       <img
         src={imageUrl}
-        alt="Attached image"
+        alt={t("messageItem.attachedImage")}
         className="h-auto max-h-64 w-full object-cover transition-transform hover:scale-[1.02]"
         loading="lazy"
       />

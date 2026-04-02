@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { GraphNode, GraphLink } from "./types";
 import { X } from "lucide-react";
@@ -20,6 +21,8 @@ export function NodeInspector({
   nodes,
   onClose,
 }: NodeInspectorProps) {
+  const { t } = useTranslation("memory");
+
   if (!node) {
     return (
       <div className="flex h-full flex-col items-center justify-center px-6 text-center">
@@ -38,7 +41,7 @@ export function NodeInspector({
           </svg>
         </div>
         <p className="text-xs text-muted-foreground/60">
-          Click a node to inspect it
+          {t("inspector.clickToInspect")}
         </p>
       </div>
     );
@@ -61,7 +64,7 @@ export function NodeInspector({
         <button
           onClick={onClose}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label="Close inspector"
+          aria-label={t("inspector.closeInspector")}
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -72,7 +75,7 @@ export function NodeInspector({
         {/* Summary */}
         {node.summary && (
           <div className="mb-5">
-            <SectionLabel>Summary</SectionLabel>
+            <SectionLabel>{t("inspector.summary")}</SectionLabel>
             <p className="text-sm leading-relaxed text-foreground/80">
               {node.summary}
             </p>
@@ -81,16 +84,16 @@ export function NodeInspector({
 
         {/* Connections count */}
         <div className="mb-5">
-          <SectionLabel>Connections</SectionLabel>
+          <SectionLabel>{t("inspector.connections")}</SectionLabel>
           <p className="text-xs text-muted-foreground">
-            {node.val} relationship{node.val !== 1 ? "s" : ""}
+            {t("inspector.relationship", { count: node.val })}
           </p>
         </div>
 
         {/* Outgoing relationships */}
         {outgoing.length > 0 && (
           <div className="mb-5">
-            <SectionLabel>Outgoing</SectionLabel>
+            <SectionLabel>{t("inspector.outgoing")}</SectionLabel>
             <ul className="space-y-2">
               {outgoing.map((link) => (
                 <RelationshipRow
@@ -111,7 +114,7 @@ export function NodeInspector({
         {/* Incoming relationships */}
         {incoming.length > 0 && (
           <div className="mb-5">
-            <SectionLabel>Incoming</SectionLabel>
+            <SectionLabel>{t("inspector.incoming")}</SectionLabel>
             <ul className="space-y-2">
               {incoming.map((link) => (
                 <RelationshipRow

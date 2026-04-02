@@ -2,11 +2,12 @@ import { useState, useCallback, useTransition } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UserButton } from "@clerk/clerk-react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { ThreadItem } from "./ThreadItem";
 import { ConfirmDialog } from "../ui/confirm-dialog";
-import { Plus, Settings, Brain, Database, Moon, Sun } from "lucide-react";
+import { Plus, Settings, Brain, Database, Moon, Sun, Globe } from "lucide-react";
 import { Logo } from "../ui/logo";
 import { useTheme } from "../../contexts/ThemeContext";
 
@@ -26,6 +27,12 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
   const location = useLocation();
 
   const { theme, toggleTheme } = useTheme();
+  const { t, i18n } = useTranslation("sidebar");
+  const tc = useTranslation("common").t;
+
+  const toggleLanguage = useCallback(() => {
+    i18n.changeLanguage(i18n.language === "es" ? "en" : "es");
+  }, [i18n]);
 
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
     type: "closed",
@@ -107,24 +114,24 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
       <nav className="shrink-0 space-y-0.5 px-2 pb-2">
         <SidebarButton
           icon={<Plus className="h-4 w-4" />}
-          label="New chat"
+          label={t("newChat")}
           onClick={handleNewChat}
         />
         <SidebarButton
           icon={<Brain className="h-4 w-4" />}
-          label="Memory"
+          label={t("memory")}
           onClick={handleMemory}
           active={location.pathname === "/memory"}
         />
         <SidebarButton
           icon={<Database className="h-4 w-4" />}
-          label="Notion Export"
+          label={t("notionExport")}
           onClick={handleNotion}
           active={location.pathname === "/notion"}
         />
         <SidebarButton
           icon={<Settings className="h-4 w-4" />}
-          label="Personas"
+          label={t("personas")}
           onClick={handleSettings}
           active={location.pathname === "/settings/personas"}
         />
@@ -163,9 +170,9 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
                 <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <p className="text-xs text-muted-foreground/60">No conversations yet</p>
+            <p className="text-xs text-muted-foreground/60">{t("noConversations")}</p>
             <p className="mt-1 text-xs text-muted-foreground/40">
-              Start a new chat above
+              {t("startNewChat")}
             </p>
           </div>
         ) : (
@@ -186,7 +193,7 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
         )}
       </div>
 
-      {/* Footer — user avatar + theme toggle */}
+      {/* Footer — user avatar + language toggle + theme toggle */}
       <div className="flex shrink-0 items-center justify-between border-t border-border/50 px-4 py-3">
         <UserButton
           appearance={{
@@ -195,17 +202,27 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
             },
           }}
         />
-        <button
-          onClick={toggleTheme}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        >
-          {theme === "dark" ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={toggleLanguage}
+            className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label={i18n.language === "en" ? "Cambiar a Español" : "Switch to English"}
+          >
+            <Globe className="h-3.5 w-3.5" />
+            {i18n.language === "en" ? "ES" : "EN"}
+          </button>
+          <button
+            onClick={toggleTheme}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label={theme === "dark" ? tc("switchToLightMode") : tc("switchToDarkMode")}
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Thread delete confirmation dialog */}
@@ -215,13 +232,13 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
         onCancel={() => setDeleteDialog({ type: "closed" })}
         title={
           deleteDialog.type === "confirm"
-            ? `Delete "${deleteDialog.threadTitle}"?`
+            ? t("deleteThreadTitle", { title: deleteDialog.threadTitle })
             : ""
         }
-        description="All messages in this thread will be permanently deleted. This action cannot be undone."
-        hint="What Synapse learned from these conversations remains stored in memory and will continue to enrich future sessions."
-        confirmLabel="Delete Thread"
-        cancelLabel="Cancel"
+        description={t("deleteThreadDescription")}
+        hint={t("deleteThreadHint")}
+        confirmLabel={t("deleteThread")}
+        cancelLabel={tc("cancel")}
         variant="danger"
         loading={deletePending}
       />

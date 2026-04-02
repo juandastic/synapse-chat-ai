@@ -1,4 +1,5 @@
 import { useState, useTransition, useCallback, FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { EmojiPicker } from "./EmojiPicker";
 
@@ -40,7 +41,9 @@ export function PersonaForm({
 }: PersonaFormProps) {
   const [name, setName] = useState(initialData?.name ?? "");
   const [icon, setIcon] = useState(initialData?.icon ?? "🤖");
-  const [language, setLanguage] = useState(initialData?.language ?? "English");
+  const { t, i18n } = useTranslation("settings");
+  const tc = useTranslation("common").t;
+  const [language, setLanguage] = useState(initialData?.language ?? (i18n.language === "es" ? "Español" : "English"));
   const [description, setDescription] = useState(
     initialData?.description ?? ""
   );
@@ -60,15 +63,15 @@ export function PersonaForm({
       const trimmedIcon = icon.trim();
 
       if (!trimmedName) {
-        setError("Name is required");
+        setError(t("personaForm.nameRequired"));
         return;
       }
       if (!trimmedPrompt) {
-        setError("System prompt is required");
+        setError(t("personaForm.promptRequired"));
         return;
       }
       if (!trimmedIcon) {
-        setError("Icon is required");
+        setError(t("personaForm.iconRequired"));
         return;
       }
 
@@ -82,7 +85,7 @@ export function PersonaForm({
             systemPrompt: trimmedPrompt,
           });
         } catch (err) {
-          setError(err instanceof Error ? err.message : "Something went wrong");
+          setError(err instanceof Error ? err.message : t("personaForm.submitError"));
         }
       });
     },
@@ -101,20 +104,20 @@ export function PersonaForm({
       <div className="flex gap-3">
         <div className="w-20">
           <label htmlFor="persona-icon" className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            Icon
+            {t("personaForm.iconLabel")}
           </label>
           <EmojiPicker id="persona-icon" value={icon} onChange={setIcon} />
         </div>
         <div className="flex-1">
           <label htmlFor="persona-name" className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            Name
+            {t("personaForm.nameLabel")}
           </label>
           <input
             id="persona-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., My Therapist"
+            placeholder={t("personaForm.namePlaceholder")}
             className="h-10 w-full rounded-lg border border-border/50 bg-card px-3 text-sm focus:border-primary/30 focus:outline-none focus:ring-2 focus:ring-ring/20"
             maxLength={100}
           />
@@ -124,7 +127,7 @@ export function PersonaForm({
       {/* Language */}
       <div>
         <label htmlFor="persona-language" className="mb-1.5 block text-xs font-medium text-muted-foreground">
-          Language
+          {t("personaForm.languageLabel")}
         </label>
         <select
           id="persona-language"
@@ -143,15 +146,15 @@ export function PersonaForm({
       {/* Description */}
       <div>
         <label htmlFor="persona-description" className="mb-1.5 block text-xs font-medium text-muted-foreground">
-          Description
-          <span className="ml-1 text-muted-foreground/50">(optional)</span>
+          {t("personaForm.descriptionLabel")}
+          <span className="ml-1 text-muted-foreground/50">({t("personaForm.optional")})</span>
         </label>
         <input
           id="persona-description"
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Short description of what this persona does"
+          placeholder={t("personaForm.descriptionPlaceholder")}
           className="h-10 w-full rounded-lg border border-border/50 bg-card px-3 text-sm focus:border-primary/30 focus:outline-none focus:ring-2 focus:ring-ring/20"
           maxLength={500}
         />
@@ -160,19 +163,19 @@ export function PersonaForm({
       {/* System Prompt */}
       <div>
         <label htmlFor="persona-system-prompt" className="mb-1.5 block text-xs font-medium text-muted-foreground">
-          System Prompt
+          {t("personaForm.systemPromptLabel")}
         </label>
         <textarea
           id="persona-system-prompt"
           value={systemPrompt}
           onChange={(e) => setSystemPrompt(e.target.value)}
-          placeholder="Instructions for the AI persona..."
+          placeholder={t("personaForm.systemPromptPlaceholder")}
           rows={8}
           className="w-full rounded-lg border border-border/50 bg-card px-3 py-2.5 font-mono text-sm leading-relaxed focus:border-primary/30 focus:outline-none focus:ring-2 focus:ring-ring/20"
           maxLength={10000}
         />
         <p className="mt-1 text-xs text-muted-foreground/50">
-          {systemPrompt.length}/10,000 characters
+          {t("personaForm.characterCount", { count: systemPrompt.length })}
         </p>
       </div>
 
@@ -184,7 +187,7 @@ export function PersonaForm({
           disabled={isPending}
           className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
         >
-          Cancel
+          {tc("cancel")}
         </button>
         <button
           type="submit"

@@ -1,0 +1,95 @@
+{
+  "title": "Exportar a Notion",
+  "hero": {
+    "title": "Exporta tu memoria a Notion",
+    "description": "Synapse leerá todo tu grafo de conocimiento y lo transformará en bases de datos estructuradas y navegables en Notion — una por categoría — todas organizadas bajo una sola página padre que tú elijas."
+  },
+  "features": {
+    "fullGraph": "Lectura completa del grafo",
+    "fullGraphDesc": "Cada entidad, relación e insight almacenado en tu memoria",
+    "aiSchemas": "Esquemas diseñados por IA",
+    "aiSchemasDesc": "Gemini diseña columnas de base de datos personalizadas para tus datos",
+    "structured": "Bases de datos estructuradas",
+    "structuredDesc": "Personas, proyectos, salud, metas — cada uno en su propia base de datos de Notion"
+  },
+  "config": {
+    "title": "Configuración",
+    "description": "Tus credenciales se guardan y se rellenan automáticamente para futuras exportaciones.",
+    "tokenLabel": "Token de integración",
+    "howToGetToken": "¿Cómo obtener un token?",
+    "tokenPlaceholder": "ntn_...",
+    "pageNameLabel": "Nombre de la página padre",
+    "pageNamePlaceholder": "ej. Synapse",
+    "languageLabel": "Idioma de salida",
+    "tokenRequired": "El token de integración de Notion es obligatorio",
+    "pageNameRequired": "El nombre de la página padre es obligatorio"
+  },
+  "help": {
+    "title": "Cómo obtener tu token de integración",
+    "step1_open": "Abre",
+    "step1_link": "Integraciones internas de Notion",
+    "step1_suffix": "y crea una nueva integración.",
+    "step2_prefix": "Copia el",
+    "step2_bold": "Secreto de integración interna",
+    "step2_suffix": "— comienza con",
+    "step3": "Crea o abre la página de Notion que quieras como página padre (ej. \"Synapse\").",
+    "step4_prefix": "Otorga acceso a esa página. Desde la página de integraciones ve a",
+    "step4_bold1": "Acceso al contenido",
+    "step4_middle": "y agrega la página — o abre la página en Notion, haz clic en",
+    "step4_bold2": "···",
+    "step4_arrow": "→",
+    "step4_bold3": "Conexiones",
+    "step4_suffix": "→ selecciona tu integración.",
+    "step5": "Pega el token arriba e ingresa el nombre exacto de la página."
+  },
+  "export": {
+    "startingExport": "Iniciando exportación…",
+    "exportButton": "Exportar a Notion",
+    "startingSync": "Iniciando sincronización…",
+    "syncButton": "Sincronizar correcciones desde Notion",
+    "failed": "Error al iniciar la exportación",
+    "correctionsFailed": "Error al iniciar las correcciones"
+  },
+  "pipeline": {
+    "exporting": "Exportando…",
+    "exportingDescription": "Esto puede tomar unos minutos. Puedes salir de esta página y volver.",
+    "correcting": "Sincronizando correcciones…",
+    "correctingDescription": "Leyendo filas marcadas de Notion y aplicándolas a tu grafo."
+  },
+  "steps": {
+    "hydrating": "Leyendo tu grafo de memoria",
+    "analyzing": "Diseñando esquemas de base de datos",
+    "extracting_entries": "Extrayendo entradas",
+    "creating_databases": "Creando bases de datos en Notion",
+    "populating": "Poblando bases de datos",
+    "summarizing": "Creando página de resumen",
+    "done": "Listo",
+    "scanning": "Escaneando bases de datos de Notion",
+    "applying": "Aplicando correcciones al grafo"
+  },
+  "stats": {
+    "categories": "Categorías",
+    "entries": "Entradas",
+    "databases": "Bases de datos",
+    "found": "Encontradas",
+    "applied": "Aplicadas",
+    "failed": "Fallidas"
+  },
+  "completed": {
+    "exportComplete": "Exportación completa",
+    "exportStats_one": "{{count}} base de datos · {{entries}} entradas · {{duration}}",
+    "exportStats_other": "{{count}} bases de datos · {{entries}} entradas · {{duration}}",
+    "openInNotion": "Abrir en Notion",
+    "newExport": "Nueva exportación",
+    "correctionsApplied": "Correcciones aplicadas",
+    "correctionsStats": "{{applied}} aplicadas · {{found}} encontradas",
+    "correctionsStatsFailed": " · {{failed}} fallidas",
+    "failedCorrections": "Correcciones fallidas"
+  },
+  "failed": {
+    "exportFailed": "Exportación fallida",
+    "correctionsFailed": "Sincronización de correcciones fallida",
+    "exportExpired": "El resultado de la exportación expiró. Por favor inicia una nueva exportación.",
+    "correctionsExpired": "El trabajo de correcciones expiró. Por favor intenta de nuevo."
+  }
+}

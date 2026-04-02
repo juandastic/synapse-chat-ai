@@ -1,0 +1,95 @@
+{
+  "title": "Notion Export",
+  "hero": {
+    "title": "Export Your Memory to Notion",
+    "description": "Synapse will read your entire knowledge graph and transform it into structured, browsable Notion databases — one per category — all organized under a single parent page you choose."
+  },
+  "features": {
+    "fullGraph": "Full graph read",
+    "fullGraphDesc": "Every entity, relationship, and insight stored in your memory",
+    "aiSchemas": "AI-designed schemas",
+    "aiSchemasDesc": "Gemini designs custom database columns tailored to your data",
+    "structured": "Structured databases",
+    "structuredDesc": "People, projects, health, goals — each in its own Notion database"
+  },
+  "config": {
+    "title": "Configuration",
+    "description": "Your credentials are saved and pre-filled for future exports.",
+    "tokenLabel": "Integration Token",
+    "howToGetToken": "How to get a token?",
+    "tokenPlaceholder": "ntn_...",
+    "pageNameLabel": "Parent Page Name",
+    "pageNamePlaceholder": "e.g. Synapse",
+    "languageLabel": "Output Language",
+    "tokenRequired": "Notion integration token is required",
+    "pageNameRequired": "Parent page name is required"
+  },
+  "help": {
+    "title": "How to get your integration token",
+    "step1_open": "Open",
+    "step1_link": "Notion Internal Integrations",
+    "step1_suffix": "and create a new integration.",
+    "step2_prefix": "Copy the",
+    "step2_bold": "Internal Integration Secret",
+    "step2_suffix": "— it starts with",
+    "step3": "Create or open the Notion page you want as the parent (e.g. \"Synapse\").",
+    "step4_prefix": "Grant access to that page. From the integrations page go to",
+    "step4_bold1": "Content access",
+    "step4_middle": "and add the page — or open the page in Notion, click",
+    "step4_bold2": "···",
+    "step4_arrow": "→",
+    "step4_bold3": "Connections",
+    "step4_suffix": "→ select your integration.",
+    "step5": "Paste the token above and enter the exact page name."
+  },
+  "export": {
+    "startingExport": "Starting export…",
+    "exportButton": "Export to Notion",
+    "startingSync": "Starting sync…",
+    "syncButton": "Sync Corrections from Notion",
+    "failed": "Failed to start export",
+    "correctionsFailed": "Failed to start corrections"
+  },
+  "pipeline": {
+    "exporting": "Exporting…",
+    "exportingDescription": "This can take a few minutes. You can leave this page and come back.",
+    "correcting": "Syncing corrections…",
+    "correctingDescription": "Reading flagged rows from Notion and applying them to your graph."
+  },
+  "steps": {
+    "hydrating": "Reading your memory graph",
+    "analyzing": "Designing database schemas",
+    "extracting_entries": "Extracting entries",
+    "creating_databases": "Creating Notion databases",
+    "populating": "Populating databases",
+    "summarizing": "Creating summary page",
+    "done": "Done",
+    "scanning": "Scanning Notion databases",
+    "applying": "Applying corrections to graph"
+  },
+  "stats": {
+    "categories": "Categories",
+    "entries": "Entries",
+    "databases": "Databases",
+    "found": "Found",
+    "applied": "Applied",
+    "failed": "Failed"
+  },
+  "completed": {
+    "exportComplete": "Export complete",
+    "exportStats_one": "{{count}} database · {{entries}} entries · {{duration}}",
+    "exportStats_other": "{{count}} databases · {{entries}} entries · {{duration}}",
+    "openInNotion": "Open in Notion",
+    "newExport": "New Export",
+    "correctionsApplied": "Corrections applied",
+    "correctionsStats": "{{applied}} applied · {{found}} found",
+    "correctionsStatsFailed": " · {{failed}} failed",
+    "failedCorrections": "Failed corrections"
+  },
+  "failed": {
+    "exportFailed": "Export failed",
+    "correctionsFailed": "Corrections sync failed",
+    "exportExpired": "Export result expired. Please start a new export.",
+    "correctionsExpired": "Corrections job expired. Please try again."
+  }
+}

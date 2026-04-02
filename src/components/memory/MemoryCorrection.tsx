@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,8 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
     message: string;
   } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const { t } = useTranslation("memory");
 
   // Auto-resize textarea up to a max height
   const adjustTextareaHeight = useCallback(() => {
@@ -53,7 +56,7 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
         }
         setFeedback({
           type: "success",
-          message: "Correction queued. Processing in the background...",
+          message: t("correction.success"),
         });
         onCorrectionSent();
 
@@ -68,7 +71,7 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
     } catch {
       setFeedback({
         type: "error",
-        message: "Failed to send correction. Please try again.",
+        message: t("correction.error"),
       });
     } finally {
       setLoading(false);
@@ -89,8 +92,7 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
     <div className="border-t border-border/50 bg-card/50 px-4 py-3">
       {/* Hint text */}
       <p className="mb-2 text-[11px] text-muted-foreground/60">
-        Is something incorrect? Describe the change in your own words and
-        Synapse will update its memory.
+        {t("correction.hint")}
       </p>
 
       {/* Input row */}
@@ -103,7 +105,7 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
             adjustTextareaHeight();
           }}
           onKeyDown={handleKeyDown}
-          placeholder='e.g. "I no longer work at Acme Corp, I joined NewCo last month."'
+          placeholder={t("correction.placeholder")}
           disabled={loading}
           rows={2}
           className={cn(
@@ -120,7 +122,7 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
             "bg-primary text-primary-foreground",
             "hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
           )}
-          aria-label="Send correction"
+          aria-label={t("correction.sendCorrection")}
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" />

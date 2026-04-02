@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Outlet, Link, useOutletContext } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { useUser } from "@clerk/clerk-react";
+import { useTranslation } from "react-i18next";
 import posthog from "posthog-js";
 import { api } from "../../../convex/_generated/api";
 import { Sidebar } from "../sidebar/Sidebar";
@@ -37,6 +38,8 @@ export function AppLayout() {
   }, [sidebarOpen, closeSidebar]);
 
   const { theme, toggleTheme } = useTheme();
+  const { t: tc } = useTranslation("common");
+  const { t: ts } = useTranslation("sidebar");
   const isDemoUser = useQuery(api.demo.isDemoUserQuery) ?? false;
   const { user } = useUser();
   const convexUser = useQuery(api.users.me);
@@ -86,7 +89,7 @@ export function AppLayout() {
           <button
             onClick={toggleSidebar}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Toggle sidebar"
+            aria-label={ts("toggleSidebar")}
             aria-expanded={sidebarOpen}
           >
             <svg
@@ -109,7 +112,7 @@ export function AppLayout() {
           <button
             onClick={toggleTheme}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={theme === "dark" ? tc("switchToLightMode") : tc("switchToDarkMode")}
           >
             {theme === "dark" ? (
               <Sun className="h-4 w-4" />

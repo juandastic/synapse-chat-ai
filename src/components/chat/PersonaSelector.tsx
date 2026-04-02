@@ -1,6 +1,7 @@
 import { useTransition, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -11,31 +12,10 @@ import { Logo } from "../ui/logo";
  * Used for display -- actual creation goes through the backend.
  */
 const SYSTEM_TEMPLATES = [
-  {
-    key: "psicogemini",
-    name: "PsicoGemini",
-    icon: "🧠",
-    description:
-      "Psicoterapeuta con formación en terapias de tercera generación (ACT, DBT) y enfoque neuroafirmativo",
-  },
-  {
-    key: "therapist",
-    name: "Therapist",
-    icon: "🧠",
-    description: "ACT/DBT therapist with expertise in neurodivergent support",
-  },
-  {
-    key: "coach",
-    name: "Coach",
-    icon: "🎯",
-    description: "Life and productivity coach for goals and growth",
-  },
-  {
-    key: "friend",
-    name: "Friend",
-    icon: "💬",
-    description: "Casual supportive companion for everyday conversations",
-  },
+  { key: "psicogemini", icon: "🧠", nameKey: "templates.psicogemini.name", descKey: "templates.psicogemini.description" },
+  { key: "therapist", icon: "🧠", nameKey: "templates.therapist.name", descKey: "templates.therapist.description" },
+  { key: "coach", icon: "🎯", nameKey: "templates.coach.name", descKey: "templates.coach.description" },
+  { key: "friend", icon: "💬", nameKey: "templates.friend.name", descKey: "templates.friend.description" },
 ] as const;
 
 /**
@@ -52,6 +32,8 @@ export function PersonaSelector() {
   const createFromTemplate = useMutation(api.personas.createFromTemplate);
   const createThread = useMutation(api.threads.create);
   const [isPending, startTransition] = useTransition();
+  const { t } = useTranslation("chat");
+  const { t: tl } = useTranslation("landing");
 
   const handleSelectPersona = useCallback(
     (personaId: Id<"personas">) => {
@@ -86,11 +68,10 @@ export function PersonaSelector() {
             <Logo />
           </div>
           <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-            Start a new conversation
+            {t("personaSelector.title")}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground text-balance">
-            Choose a persona to begin. Each brings a unique perspective and
-            communication style.
+            {t("personaSelector.subtitle")}
           </p>
         </div>
 
@@ -126,7 +107,7 @@ export function PersonaSelector() {
             <div className="my-8 flex items-center gap-3">
               <div className="h-px flex-1 bg-border/50" />
               <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground/50">
-                Templates
+                {t("personaSelector.templates")}
               </span>
               <div className="h-px flex-1 bg-border/50" />
             </div>
@@ -140,8 +121,8 @@ export function PersonaSelector() {
               <PersonaCard
                 key={template.key}
                 icon={template.icon}
-                name={template.name}
-                description={template.description}
+                name={tl(template.nameKey)}
+                description={tl(template.descKey)}
                 disabled={isPending}
                 onClick={() => handleSelectTemplate(template.key)}
                 isTemplate
@@ -154,7 +135,7 @@ export function PersonaSelector() {
         {isPending && (
           <div className="mt-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            <span>Creating your conversation...</span>
+            <span>{t("personaSelector.creating")}</span>
           </div>
         )}
       </div>
