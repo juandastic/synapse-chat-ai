@@ -2,6 +2,7 @@
   "nav": {
     "githubAriaLabel": "Ver código fuente en GitHub",
     "tryDemo": "Probar demo",
+    "pricing": "Planes",
     "signIn": "Iniciar sesión"
   },
   "hero": {
@@ -54,10 +55,78 @@
     "title": "Diferentes necesidades, una sola memoria",
     "description": "Cada compañero lee el mismo grafo de conocimiento pero aporta una perspectiva diferente. Profundidad terapéutica, reflexión amable o impulso práctico.",
     "list": [
-      { "emoji": "🧭", "name": "Brújula", "desc": "Rastrea tus patrones emocionales entre conversaciones. Conecta la ansiedad de hoy con detonantes recurrentes. Usa ACT y DBT para ayudarte a construir flexibilidad, no solo a sobrellevar." },
-      { "emoji": "🌿", "name": "Calma", "desc": "Un espacio amable para la reflexión diaria. Nota cambios en tu estado de ánimo y energía con el tiempo. Se basa en autocompasión y mindfulness para ayudarte a mantenerte centrado/a." },
-      { "emoji": "⚡", "name": "Impulso", "desc": "Te acompaña en la rendición de cuentas con las metas que te has puesto. Sabe qué te descarrila y qué funciona. Usa entrevista motivacional para mantenerte en movimiento sin quemarte." }
-    ]
+      {
+        "emoji": "🧭",
+        "name": "Brújula",
+        "desc": "Mapea tus patrones emocionales entre conversaciones. Conecta la ansiedad de hoy con detonantes recurrentes usando tu historia. Basado en ACT, DBT y Teoría Polivagal — construye flexibilidad psicológica, no solo herramientas para sobrellevar.",
+        "detail": {
+          "subtitle": "Compañero terapéutico — neuroafirmativo por defecto",
+          "theories": [
+            { "name": "Terapia de Aceptación y Compromiso (ACT)", "desc": "Construye flexibilidad psicológica a través de la clarificación de valores, defusión cognitiva y disposición a estar con emociones difíciles en lugar de evitarlas." },
+            { "name": "Terapia Dialéctico Conductual (DBT)", "desc": "Enseña tolerancia al malestar, regulación emocional, efectividad interpersonal y mindfulness — habilidades para navegar la intensidad sin apagarte." },
+            { "name": "Teoría Polivagal", "desc": "Lee los estados de tu sistema nervioso — seguridad/conexión, lucha/huida o bloqueo — y te ayuda a moverte entre ellos sin patologizar ninguna respuesta." },
+            { "name": "Somatic Experiencing", "desc": "Trae conciencia a dónde viven las emociones en tu cuerpo. \"¿Dónde notas eso?\" no es un cliché — es una puerta hacia la regulación." }
+          ],
+          "useCases": [
+            "Procesar ansiedad, duelo o rabia recurrente con alguien que recuerda el patrón completo",
+            "Rastrear tu ventana de tolerancia y estados del sistema nervioso a lo largo del tiempo",
+            "Construir autoridad interna y autovalidación en lugar de depender de consejos externos",
+            "Explorar relaciones y dinámicas difíciles sin que te digan que \"veas el otro lado\"",
+            "Complementar terapia formal con un compañero con memoria entre sesiones"
+          ],
+          "approach": "Brújula nunca minimiza, nunca recurre a la positividad tóxica, y nunca sugiere empatizar con alguien que te dañó a menos que tú lo elijas. Prioriza tu realidad subjetiva, hace una pregunta significativa a la vez y refleja tu energía — firme en crisis, curioso en exploración."
+        }
+      },
+      {
+        "emoji": "🌿",
+        "name": "Calma",
+        "desc": "Un espacio amable y sin prisa para la reflexión emocional. Nota cambios en tu estado de ánimo y energía con el tiempo. Se basa en Psicología Positiva, investigación en autocompasión y mindfulness — sin que se sienta como tarea.",
+        "detail": {
+          "subtitle": "Compañero de bienestar — reflexivo, no prescriptivo",
+          "theories": [
+            { "name": "Modelo PERMA (Seligman)", "desc": "Explora cinco pilares del florecimiento: emociones Positivas, Engagement (compromiso), Relaciones, Significado y Logro — un mapa de lo que hace que la vida se sienta plena." },
+            { "name": "Autocompasión (Kristin Neff)", "desc": "Practica tres componentes: humanidad compartida (no estás solo/a en esto), mindfulness (notar sin ahogarse) y amabilidad hacia uno mismo (tratarte como tratarías a un amigo)." },
+            { "name": "Reducción de Estrés Basada en Mindfulness (MBSR)", "desc": "Conciencia del momento presente, no-juicio y mente de principiante — convirtiendo la atención en una habilidad, no en una obligación." }
+          ],
+          "useCases": [
+            "Check-ins emocionales diarios sin la presión de \"hacer terapia\"",
+            "Rastrear qué te da alegría, flow o calma — y que te lo recuerden cuando lo olvidas",
+            "Procesar ambivalencia, entumecimiento o la sensación de \"no saber\" sin juicio",
+            "Construir alfabetización emocional: nombrar lo que sientes para poder trabajar con ello",
+            "Prácticas de reflexión amables como gratitud, saborear momentos y chequeos de valores"
+          ],
+          "approach": "Calma te encuentra donde estás. Usa invitaciones abiertas — \"¿Qué se siente verdadero para ti ahora mismo?\" — en lugar de directivas. Las respuestas son cálidas, espaciosas y sin prisa, como una conversación tranquila tomando té. Normaliza todo el rango de la experiencia humana, incluyendo las partes desordenadas."
+        }
+      },
+      {
+        "emoji": "⚡",
+        "name": "Impulso",
+        "desc": "Te acompaña en la rendición de cuentas con tus metas — y sabe qué realmente te descarrila. Usa Entrevista Motivacional y ciencia conductual para mantenerte en movimiento sin quemarte. Acción sobre teoría.",
+        "detail": {
+          "subtitle": "Coach de crecimiento — directo, honesto, orientado a la acción",
+          "theories": [
+            { "name": "Entrevista Motivacional (Miller y Rollnick)", "desc": "Evoca tu propia motivación en lugar de imponer presión externa. Explora la ambivalencia sin juzgar — porque empujar más fuerte no funciona cuando la resistencia es interna." },
+            { "name": "Intenciones de Implementación (Gollwitzer)", "desc": "Cierra la brecha entre querer y hacer con \"Cuando [situación], voy a [comportamiento]\" — convirtiendo intenciones vagas en respuestas automáticas." },
+            { "name": "Activación Conductual", "desc": "Cuando la motivación es baja, empieza con acciones de bajo esfuerzo y alto valor para generar impulso. El movimiento crea motivación, no al revés." },
+            { "name": "Metas SMART", "desc": "Específicas, Medibles, Alcanzables, Relevantes, con Tiempo definido — un marco que convierte \"quiero mejorar\" en algo que puedes rastrear y lograr." }
+          ],
+          "useCases": [
+            "Establecer y rastrear metas con alguien que recuerda tus compromisos entre sesiones",
+            "Superar la procrastinación identificando tus detonantes específicos y ciclos de energía",
+            "Dividir proyectos grandes en hitos progresivos con acciones siguientes claras",
+            "Recibir feedback honesto — no porras vacías — cuando estás evitando algo",
+            "Recalibrar prioridades cuando lo que importaba el mes pasado ya no encaja"
+          ],
+          "approach": "Impulso es directo y claro — sin relleno. Celebra victorias conectándolas con estrategia y esfuerzo, no con suerte. Respeta que el descanso y la recuperación son estrategias legítimas, no fracasos. Y siempre te deja con algo concreto que puedes hacer."
+        }
+      }
+    ],
+    "modal": {
+      "close": "Cerrar",
+      "theoreticalFoundations": "Fundamentos teóricos",
+      "perfectFor": "Ideal para",
+      "learnMore": "Más información"
+    }
   },
   "transparency": {
     "tagline": "Confianza",
@@ -69,6 +138,67 @@
       { "title": "Completamente open source", "desc": "Todo el código es público. Ve cómo funciona, haz un fork, contribuye." },
       { "title": "Exportar a Notion", "desc": "Sincroniza tu grafo con Notion. Revisa sin conexión. Envía correcciones de vuelta." }
     ]
+  },
+  "pricing": {
+    "tagline": "Planes",
+    "title": "Elige tu profundidad de memoria",
+    "description": "Cada plan le da a tu IA memoria persistente. Los niveles superiores desbloquean recuperación más profunda e integraciones profesionales.",
+    "free": {
+      "name": "Gratis",
+      "price": "$0",
+      "description": "Memoria persistente potenciada por un grafo de conocimiento. Tu IA inicia cada conversación sabiendo quién eres.",
+      "features": [
+        "10 mensajes por día",
+        "Grafo de conocimiento con ventana de contexto de 30K tokens",
+        "Todas las plantillas de persona (Brújula, Calma, Impulso)",
+        "Exploración y corrección completa del grafo",
+        "Soporte comunitario"
+      ],
+      "cta": "Comenzar"
+    },
+    "pro": {
+      "name": "Pro",
+      "badge": "Recomendado",
+      "price": "Próximamente",
+      "description": "Tu IA siempre tiene tu contexto central. Pro agrega recuperación inteligente — cuando una conversación toca algo fuera de esa ventana, busca en tu grafo completo para traer los recuerdos más relevantes.",
+      "features": [
+        "50 mensajes por día",
+        "Mayor presupuesto diario de output",
+        "Recuperación inteligente más allá de la ventana de 30K tokens",
+        "Tu grafo completo se vuelve consultable durante la conversación",
+        "Creación de personas personalizadas",
+        "Soporte prioritario"
+      ],
+      "cta": "Contáctanos"
+    },
+    "therapeutic": {
+      "name": "Terapéutico",
+      "price": "Próximamente",
+      "description": "Diseñado para usarse junto a un terapeuta o profesional de salud mental. Tu IA se convierte en un puente entre sesiones.",
+      "features": [
+        "Todo lo incluido en Pro",
+        "Comparte insights del grafo con tu profesional",
+        "Detección de crisis y alertas a tu terapeuta",
+        "Recordatorios de sesión y contexto terapéutico en conversaciones",
+        "Integración de tareas y técnicas asignadas por tu profesional"
+      ],
+      "cta": "Contáctanos"
+    }
+  },
+  "contactModal": {
+    "title": "Ponte en contacto",
+    "description": "Cuéntanos sobre tu interés y nos comunicaremos contigo.",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "Tu nombre",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "messageLabel": "Mensaje",
+    "messagePlaceholder": "Cuéntanos sobre tu caso de uso o lo que estás buscando...",
+    "submit": "Enviar mensaje",
+    "submitting": "Enviando...",
+    "success": "¡Mensaje enviado! Nos pondremos en contacto pronto.",
+    "close": "Cerrar",
+    "plan": "Interesado en: {{plan}}"
   },
   "cta": {
     "title1": "La conversación",

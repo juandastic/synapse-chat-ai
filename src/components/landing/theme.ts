@@ -1,0 +1,21 @@
+/** Self-contained color tokens so the landing page looks identical in light and dark mode. */
+export const color = {
+  paper: "#f5f0e8",
+  paperAlpha85: "rgba(245, 240, 232, 0.85)",
+  ink: "#2c2418",
+  inkMuted: "#6b5e4f",
+  inkDim: "#a89880",
+  accent: "#8b5e3c",
+  accentLight: "rgba(139, 94, 60, 0.08)",
+  rule: "rgba(44, 36, 24, 0.1)",
+  chatBg: "#1c1a16",
+  chatBorder: "#2a2620",
+  chatBorderAccent: "rgba(139, 94, 60, 0.4)",
+  chatSurface: "#221f1a",
+  chatUserBg: "#2a2620",
+  chatUserBgAccent: "rgba(139, 94, 60, 0.2)",
+  chatText: "#e8dfd4",
+  chatTextMuted: "#a89880",
+  chatLabel: "#ece7df",
+  error: "#b91c1c",
+} as const;

@@ -6,6 +6,7 @@ import { ChatView } from "./components/chat/ChatView";
 import { PersonaSettings } from "./components/settings/PersonaSettings";
 import { MemoryExplorer } from "./components/memory/MemoryExplorer";
 import { NotionExportPage } from "./components/notion/NotionExportPage";
+import { PlansPage } from "./components/plans/PlansPage";
 import { Toaster } from "./components/ui/sonner";
 import LandingPage from "./components/landing/LandingPage";
 
@@ -24,6 +25,7 @@ function App() {
               <Route path="settings/personas" element={<PersonaSettings />} />
               <Route path="memory" element={<MemoryExplorer />} />
               <Route path="notion" element={<NotionExportPage />} />
+              <Route path="plans" element={<PlansPage />} />
             </Route>
           </Routes>
         </div>

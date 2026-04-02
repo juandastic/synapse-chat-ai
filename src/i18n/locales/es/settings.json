@@ -31,5 +31,11 @@
     "cannotDelete": "No se puede eliminar la persona",
     "personaInUse": "Esta persona está siendo utilizada por uno o más hilos.\n\nPara eliminarla, primero elimina los hilos que usan esta persona desde la barra lateral, luego intenta de nuevo.",
     "understood": "Entendido"
+  },
+  "plansPage": {
+    "title": "Planes",
+    "currentPlan": "Plan actual",
+    "usage": "{{used}} de {{limit}} mensajes hoy",
+    "usageUnlimited": "Mensajes ilimitados"
   }
 }

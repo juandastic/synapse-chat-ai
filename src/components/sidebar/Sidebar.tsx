@@ -7,7 +7,7 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { ThreadItem } from "./ThreadItem";
 import { ConfirmDialog } from "../ui/confirm-dialog";
-import { Plus, Settings, Brain, Database, Moon, Sun, Globe } from "lucide-react";
+import { Plus, Settings, Brain, Database, CreditCard, Moon, Sun, Globe } from "lucide-react";
 import { Logo } from "../ui/logo";
 import { useTheme } from "../../contexts/ThemeContext";
 
@@ -56,6 +56,11 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
 
   const handleMemory = () => {
     navigate("/memory");
+    onCloseMobile();
+  };
+
+  const handlePlans = () => {
+    navigate("/plans");
     onCloseMobile();
   };
 
@@ -193,15 +198,29 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
         )}
       </div>
 
-      {/* Footer — user avatar + language toggle + theme toggle */}
+      {/* Footer — user avatar + plans + language toggle + theme toggle */}
       <div className="flex shrink-0 items-center justify-between border-t border-border/50 px-4 py-3">
-        <UserButton
-          appearance={{
-            elements: {
-              avatarBox: "h-7 w-7",
-            },
-          }}
-        />
+        <div className="flex items-center gap-1">
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: "h-7 w-7",
+              },
+            }}
+          />
+          <button
+            onClick={handlePlans}
+            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+              location.pathname === "/plans"
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+            aria-label={t("plans")}
+            title={t("plans")}
+          >
+            <CreditCard className="h-4 w-4" />
+          </button>
+        </div>
         <div className="flex items-center gap-1">
           <button
             onClick={toggleLanguage}

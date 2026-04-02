@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
+import { useState, useCallback } from "react";
 import { SignInButton, useSignIn } from "@clerk/clerk-react";
 import { useTranslation } from "react-i18next";
+import posthog from "posthog-js";
 import { Logo } from "@/components/ui/logo";
 import {
   ArrowRight,
@@ -15,9 +16,15 @@ import {
   MessageSquare,
   Network,
   Pencil,
+  Settings,
   Sparkles,
   Zap,
 } from "lucide-react";
+import { color } from "./theme";
+import { Reveal, Divider, ConnectionLines } from "./Reveal";
+import { PersonaDetailModal, type PersonaItem } from "./PersonaDetailModal";
+import { ContactModal } from "./ContactModal";
+import { PricingCard } from "./PricingCard";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                         */
@@ -29,138 +36,10 @@ const DEMO_AVAILABLE = Boolean(DEMO_EMAIL && DEMO_PASSWORD);
 
 const GITHUB_URL = "https://github.com/juandastic#-synapse-ai-chat";
 
-/** Self-contained color tokens so the page looks identical in light and dark mode. */
-const color = {
-  paper: "#f5f0e8",
-  paperAlpha85: "rgba(245, 240, 232, 0.85)",
-  ink: "#2c2418",
-  inkMuted: "#6b5e4f",
-  inkDim: "#a89880",
-  accent: "#8b5e3c",
-  accentLight: "rgba(139, 94, 60, 0.08)",
-  rule: "rgba(44, 36, 24, 0.1)",
-  chatBg: "#1c1a16",
-  chatBorder: "#2a2620",
-  chatBorderAccent: "rgba(139, 94, 60, 0.4)",
-  chatSurface: "#221f1a",
-  chatUserBg: "#2a2620",
-  chatUserBgAccent: "rgba(139, 94, 60, 0.2)",
-  chatText: "#e8dfd4",
-  chatTextMuted: "#a89880",
-  chatLabel: "#ece7df",
-  error: "#b91c1c",
-} as const;
-
-/* ------------------------------------------------------------------ */
-/*  Shared components                                                 */
-/* ------------------------------------------------------------------ */
-
-/** Scroll-triggered fade-in. Activates once when 12 % of the element is visible. */
-function Reveal({
-  children,
-  className = "",
-  delay = 0,
-}: {
-  children: ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.12 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className={className}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(30px)",
-        transition: `opacity 0.8s ease ${delay}s, transform 0.8s ease ${delay}s`,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-/** Horizontal rule between sections. */
-function Divider() {
-  return (
-    <div
-      className="mx-auto max-w-3xl px-6"
-      style={{ borderBottom: `1px solid ${color.rule}` }}
-    />
-  );
-}
-
-/** Decorative SVG lines drawn on mount. */
-function ConnectionLines() {
-  const lines = [
-    { d: "M-50,200 Q400,100 850,300", delay: 0 },
-    { d: "M-50,400 Q300,350 900,150", delay: 0.5 },
-    { d: "M200,-50 Q350,300 500,700", delay: 1 },
-    { d: "M600,-50 Q550,200 700,700", delay: 1.5 },
-    { d: "M-50,600 Q450,500 950,400", delay: 0.8 },
-  ];
-
-  return (
-    <svg
-      aria-hidden
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      style={{ zIndex: 0 }}
-      preserveAspectRatio="none"
-    >
-      <defs>
-        <style>{`
-          @keyframes lineDraw {
-            from { stroke-dashoffset: 1200 }
-            to   { stroke-dashoffset: 0 }
-          }
-        `}</style>
-      </defs>
-      {lines.map((line, i) => (
-        <path
-          key={i}
-          d={line.d}
-          fill="none"
-          stroke={color.ink}
-          strokeWidth="1"
-          opacity="0.06"
-          strokeDasharray="1200"
-          style={{
-            animation: `lineDraw 4s ease-out ${line.delay}s forwards`,
-            strokeDashoffset: 1200,
-          }}
-        />
-      ))}
-    </svg>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Data                                                              */
-/* ------------------------------------------------------------------ */
-
 const PIPELINE_ICONS = [Brain, Network, GitBranch, Sparkles];
 const PIPELINE_STEP_NUMBERS = ["01", "02", "03", "04"];
 
-const TRANSPARENCY_ICONS = [Eye, Pencil, Code, Sparkles];
+const TRANSPARENCY_ICONS = [Eye, Pencil, Code, Settings];
 const PERSONA_ICONS = [Compass, Leaf, Zap];
 
 /* ------------------------------------------------------------------ */
@@ -171,10 +50,14 @@ export default function LandingPage() {
   const { signIn, setActive } = useSignIn();
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
+  const [selectedPersona, setSelectedPersona] = useState<number | null>(null);
+  const [contactModalPlan, setContactModalPlan] = useState<"pro" | "therapeutic" | null>(null);
   const { t, i18n } = useTranslation("landing");
 
   const toggleLanguage = useCallback(() => {
-    i18n.changeLanguage(i18n.language === "es" ? "en" : "es");
+    const newLang = i18n.language === "es" ? "en" : "es";
+    i18n.changeLanguage(newLang);
+    posthog.capture("language_toggled", { language: newLang });
   }, [i18n]);
 
   const conversations = t("conversations", { returnObjects: true }) as {
@@ -182,7 +65,7 @@ export default function LandingPage() {
     synapse: Array<{ role: string; text: string }>;
   };
   const pipelineSteps = t("pipeline.steps", { returnObjects: true }) as Array<{ title: string; desc: string }>;
-  const personas = t("personas.list", { returnObjects: true }) as Array<{ emoji: string; name: string; desc: string }>;
+  const personas = t("personas.list", { returnObjects: true }) as PersonaItem[];
   const transparencyFeatures = t("transparency.features", { returnObjects: true }) as Array<{ title: string; desc: string }>;
 
   const handleTryDemo = async () => {
@@ -261,6 +144,15 @@ export default function LandingPage() {
             <Github className="h-4 w-4" />
           </a>
 
+          <a
+            href="#pricing"
+            className="hidden sm:inline-flex text-xs font-medium transition-opacity hover:opacity-70"
+            style={{ color: color.inkMuted }}
+            onClick={() => posthog.capture("landing_cta_clicked", { location: "nav_pricing" })}
+          >
+            {t("nav.pricing")}
+          </a>
+
           <button
             onClick={toggleLanguage}
             className="flex h-8 items-center gap-1 rounded-full px-2 text-xs font-semibold transition-opacity hover:opacity-70"
@@ -334,6 +226,7 @@ export default function LandingPage() {
               <button
                 className="group inline-flex items-center gap-2.5 rounded-full px-8 py-3 text-sm font-medium shadow-sm transition-opacity hover:opacity-85"
                 style={{ background: color.ink, color: color.paper }}
+                onClick={() => posthog.capture("landing_cta_clicked", { location: "hero_get_started" })}
               >
                 {t("hero.getStarted")}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -342,7 +235,10 @@ export default function LandingPage() {
 
             {DEMO_AVAILABLE && (
               <button
-                onClick={handleTryDemo}
+                onClick={() => {
+                  posthog.capture("landing_cta_clicked", { location: "hero_try_demo" });
+                  handleTryDemo();
+                }}
                 disabled={demoLoading}
                 className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm transition-opacity hover:opacity-70 disabled:opacity-50"
                 style={{ border: `1px solid ${color.rule}`, color: color.inkMuted }}
@@ -596,18 +492,26 @@ export default function LandingPage() {
             const Icon = PERSONA_ICONS[i];
             return (
             <Reveal key={i} delay={i * 0.08} className="flex">
-              <div
-                className="flex flex-1 flex-col rounded-xl p-6 transition-colors"
+              <button
+                className="flex flex-1 flex-col rounded-xl p-6 transition-all text-left cursor-pointer"
                 style={{
                   border: `1px solid ${color.rule}`,
                   background: color.accentLight,
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.borderColor = color.accent)
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.borderColor = color.rule)
-                }
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = color.accent;
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = `0 4px 12px ${color.accent}20`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = color.rule;
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+                onClick={() => {
+                  posthog.capture("persona_detail_viewed", { persona: p.name });
+                  setSelectedPersona(i);
+                }}
               >
                 <div
                   className="flex h-10 w-10 items-center justify-center rounded-full"
@@ -627,7 +531,13 @@ export default function LandingPage() {
                 >
                   {p.desc}
                 </p>
-              </div>
+                <span
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-medium"
+                  style={{ color: color.accent }}
+                >
+                  {t("personas.modal.learnMore")} <ArrowRight className="h-3 w-3" />
+                </span>
+              </button>
             </Reveal>
             );
           })}
@@ -695,6 +605,59 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <Divider />
+
+      {/* ============================================================ */}
+      {/*  Pricing                                                     */}
+      {/* ============================================================ */}
+      <section id="pricing" className="relative z-10 mx-auto max-w-4xl px-6 py-16 md:py-24 scroll-mt-20">
+        <Reveal>
+          <p
+            className="mb-3 text-xs font-semibold uppercase tracking-[0.2em]"
+            style={{ color: color.accent }}
+          >
+            {t("pricing.tagline")}
+          </p>
+          <h2
+            className="text-2xl sm:text-3xl font-semibold tracking-tight"
+            style={{ fontFamily: "'Fraunces', Georgia, serif" }}
+          >
+            {t("pricing.title")}
+          </h2>
+          <p
+            className="mt-3 max-w-md text-sm leading-relaxed"
+            style={{ color: color.inkMuted }}
+          >
+            {t("pricing.description")}
+          </p>
+        </Reveal>
+
+        <div className="mt-10 grid md:grid-cols-3 gap-5">
+          <PricingCard
+            plan="free"
+            iconIndex={0}
+            onCtaClick={() => posthog.capture("pricing_plan_selected", { plan: "free" })}
+          />
+          <PricingCard
+            plan="pro"
+            highlighted
+            iconIndex={1}
+            onCtaClick={() => {
+              posthog.capture("pricing_plan_selected", { plan: "pro" });
+              setContactModalPlan("pro");
+            }}
+          />
+          <PricingCard
+            plan="therapeutic"
+            iconIndex={2}
+            onCtaClick={() => {
+              posthog.capture("pricing_plan_selected", { plan: "therapeutic" });
+              setContactModalPlan("therapeutic");
+            }}
+          />
+        </div>
+      </section>
+
       {/* ============================================================ */}
       {/*  Final CTA                                                   */}
       {/* ============================================================ */}
@@ -734,6 +697,7 @@ export default function LandingPage() {
               <button
                 className="group inline-flex items-center gap-2.5 rounded-full px-8 py-3 text-sm font-medium shadow-sm transition-opacity hover:opacity-85"
                 style={{ background: color.ink, color: color.paper }}
+                onClick={() => posthog.capture("landing_cta_clicked", { location: "cta_begin" })}
               >
                 {t("cta.begin")}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -742,7 +706,10 @@ export default function LandingPage() {
 
             {DEMO_AVAILABLE && (
               <button
-                onClick={handleTryDemo}
+                onClick={() => {
+                  posthog.capture("landing_cta_clicked", { location: "cta_try_demo" });
+                  handleTryDemo();
+                }}
                 disabled={demoLoading}
                 className="text-sm transition-opacity hover:opacity-70 disabled:opacity-50"
                 style={{ color: color.inkDim }}
@@ -781,6 +748,23 @@ export default function LandingPage() {
           </p>
         </Reveal>
       </section>
+
+      {/* Persona detail modal — rendered at root level to escape z-index stacking */}
+      {selectedPersona !== null && (
+        <PersonaDetailModal
+          persona={personas[selectedPersona]}
+          icon={PERSONA_ICONS[selectedPersona]}
+          onClose={() => setSelectedPersona(null)}
+        />
+      )}
+
+      {/* Contact modal — rendered at root level */}
+      {contactModalPlan !== null && (
+        <ContactModal
+          plan={contactModalPlan}
+          onClose={() => setContactModalPlan(null)}
+        />
+      )}
     </div>
   );
 }

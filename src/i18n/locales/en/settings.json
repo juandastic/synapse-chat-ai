@@ -31,5 +31,11 @@
     "cannotDelete": "Cannot delete persona",
     "personaInUse": "This persona is being used by one or more threads.\n\nTo delete it, first delete the threads that use this persona from the sidebar, then try again.",
     "understood": "Understood"
+  },
+  "plansPage": {
+    "title": "Plans",
+    "currentPlan": "Current plan",
+    "usage": "{{used}} of {{limit}} messages today",
+    "usageUnlimited": "Unlimited messages"
   }
 }
