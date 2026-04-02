@@ -8,6 +8,7 @@ import { PersonaForm } from "./PersonaForm";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Pencil, Trash2, Plus } from "lucide-react";
+import { PersonaIcon } from "@/components/ui/PersonaIcon";
 import { useIsDemoUser } from "../layout/AppLayout";
 
 type ViewState =
@@ -203,9 +204,7 @@ export function PersonaSettings() {
               key={persona._id}
               className="flex items-center gap-4 rounded-xl border border-border/50 bg-card px-4 py-3 transition-colors hover:border-border"
             >
-              <span className="shrink-0 text-2xl" role="img" aria-hidden="true">
-                {persona.icon}
-              </span>
+              <PersonaIcon icon={persona.icon} size="md" className="shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="truncate text-sm font-semibold text-foreground">

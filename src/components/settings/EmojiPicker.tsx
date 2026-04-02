@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { LUCIDE_ICON_MAP, PersonaIcon } from "@/components/ui/PersonaIcon";
 
 // =============================================================================
 // Curated emoji categories for persona icons
@@ -43,6 +44,10 @@ const EMOJI_CATEGORIES = [
   },
 ] as const;
 
+const LUCIDE_ICON_NAMES = Object.keys(LUCIDE_ICON_MAP);
+
+type CategoryId = (typeof EMOJI_CATEGORIES)[number]["id"] | "icons";
+
 // =============================================================================
 // EmojiPicker component
 // =============================================================================
@@ -55,7 +60,7 @@ interface EmojiPickerProps {
 
 export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<(typeof EMOJI_CATEGORIES)[number]["id"]>(EMOJI_CATEGORIES[0].id);
+  const [activeCategory, setActiveCategory] = useState<CategoryId>("icons");
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Close on click outside
@@ -99,7 +104,7 @@ export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
 
   const currentCategory = EMOJI_CATEGORIES.find(
     (c) => c.id === activeCategory
-  )!;
+  );
 
   return (
     <div ref={containerRef} className="relative">
@@ -117,7 +122,7 @@ export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
         aria-label="Choose icon"
         aria-expanded={isOpen}
       >
-        {value}
+        <PersonaIcon icon={value} size="sm" />
       </button>
 
       {/* Popover */}
@@ -130,6 +135,18 @@ export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
         >
           {/* Category tabs */}
           <div className="flex border-b border-border/50">
+            <button
+              type="button"
+              onClick={() => setActiveCategory("icons")}
+              className={cn(
+                "flex-1 px-2 py-2 text-xs font-medium transition-colors",
+                activeCategory === "icons"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Icons
+            </button>
             {EMOJI_CATEGORIES.map((category) => (
               <button
                 key={category.id}
@@ -147,24 +164,44 @@ export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
             ))}
           </div>
 
-          {/* Emoji grid */}
+          {/* Icon / Emoji grid */}
           <div className="grid grid-cols-8 gap-0.5 p-2">
-            {currentCategory.emojis.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => handleSelect(emoji)}
-                className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-md text-lg transition-all",
-                  "hover:scale-110 hover:bg-primary/10",
-                  emoji === value &&
-                    "bg-primary/15 ring-1 ring-primary/30"
-                )}
-                aria-label={`Select ${emoji}`}
-              >
-                {emoji}
-              </button>
-            ))}
+            {activeCategory === "icons"
+              ? LUCIDE_ICON_NAMES.map((name) => {
+                  const LucideComp = LUCIDE_ICON_MAP[name];
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => handleSelect(name)}
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-md transition-all",
+                        "hover:scale-110 hover:bg-primary/10",
+                        name === value &&
+                          "bg-primary/15 ring-1 ring-primary/30"
+                      )}
+                      aria-label={`Select ${name} icon`}
+                    >
+                      <LucideComp className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  );
+                })
+              : currentCategory?.emojis.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => handleSelect(emoji)}
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-md text-lg transition-all",
+                      "hover:scale-110 hover:bg-primary/10",
+                      emoji === value &&
+                        "bg-primary/15 ring-1 ring-primary/30"
+                    )}
+                    aria-label={`Select ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
           </div>
         </div>
       )}

@@ -14,7 +14,7 @@
     "experienceDemo": "Probar la demo",
     "demoError": "No se pudo cargar la demo. Por favor intenta de nuevo."
   },
-  "pullQuote": "\"La mayoría de las IA te olvidan cuando la conversación termina. Synapse construye un mapa de tu mundo y lo usa para realmente ayudarte, no solo responderte.\"",
+  "pullQuote": "\"Necesitaba un espacio que recuerde mis patrones, no solo mis palabras. Synapse no empieza de cero cada vez. Nota cuando estoy cayendo en el mismo ciclo que el mes pasado — y me ayuda a detectarlo antes.\"",
   "comparison": {
     "tagline": "La diferencia",
     "title": "El contexto lo cambia todo",
@@ -25,16 +25,16 @@
   },
   "conversations": {
     "regular": [
-      { "role": "user", "text": "He estado estresado por la fecha límite del proyecto." },
-      { "role": "ai", "text": "Entiendo que las fechas límite pueden ser estresantes. ¿Has intentado dividir el trabajo en tareas más pequeñas?" },
-      { "role": "user", "text": "Mencioné la semana pasada que mi jefe cambió el alcance..." },
-      { "role": "ai", "text": "No tengo contexto de nuestras conversaciones anteriores. ¿Podrías contarme más sobre el cambio de alcance?" }
+      { "role": "user", "text": "Tuve un día terrible. Todo se siente abrumador otra vez." },
+      { "role": "ai", "text": "Lamento escuchar eso. ¿Has intentado respirar profundo o salir a caminar? A veces un cambio de escenario ayuda." },
+      { "role": "user", "text": "Te dije la semana pasada que esto sigue pasando después de reuniones con mi jefe..." },
+      { "role": "ai", "text": "No tengo contexto de conversaciones anteriores. ¿Puedes contarme más sobre lo que pasa con tu jefe?" }
     ],
     "synapse": [
-      { "role": "user", "text": "He estado estresado por la fecha límite del proyecto." },
-      { "role": "ai", "text": "Tu jefe en TechCorp amplió el alcance el martes pasado, y has mencionado antes que tu ansiedad aumenta con los grandes entregables. Enfoquémonos en lo que puedes controlar. Tu estructura de entrenamiento de maratón podría funcionar aquí: hitos progresivos." },
-      { "role": "user", "text": "Es una muy buena forma de pensarlo." },
-      { "role": "ai", "text": "Sarah notó que estás durmiendo mal de nuevo. Tu práctica de meditación ayudó la última vez. ¿Quieres que agregue sesiones de 10 minutos antes de tus standups esta semana?" }
+      { "role": "user", "text": "Tuve un día terrible. Todo se siente abrumador otra vez." },
+      { "role": "ai", "text": "Te escucho. Las últimas tres veces que describiste esta sensación de 'todo se derrumba,' fue después de interacciones tensas con David. ¿Pasó algo en la reunión de hoy?" },
+      { "role": "user", "text": "Sí. Descartó mi propuesta frente a todos. Otra vez." },
+      { "role": "ai", "text": "Ese patrón de descarte público ha sido un detonante consistente para ti — se conecta con las dinámicas de autoridad que hemos explorado antes. La última vez, el escaneo corporal te ayudó a pasar del bloqueo de vuelta a tu ventana. ¿Quieres intentar eso ahora, o necesitas primero estar enojado/a?" }
     ]
   },
   "pipeline": {
@@ -50,13 +50,13 @@
     ]
   },
   "personas": {
-    "tagline": "Perspectivas",
-    "title": "Una historia, muchos lectores",
-    "description": "Cada persona lee el mismo grafo de conocimiento pero aporta su propia experiencia. Profundidad clínica, claridad estratégica o calidez cotidiana.",
+    "tagline": "Tu sistema de apoyo",
+    "title": "Diferentes necesidades, una sola memoria",
+    "description": "Cada compañero lee el mismo grafo de conocimiento pero aporta una perspectiva diferente. Profundidad terapéutica, reflexión amable o impulso práctico.",
     "list": [
-      { "emoji": "🧠", "name": "Terapeuta", "desc": "Ve patrones emocionales. Conecta tu ansiedad con el cambio de alcance del mes pasado. Usa ACT para reencuadrar." },
-      { "emoji": "🎯", "name": "Coach", "desc": "Rastrea el progreso real. Sabe que vas adelantado en tu ritmo de maratón. Aplica la misma disciplina a tu fecha límite." },
-      { "emoji": "💬", "name": "Compañero", "desc": "Recuerda el hobby de cerámica de Sarah. Nota que duermes mejor después de hacer senderismo. Sugiere lo que realmente ayuda." }
+      { "emoji": "🧭", "name": "Brújula", "desc": "Rastrea tus patrones emocionales entre conversaciones. Conecta la ansiedad de hoy con detonantes recurrentes. Usa ACT y DBT para ayudarte a construir flexibilidad, no solo a sobrellevar." },
+      { "emoji": "🌿", "name": "Calma", "desc": "Un espacio amable para la reflexión diaria. Nota cambios en tu estado de ánimo y energía con el tiempo. Se basa en autocompasión y mindfulness para ayudarte a mantenerte centrado/a." },
+      { "emoji": "⚡", "name": "Impulso", "desc": "Te acompaña en la rendición de cuentas con las metas que te has puesto. Sabe qué te descarrila y qué funciona. Usa entrevista motivacional para mantenerte en movimiento sin quemarte." }
     ]
   },
   "transparency": {
@@ -80,21 +80,17 @@
     "openSource": "Open source"
   },
   "templates": {
-    "psicogemini": {
-      "name": "PsicoGemini",
-      "description": "Psicoterapeuta con formación en terapias de tercera generación (ACT, DBT) y enfoque neuroafirmativo"
-    },
     "therapist": {
-      "name": "Terapeuta",
-      "description": "Terapeuta ACT/DBT con experiencia en apoyo neurodivergente"
+      "name": "Brújula",
+      "description": "Compañero terapéutico basado en ACT, DBT y Teoría Polivagal. Neuroafirmativo por defecto."
+    },
+    "wellbeing": {
+      "name": "Calma",
+      "description": "Apoyo emocional amable a través de Psicología Positiva, autocompasión y mindfulness."
     },
     "coach": {
-      "name": "Coach",
-      "description": "Coach de vida y productividad para metas y crecimiento"
-    },
-    "friend": {
-      "name": "Amigo",
-      "description": "Compañero casual de apoyo para conversaciones cotidianas"
+      "name": "Impulso",
+      "description": "Coach enfocado en crecimiento usando Entrevista Motivacional y estrategias conductuales."
     }
   }
 }

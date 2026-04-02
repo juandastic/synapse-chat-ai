@@ -6,16 +6,22 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { Logo } from "../ui/logo";
+import { PersonaIcon } from "@/components/ui/PersonaIcon";
 
 /**
- * Hardcoded system templates (mirrors convex/personas.ts PERSONA_TEMPLATES).
- * Used for display -- actual creation goes through the backend.
+ * System templates shown based on UI language.
+ * Mirrors convex/personas.ts PERSONA_TEMPLATES keys.
  */
-const SYSTEM_TEMPLATES = [
-  { key: "psicogemini", icon: "🧠", nameKey: "templates.psicogemini.name", descKey: "templates.psicogemini.description" },
-  { key: "therapist", icon: "🧠", nameKey: "templates.therapist.name", descKey: "templates.therapist.description" },
-  { key: "coach", icon: "🎯", nameKey: "templates.coach.name", descKey: "templates.coach.description" },
-  { key: "friend", icon: "💬", nameKey: "templates.friend.name", descKey: "templates.friend.description" },
+const TEMPLATES_EN = [
+  { key: "therapist-en", icon: "compass", nameKey: "templates.therapist.name", descKey: "templates.therapist.description" },
+  { key: "wellbeing-en", icon: "leaf", nameKey: "templates.wellbeing.name", descKey: "templates.wellbeing.description" },
+  { key: "coach-en", icon: "zap", nameKey: "templates.coach.name", descKey: "templates.coach.description" },
+] as const;
+
+const TEMPLATES_ES = [
+  { key: "therapist-es", icon: "compass", nameKey: "templates.therapist.name", descKey: "templates.therapist.description" },
+  { key: "wellbeing-es", icon: "leaf", nameKey: "templates.wellbeing.name", descKey: "templates.wellbeing.description" },
+  { key: "coach-es", icon: "zap", nameKey: "templates.coach.name", descKey: "templates.coach.description" },
 ] as const;
 
 /**
@@ -33,7 +39,8 @@ export function PersonaSelector() {
   const createThread = useMutation(api.threads.create);
   const [isPending, startTransition] = useTransition();
   const { t } = useTranslation("chat");
-  const { t: tl } = useTranslation("landing");
+  const { t: tl, i18n } = useTranslation("landing");
+  const systemTemplates = i18n.language === "es" ? TEMPLATES_ES : TEMPLATES_EN;
 
   const handleSelectPersona = useCallback(
     (personaId: Id<"personas">) => {
@@ -117,7 +124,7 @@ export function PersonaSelector() {
         {/* System templates */}
         {personas !== undefined && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {SYSTEM_TEMPLATES.map((template) => (
+            {systemTemplates.map((template) => (
               <PersonaCard
                 key={template.key}
                 icon={template.icon}
@@ -178,13 +185,9 @@ function PersonaCard({
         isTemplate && "border-dashed"
       )}
     >
-      <span
-        className="mb-3 text-4xl transition-transform group-hover:scale-110"
-        role="img"
-        aria-hidden="true"
-      >
-        {icon}
-      </span>
+      <div className="mb-3 transition-transform group-hover:scale-110">
+        <PersonaIcon icon={icon} size="lg" />
+      </div>
       <h3 className="font-display text-sm font-semibold text-foreground">
         {name}
       </h3>

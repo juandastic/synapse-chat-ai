@@ -14,7 +14,7 @@
     "experienceDemo": "Experience the demo",
     "demoError": "Unable to load demo. Please try again."
   },
-  "pullQuote": "\"Most AI forgets you when the conversation ends. Synapse builds a map of your world and uses it to actually help you, not just respond to you.\"",
+  "pullQuote": "\"I needed a space that remembers my patterns, not just my words. Synapse doesn't start over every time. It notices when I'm spiraling the same way I did last month — and helps me catch it earlier.\"",
   "comparison": {
     "tagline": "The Difference",
     "title": "Context changes everything",
@@ -25,16 +25,16 @@
   },
   "conversations": {
     "regular": [
-      { "role": "user", "text": "I've been stressed about the project deadline." },
-      { "role": "ai", "text": "I understand deadlines can be stressful. Have you tried breaking the work into smaller tasks?" },
-      { "role": "user", "text": "I mentioned last week that my manager changed the scope..." },
-      { "role": "ai", "text": "I don't have context from our previous conversations. Could you tell me more about the scope change?" }
+      { "role": "user", "text": "I had a terrible day. Everything feels overwhelming again." },
+      { "role": "ai", "text": "I'm sorry to hear that. Have you tried taking some deep breaths or going for a walk? Sometimes a change of scenery helps." },
+      { "role": "user", "text": "I told you last week this keeps happening after meetings with my boss..." },
+      { "role": "ai", "text": "I don't have context from previous conversations. Can you tell me more about what's going on with your boss?" }
     ],
     "synapse": [
-      { "role": "user", "text": "I've been stressed about the project deadline." },
-      { "role": "ai", "text": "Your manager at TechCorp expanded the scope last Tuesday, and you've mentioned before that your anxiety spikes around big deliverables. Let's focus on what you can control. Your marathon training structure could work here: progressive milestones." },
-      { "role": "user", "text": "That's actually a great way to think about it." },
-      { "role": "ai", "text": "Sarah noticed you sleeping poorly again. Your meditation practice helped last time. Want me to add 10-minute sessions before your standups this week?" }
+      { "role": "user", "text": "I had a terrible day. Everything feels overwhelming again." },
+      { "role": "ai", "text": "I hear you. The last three times you've described this 'everything crashing' feeling, it followed tense interactions with David. Did something happen in today's meeting?" },
+      { "role": "user", "text": "Yes. He dismissed my proposal in front of everyone. Again." },
+      { "role": "ai", "text": "That pattern of public dismissal has been a consistent trigger for you — it connects to the authority dynamics we've explored before. Last time, the body scan helped you move from shutdown back to your window. Want to try that now, or do you need to just be angry first?" }
     ]
   },
   "pipeline": {
@@ -50,13 +50,13 @@
     ]
   },
   "personas": {
-    "tagline": "Perspectives",
-    "title": "One story, many readers",
-    "description": "Every persona reads the same knowledge graph but brings its own expertise. Clinical depth, strategic clarity, or everyday warmth.",
+    "tagline": "Your support system",
+    "title": "Different needs, one memory",
+    "description": "Every companion reads the same knowledge graph but brings a different lens. Therapeutic depth, gentle reflection, or practical momentum.",
     "list": [
-      { "emoji": "🧠", "name": "Therapist", "desc": "Sees emotional patterns. Connects your anxiety to last month's scope change. Uses ACT to reframe." },
-      { "emoji": "🎯", "name": "Coach", "desc": "Tracks real progress. Knows you're ahead on marathon pace. Applies the same discipline to your deadline." },
-      { "emoji": "💬", "name": "Companion", "desc": "Remembers Sarah's ceramics hobby. Notices you sleep better after hiking. Suggests what actually helps." }
+      { "emoji": "🧭", "name": "Compass", "desc": "Tracks your emotional patterns across conversations. Connects today's anxiety to recurring triggers. Uses ACT and DBT to help you build flexibility, not just cope." },
+      { "emoji": "🌿", "name": "Solace", "desc": "A gentle space for daily reflection. Notices shifts in your mood and energy over time. Draws on self-compassion and mindfulness to help you stay grounded." },
+      { "emoji": "⚡", "name": "Momentum", "desc": "Holds you accountable to the goals you've set. Knows what derails you and what works. Uses motivational interviewing to keep you moving without burning out." }
     ]
   },
   "transparency": {
@@ -80,21 +80,17 @@
     "openSource": "Open source"
   },
   "templates": {
-    "psicogemini": {
-      "name": "PsicoGemini",
-      "description": "ACT/DBT psychotherapist with a neuroaffirmative approach"
-    },
     "therapist": {
-      "name": "Therapist",
-      "description": "ACT/DBT therapist with expertise in neurodivergent support"
+      "name": "Compass",
+      "description": "Therapeutic companion grounded in ACT, DBT, and Polyvagal Theory. Neuroaffirmative by default."
+    },
+    "wellbeing": {
+      "name": "Solace",
+      "description": "Gentle emotional support through Positive Psychology, self-compassion, and mindfulness."
     },
     "coach": {
-      "name": "Coach",
-      "description": "Life and productivity coach for goals and growth"
-    },
-    "friend": {
-      "name": "Friend",
-      "description": "Casual supportive companion for everyday conversations"
+      "name": "Momentum",
+      "description": "Growth-focused coach using Motivational Interviewing and behavioral strategies."
     }
   }
 }

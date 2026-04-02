@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
+import { PersonaIcon } from "@/components/ui/PersonaIcon";
 
 interface ThreadItemProps {
   threadId: string;
@@ -43,9 +44,7 @@ export const ThreadItem = memo(function ThreadItem({
           )
         }
       >
-        <span className="shrink-0 text-lg" role="img" aria-hidden="true">
-          {personaIcon}
-        </span>
+        <PersonaIcon icon={personaIcon} size="sm" className="shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium leading-snug">{title}</p>
           <p className="mt-0.5 text-xs text-muted-foreground/70">

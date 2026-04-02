@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useChatContext } from "@/contexts/useChatContext";
 import { MessageItem } from "./MessageItem";
 import { SessionDivider } from "./SessionDivider";
+import { PersonaIcon } from "@/components/ui/PersonaIcon";
 import { Button } from "@/components/ui/button";
 
 interface MessageListProps {
@@ -82,7 +83,9 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
       <div className="flex h-full flex-col items-center justify-center px-6">
         <div className="max-w-sm text-center">
           {personaIcon ? (
-            <div className="mx-auto mb-6 text-5xl">{personaIcon}</div>
+            <div className="mx-auto mb-6">
+              <PersonaIcon icon={personaIcon} size="xl" />
+            </div>
           ) : (
             <div className="mx-auto mb-6 h-20 w-20 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 p-5">
               <svg

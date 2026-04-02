@@ -6,14 +6,17 @@ import {
   ArrowRight,
   Brain,
   Code,
+  Compass,
   Eye,
   GitBranch,
   Github,
   Globe,
+  Leaf,
   MessageSquare,
   Network,
   Pencil,
   Sparkles,
+  Zap,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -158,6 +161,7 @@ const PIPELINE_ICONS = [Brain, Network, GitBranch, Sparkles];
 const PIPELINE_STEP_NUMBERS = ["01", "02", "03", "04"];
 
 const TRANSPARENCY_ICONS = [Eye, Pencil, Code, Sparkles];
+const PERSONA_ICONS = [Compass, Leaf, Zap];
 
 /* ------------------------------------------------------------------ */
 /*  Landing page                                                      */
@@ -588,10 +592,12 @@ export default function LandingPage() {
         </Reveal>
 
         <div className="mt-10 grid sm:grid-cols-3 gap-5">
-          {personas.map((p, i) => (
-            <Reveal key={i} delay={i * 0.08}>
+          {personas.map((p, i) => {
+            const Icon = PERSONA_ICONS[i];
+            return (
+            <Reveal key={i} delay={i * 0.08} className="flex">
               <div
-                className="rounded-xl p-6 transition-colors"
+                className="flex flex-1 flex-col rounded-xl p-6 transition-colors"
                 style={{
                   border: `1px solid ${color.rule}`,
                   background: color.accentLight,
@@ -603,7 +609,12 @@ export default function LandingPage() {
                   (e.currentTarget.style.borderColor = color.rule)
                 }
               >
-                <span className="text-2xl">{p.emoji}</span>
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-full"
+                  style={{ background: `${color.accent}15` }}
+                >
+                  <Icon className="h-5 w-5" style={{ color: color.accent }} />
+                </div>
                 <h3
                   className="mt-3 text-base font-semibold"
                   style={{ fontFamily: "'Fraunces', Georgia, serif" }}
@@ -618,7 +629,8 @@ export default function LandingPage() {
                 </p>
               </div>
             </Reveal>
-          ))}
+            );
+          })}
         </div>
       </section>
 

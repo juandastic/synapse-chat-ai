@@ -9,6 +9,7 @@ import { ChatInput } from "./ChatInput";
 import { Brain, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { PersonaIcon } from "@/components/ui/PersonaIcon";
 
 /**
  * Thread chat view rendered at /t/:threadId.
@@ -123,9 +124,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
       {/* Header */}
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/50 px-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span className="shrink-0 text-xl" role="img" aria-hidden="true">
-            {thread.persona.icon}
-          </span>
+          <PersonaIcon icon={thread.persona.icon} size="md" className="shrink-0" />
           <div className="min-w-0 flex-1">
             {isEditingTitle ? (
               <input
