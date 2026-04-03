@@ -1,0 +1,19 @@
+{
+  "name": "@synapse/backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./api": "./convex/_generated/api.js",
+    "./dataModel": "./convex/_generated/dataModel.d.ts"
+  },
+  "scripts": {
+    "dev": "npx convex dev --env-file ../../.env.local",
+    "deploy": "npx convex deploy"
+  },
+  "dependencies": {
+    "convex": "^1.32.0",
+    "@convex-dev/r2": "^0.9.1",
+    "posthog-node": "^5.28.4"
+  }
+}
