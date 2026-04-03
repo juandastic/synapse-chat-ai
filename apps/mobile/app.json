@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Synapse",
+    "slug": "synapse-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "synapse",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.synapse.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.synapse.mobile"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

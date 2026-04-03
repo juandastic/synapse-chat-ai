@@ -4,7 +4,10 @@
   "packageManager": "npm@11.9.0",
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter=@synapse/web --filter=@synapse/backend",
+    "dev:mobile": "turbo dev --filter=@synapse/mobile --filter=@synapse/backend",
+    "dev:ios": "npm run dev --workspace=@synapse/backend & npm run ios --workspace=@synapse/mobile",
+    "dev:android": "npm run dev --workspace=@synapse/backend & npm run android --workspace=@synapse/mobile",
     "build": "turbo build",
     "build:deploy": "npm run deploy --workspace=@synapse/backend -- --cmd 'npm run build --workspace=@synapse/web'",
     "lint": "turbo lint"

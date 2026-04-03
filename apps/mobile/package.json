@@ -1,0 +1,36 @@
+{
+  "name": "@synapse/mobile",
+  "private": true,
+  "version": "0.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "npx expo start",
+    "ios": "npx expo run:ios",
+    "android": "npx expo run:android",
+    "build": "npx expo export",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@clerk/clerk-expo": "^2.19.31",
+    "@synapse/backend": "*",
+    "convex": "^1.32.0",
+    "expo": "~55.0.11",
+    "expo-asset": "~55.0.12",
+    "expo-constants": "~55.0.11",
+    "expo-crypto": "~55.0.10",
+    "expo-font": "~55.0.6",
+    "expo-linking": "~55.0.11",
+    "expo-router": "~55.0.10",
+    "expo-secure-store": "~55.0.11",
+    "expo-status-bar": "~55.0.5",
+    "react": "19.2.0",
+    "react-native": "0.83.4",
+    "react-native-safe-area-context": "~5.6.2",
+    "react-native-screens": "~4.23.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@types/react": "~19.2.10",
+    "typescript": "~5.9.0"
+  }
+}
