@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
-  Modal,
   Alert,
   ActivityIndicator,
 } from "react-native";
@@ -19,6 +18,7 @@ import { Menu, Zap, Sparkles, Heart, CheckCircle, X } from "lucide-react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "../../src/contexts/ThemeContext";
+import { SlideUpModal } from "../../src/components/SlideUpModal";
 
 export default function PlansScreen() {
   const { t } = useTranslation("plans");
@@ -251,8 +251,7 @@ function ContactModal({ planName, userId, onClose, s, colors }: { planName: stri
   }, [name, email, message, planName, userId, onClose, t, posthog]);
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={s.modalOverlay}>
+    <SlideUpModal visible onRequestClose={onClose} onBackdropPress={onClose}>
         <View style={s.modalContent}>
           <View style={s.modalHeader}>
             <Text style={s.modalTitle}>{t("contactModal.title")}</Text>
@@ -275,7 +274,6 @@ function ContactModal({ planName, userId, onClose, s, colors }: { planName: stri
             {isSending ? <ActivityIndicator color={colors.primaryForeground} /> : <Text style={s.submitBtnText}>{t("contactModal.submit")}</Text>}
           </Pressable>
         </View>
-      </View>
-    </Modal>
+    </SlideUpModal>
   );
 }

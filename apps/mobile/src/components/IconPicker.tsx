@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, Modal } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable } from "react-native";
 import {
   Compass, Leaf, Zap, Heart, Brain, Sun, Moon, Star, Shield, Flame,
   Feather, Mountain, TreePine, Waves, Wind, Eye, Lightbulb, BookOpen,
@@ -8,6 +8,7 @@ import {
 
 import { useColors } from "../contexts/ThemeContext";
 import { PersonaIcon } from "./PersonaIcon";
+import { SlideUpModal } from "./SlideUpModal";
 
 const LUCIDE_ICONS: { name: string; Icon: LucideIcon }[] = [
   { name: "compass", Icon: Compass },
@@ -193,8 +194,7 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
       </Pressable>
 
       {/* Picker modal */}
-      <Modal visible={isOpen} transparent animationType="slide" onRequestClose={() => setIsOpen(false)}>
-        <Pressable style={s.backdrop} onPress={() => setIsOpen(false)} />
+      <SlideUpModal visible={isOpen} onRequestClose={() => setIsOpen(false)} onBackdropPress={() => setIsOpen(false)}>
         <View style={s.sheet}>
           <View style={s.handle} />
 
@@ -236,7 +236,7 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
                 ))}
           </ScrollView>
         </View>
-      </Modal>
+      </SlideUpModal>
     </>
   );
 }

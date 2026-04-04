@@ -7,9 +7,10 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
-  Modal,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { useAction, useQuery, useMutation } from "convex/react";
@@ -20,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { captureError } from "../../src/lib/analytics";
 
 import { useColors } from "../../src/contexts/ThemeContext";
+import { SlideUpModal } from "../../src/components/SlideUpModal";
 
 interface GraphNode {
   id: string;
@@ -60,6 +62,7 @@ export default function MemoryScreen() {
 
   const s = useMemo(() => StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.paper },
+    flex1: { flex: 1 },
     header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.rule },
     headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
     headerCenter: { flex: 1, alignItems: "center" },
@@ -221,7 +224,11 @@ export default function MemoryScreen() {
 
       {/* Entity list */}
       {graphData && graphData.nodes.length > 0 && (
-        <>
+        <KeyboardAvoidingView
+          style={s.flex1}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+        >
           {/* Filter */}
           <View style={s.filterRow}>
             <Search size={16} color={colors.inkMuted} />
@@ -296,16 +303,14 @@ export default function MemoryScreen() {
               </Pressable>
             </View>
           </View>
-        </>
+        </KeyboardAvoidingView>
       )}
       {/* Node inspector modal */}
-      <Modal
+      <SlideUpModal
         visible={selectedNode !== null}
-        transparent
-        animationType="slide"
         onRequestClose={() => setSelectedNode(null)}
+        onBackdropPress={() => setSelectedNode(null)}
       >
-        <Pressable style={s.modalBackdrop} onPress={() => setSelectedNode(null)} />
         <View style={[s.inspectorSheet, { paddingBottom: insets.bottom + 16 }]}>
           <View style={s.inspectorHandle} />
           {selectedNode && (
@@ -366,7 +371,7 @@ export default function MemoryScreen() {
             </ScrollView>
           )}
         </View>
-      </Modal>
+      </SlideUpModal>
     </View>
   );
 }
