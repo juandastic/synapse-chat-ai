@@ -9,7 +9,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.synapse.mobile"
+      "bundleIdentifier": "com.synapse.mobile",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Synapse needs access to your photos to attach images to messages."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +23,13 @@
     "plugins": [
       "@clerk/expo",
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Synapse needs access to your photos to attach images to messages."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

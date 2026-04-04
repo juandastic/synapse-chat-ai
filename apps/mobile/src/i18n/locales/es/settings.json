@@ -1,0 +1,39 @@
+{
+  "personaForm": {
+    "iconLabel": "Icono",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "ej., Mi Terapeuta",
+    "languageLabel": "Idioma",
+    "descriptionLabel": "Descripción",
+    "optional": "(opcional)",
+    "descriptionPlaceholder": "Breve descripción de lo que hace esta persona",
+    "systemPromptLabel": "Prompt del sistema",
+    "systemPromptPlaceholder": "Instrucciones para la persona de IA...",
+    "characterCount": "{{count}}/10.000 caracteres",
+    "nameRequired": "El nombre es obligatorio",
+    "promptRequired": "El prompt del sistema es obligatorio",
+    "iconRequired": "El icono es obligatorio",
+    "submitError": "Algo salió mal"
+  },
+  "personaSettings": {
+    "title": "Personas",
+    "createTitle": "Crear persona",
+    "createButton": "Crear",
+    "editTitle": "Editar persona",
+    "saveChanges": "Guardar cambios",
+    "createNew": "Crear nueva persona",
+    "emptyState": "Aún no hay personas personalizadas. Crea una o usa una plantilla desde la pantalla de nuevo chat.",
+    "default": "Predeterminado",
+    "deleteTitle": "¿Eliminar \"{{name}}\"?",
+    "deleteDescription": "Esta persona se eliminará permanentemente. Esta acción no se puede deshacer.",
+    "cannotDelete": "No se puede eliminar la persona",
+    "personaInUse": "Esta persona está siendo utilizada por uno o más hilos. Elimina los hilos primero, luego intenta de nuevo.",
+    "understood": "Entendido"
+  },
+  "plansPage": {
+    "title": "Planes",
+    "currentPlan": "Plan actual",
+    "usage": "{{used}} de {{limit}} mensajes hoy",
+    "usageUnlimited": "Mensajes ilimitados"
+  }
+}

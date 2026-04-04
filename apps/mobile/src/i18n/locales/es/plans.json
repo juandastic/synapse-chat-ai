@@ -1,0 +1,43 @@
+{
+  "title": "Planes",
+  "currentPlan": "Plan actual",
+  "usage": "{{used}} de {{limit}} mensajes hoy",
+  "usageUnlimited": "Mensajes ilimitados",
+  "tagline": "Elige tu profundidad de memoria",
+  "description": "Cada plan le da a tu IA memoria persistente. Los niveles superiores desbloquean recuperación más profunda.",
+  "free": {
+    "name": "Gratis",
+    "price": "$0",
+    "description": "Memoria persistente potenciada por un grafo de conocimiento. Tu IA inicia cada conversación sabiendo quién eres.",
+    "features": ["10 mensajes por día", "Grafo de conocimiento con contexto de 30K tokens", "Todas las plantillas de persona", "Exploración completa del grafo", "Soporte comunitario"],
+    "cta": "Comenzar"
+  },
+  "pro": {
+    "name": "Pro",
+    "badge": "Recomendado",
+    "price": "Próximamente",
+    "description": "Recuperación inteligente más allá de la ventana de contexto. Tu grafo completo se vuelve consultable durante la conversación.",
+    "features": ["50 mensajes por día", "Mayor presupuesto diario de output", "Recuperación inteligente más allá de 30K tokens", "Grafo completo consultable durante la conversación", "Creación de personas personalizadas", "Soporte prioritario"],
+    "cta": "Contáctanos"
+  },
+  "therapeutic": {
+    "name": "Terapéutico",
+    "price": "Próximamente",
+    "description": "Diseñado para usarse junto a un terapeuta. Tu IA se convierte en un puente entre sesiones.",
+    "features": ["Todo lo incluido en Pro", "Comparte insights del grafo con tu profesional", "Detección de crisis y alertas", "Recordatorios de sesión y contexto terapéutico", "Integración de tareas y técnicas"],
+    "cta": "Contáctanos"
+  },
+  "contactModal": {
+    "title": "Ponte en contacto",
+    "description": "Cuéntanos sobre tu interés y nos comunicaremos contigo.",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "Tu nombre",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "messageLabel": "Mensaje",
+    "messagePlaceholder": "Cuéntanos sobre tu caso de uso...",
+    "submit": "Enviar mensaje",
+    "submitting": "Enviando...",
+    "success": "¡Mensaje enviado! Nos pondremos en contacto pronto."
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "explorer": {
+    "title": "Memory Explorer",
+    "node_one": "{{count}} node",
+    "node_other": "{{count}} nodes",
+    "relationship_one": "{{count}} relationship",
+    "relationship_other": "{{count}} relationships",
+    "loading": "Loading your memory graph...",
+    "failedToLoad": "Failed to load memory graph",
+    "noMemoriesTitle": "No memories yet",
+    "noMemoriesDescription": "Start chatting to build your knowledge graph.",
+    "refreshing": "Refreshing..."
+  },
+  "inspector": {
+    "tapToInspect": "Tap a node to inspect it",
+    "closeInspector": "Close inspector",
+    "summary": "Summary",
+    "connections": "Connections",
+    "relationship_one": "{{count}} relationship",
+    "relationship_other": "{{count}} relationships",
+    "outgoing": "Outgoing",
+    "incoming": "Incoming"
+  },
+  "entityList": {
+    "filterPlaceholder": "Filter entities...",
+    "noMatches": "No matches",
+    "noEntities": "No entities",
+    "entityCount": "{{filtered}} of {{total}} entities"
+  },
+  "correction": {
+    "hint": "Is something incorrect? Describe the change in your own words and Synapse will update its memory.",
+    "placeholder": "e.g. \"I no longer work at Acme Corp, I joined NewCo last month.\"",
+    "sendCorrection": "Send correction",
+    "success": "Correction queued. Processing in the background...",
+    "error": "Failed to send correction. Please try again."
+  }
+}

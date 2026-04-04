@@ -1,0 +1,19 @@
+{
+  "newChat": "New chat",
+  "memory": "Memory",
+  "personas": "Personas",
+  "noConversations": "No conversations yet",
+  "startNewChat": "Start a new chat above",
+  "deleteThreadTitle": "Delete \"{{title}}\"?",
+  "deleteThreadDescription": "All messages in this thread will be permanently deleted. This action cannot be undone.",
+  "deleteThread": "Delete Thread",
+  "cancel": "Cancel",
+  "signOut": "Sign out",
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "monthsAgo": "{{count}}mo ago"
+  }
+}

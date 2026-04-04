@@ -1,0 +1,43 @@
+{
+  "title": "Plans",
+  "currentPlan": "Current plan",
+  "usage": "{{used}} of {{limit}} messages today",
+  "usageUnlimited": "Unlimited messages",
+  "tagline": "Choose your depth of memory",
+  "description": "Every plan gives your AI persistent memory. Higher tiers unlock deeper retrieval.",
+  "free": {
+    "name": "Free",
+    "price": "$0",
+    "description": "Persistent memory powered by a knowledge graph. Your AI starts every conversation knowing who you are.",
+    "features": ["10 messages per day", "Knowledge graph with 30K token context", "All persona templates", "Full graph exploration", "Community support"],
+    "cta": "Get started"
+  },
+  "pro": {
+    "name": "Pro",
+    "badge": "Recommended",
+    "price": "Coming soon",
+    "description": "Intelligent retrieval beyond the context window. Your full graph becomes searchable mid-conversation.",
+    "features": ["50 messages per day", "Higher daily output budget", "Intelligent retrieval beyond 30K context", "Full graph searchable mid-conversation", "Custom persona creation", "Priority support"],
+    "cta": "Contact us"
+  },
+  "therapeutic": {
+    "name": "Therapeutic",
+    "price": "Coming soon",
+    "description": "Designed for use alongside a therapist. Your AI becomes a bridge between sessions.",
+    "features": ["Everything in Pro", "Share graph insights with your professional", "Crisis detection and alerts", "Session reminders and therapy context", "Homework and technique integration"],
+    "cta": "Contact us"
+  },
+  "contactModal": {
+    "title": "Get in touch",
+    "description": "Tell us about your interest and we'll reach out.",
+    "nameLabel": "Name",
+    "namePlaceholder": "Your name",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Tell us about your use case...",
+    "submit": "Send message",
+    "submitting": "Sending...",
+    "success": "Message sent! We'll be in touch soon."
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "newChat": "Nuevo chat",
+  "memory": "Memoria",
+  "personas": "Personas",
+  "noConversations": "Aún no hay conversaciones",
+  "startNewChat": "Inicia un nuevo chat arriba",
+  "deleteThreadTitle": "¿Eliminar \"{{title}}\"?",
+  "deleteThreadDescription": "Todos los mensajes de este hilo se eliminarán permanentemente. Esta acción no se puede deshacer.",
+  "deleteThread": "Eliminar hilo",
+  "cancel": "Cancelar",
+  "signOut": "Cerrar sesión",
+  "time": {
+    "justNow": "ahora",
+    "minutesAgo": "hace {{count}}m",
+    "hoursAgo": "hace {{count}}h",
+    "daysAgo": "hace {{count}}d",
+    "monthsAgo": "hace {{count}}me"
+  }
+}

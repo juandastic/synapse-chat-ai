@@ -1,265 +1,305 @@
-/**
- * Home Screen — the main authenticated screen.
- *
- * Currently a placeholder with:
- *   - Header showing "Synapse" + user avatar (tappable)
- *   - Welcome message with user name and email
- *   - Profile modal (slide-up sheet) with "Manage account" and "Sign out"
- *
- * The avatar shows the user's Clerk profile image when available,
- * otherwise falls back to the first letter of their name/email.
- *
- * Sign-out is handled via Clerk's signOut() — the AuthGate in _layout.tsx
- * detects the session change and redirects back to /(auth) automatically.
- */
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
-  Image,
+  ScrollView,
   StyleSheet,
   Pressable,
-  Modal,
+  ActivityIndicator,
 } from "react-native";
-import { useAuth, useUser } from "@clerk/expo";
+import { useRouter } from "expo-router";
+import { useNavigation, DrawerActions } from "@react-navigation/native";
+import { useQuery, useMutation } from "convex/react";
 import { useTranslation } from "react-i18next";
-import { LogOut, Settings, X } from "lucide-react-native";
+import { api } from "@synapse/backend/api";
+import { Id } from "@synapse/backend/dataModel";
+import { Menu } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
 
 import { colors } from "../../src/constants/colors";
+import { PersonaIcon } from "../../src/components/PersonaIcon";
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+const TEMPLATES_EN = [
+  { key: "therapist-en", icon: "compass", nameKey: "personaTemplates.therapist.name", descKey: "personaTemplates.therapist.description" },
+  { key: "wellbeing-en", icon: "leaf", nameKey: "personaTemplates.wellbeing.name", descKey: "personaTemplates.wellbeing.description" },
+  { key: "coach-en", icon: "zap", nameKey: "personaTemplates.coach.name", descKey: "personaTemplates.coach.description" },
+] as const;
 
-export default function HomeScreen() {
-  const { signOut } = useAuth();
-  const { user } = useUser();
-  const { t } = useTranslation("home");
-  const [profileOpen, setProfileOpen] = useState(false);
+const TEMPLATES_ES = [
+  { key: "therapist-es", icon: "compass", nameKey: "personaTemplates.therapist.name", descKey: "personaTemplates.therapist.description" },
+  { key: "wellbeing-es", icon: "leaf", nameKey: "personaTemplates.wellbeing.name", descKey: "personaTemplates.wellbeing.description" },
+  { key: "coach-es", icon: "zap", nameKey: "personaTemplates.coach.name", descKey: "personaTemplates.coach.description" },
+] as const;
 
-  // Fallback initial when user has no profile photo
-  const initials =
-    user?.firstName?.[0]?.toUpperCase() ??
-    user?.emailAddresses[0]?.emailAddress[0]?.toUpperCase() ??
-    "?";
+export default function PersonaSelectorScreen() {
+  const router = useRouter();
+  const navigation = useNavigation();
+  const personas = useQuery(api.personas.list);
+  const createFromTemplate = useMutation(api.personas.createFromTemplate);
+  const createThread = useMutation(api.threads.create);
+  const { t, i18n } = useTranslation("chat");
+  const insets = useSafeAreaInsets();
+  const [isPending, setIsPending] = useState(false);
+  const pendingRef = useRef(false);
 
-  /** Sign out and close the modal. */
-  const handleSignOut = () => {
-    console.log("[Home] User tapped sign out");
-    setProfileOpen(false);
-    signOut();
-  };
+  const systemTemplates = i18n.language === "es" ? TEMPLATES_ES : TEMPLATES_EN;
+
+  const handleSelectPersona = useCallback(
+    async (personaId: Id<"personas">) => {
+      if (pendingRef.current) return;
+      pendingRef.current = true;
+      setIsPending(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      try {
+        const threadId = await createThread({ personaId });
+        router.push(`/(home)/${threadId}` as never);
+      } catch (err) {
+        console.error("[PersonaSelector] Failed to create thread:", err);
+      } finally {
+        pendingRef.current = false;
+        setIsPending(false);
+      }
+    },
+    [createThread, router]
+  );
+
+  const handleSelectTemplate = useCallback(
+    async (templateKey: string) => {
+      if (pendingRef.current) return;
+      pendingRef.current = true;
+      setIsPending(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      try {
+        const personaId = await createFromTemplate({ templateKey });
+        const threadId = await createThread({ personaId });
+        router.push(`/(home)/${threadId}` as never);
+      } catch (err) {
+        console.error("[PersonaSelector] Failed to create from template:", err);
+      } finally {
+        pendingRef.current = false;
+        setIsPending(false);
+      }
+    },
+    [createFromTemplate, createThread, router]
+  );
+
+  const hasCustomPersonas = personas && personas.length > 0;
 
   return (
-    <View style={styles.container}>
-      {/* ---- Header ---- */}
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t("header")}</Text>
-
-        {/* Avatar — opens the profile modal */}
         <Pressable
-          style={styles.avatar}
-          onPress={() => setProfileOpen(true)}
-          accessibilityLabel="Open account menu"
+          style={styles.menuButton}
+          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+          accessibilityLabel="Open menu"
         >
-          {user?.imageUrl ? (
-            <Image source={{ uri: user.imageUrl }} style={styles.avatarImage} />
-          ) : (
-            <Text style={styles.avatarText}>{initials}</Text>
-          )}
+          <Menu size={22} color={colors.ink} />
         </Pressable>
       </View>
 
-      {/* ---- Main content (placeholder for future chat list) ---- */}
-      <View style={styles.content}>
-        <Text style={styles.greeting}>
-          {t("welcome")}
-          {user?.firstName ? `, ${user.firstName}` : ""}
-        </Text>
-        <Text style={styles.email}>
-          {user?.emailAddresses[0]?.emailAddress}
-        </Text>
-      </View>
-
-      {/* ---- Account modal (slide-up sheet) ---- */}
-      <Modal
-        visible={profileOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setProfileOpen(false)}
-      >
-        <View style={styles.modalContainer}>
-          {/* Modal header */}
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{t("account.title")}</Text>
-            <Pressable
-              style={styles.closeButton}
-              onPress={() => setProfileOpen(false)}
-              accessibilityLabel="Close account menu"
-            >
-              <X size={18} color={colors.ink} />
-            </Pressable>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Logo + title */}
+        <View style={styles.listHeader}>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoText}>S</Text>
           </View>
-
-          {/* User info card */}
-          <View style={styles.userInfo}>
-            <View style={styles.avatarLarge}>
-              {user?.imageUrl ? (
-                <Image
-                  source={{ uri: user.imageUrl }}
-                  style={styles.avatarLargeImage}
-                />
-              ) : (
-                <Text style={styles.avatarLargeText}>{initials}</Text>
-              )}
-            </View>
-            <Text style={styles.userName}>
-              {user?.firstName} {user?.lastName}
-            </Text>
-            <Text style={styles.userEmail}>
-              {user?.emailAddresses[0]?.emailAddress}
-            </Text>
-          </View>
-
-          {/* Action list */}
-          <View style={styles.actionList}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.actionItem,
-                pressed && styles.actionPressed,
-              ]}
-              onPress={() => {
-                // TODO: navigate to a profile editing screen
-                console.log("[Home] Manage account tapped (not implemented yet)");
-                setProfileOpen(false);
-              }}
-            >
-              <Settings size={20} color={colors.inkMuted} />
-              <Text style={styles.actionText}>
-                {t("account.manageAccount")}
-              </Text>
-            </Pressable>
-
-            <View style={styles.actionDivider} />
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.actionItem,
-                pressed && styles.actionPressed,
-              ]}
-              onPress={handleSignOut}
-            >
-              <LogOut size={20} color={colors.error} />
-              <Text style={[styles.actionText, styles.actionDestructive]}>
-                {t("account.signOut")}
-              </Text>
-            </Pressable>
-          </View>
+          <Text style={styles.title}>{t("personaSelector.title")}</Text>
+          <Text style={styles.subtitle}>{t("personaSelector.subtitle")}</Text>
         </View>
-      </Modal>
+
+        {/* Loading skeleton */}
+        {personas === undefined && (
+          <View style={styles.grid}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={styles.skeletonCard} />
+            ))}
+          </View>
+        )}
+
+        {/* Custom personas grid */}
+        {hasCustomPersonas && (
+          <View style={styles.grid}>
+            {personas.map((persona) => (
+              <Pressable
+                key={persona._id}
+                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                onPress={() => handleSelectPersona(persona._id)}
+                disabled={isPending}
+              >
+                <PersonaIcon icon={persona.icon} size="lg" />
+                <Text style={styles.cardName}>{persona.name}</Text>
+                {persona.description ? (
+                  <Text style={styles.cardDesc} numberOfLines={3}>{persona.description}</Text>
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* Templates divider */}
+        {hasCustomPersonas && (
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>{t("personaSelector.templates")}</Text>
+            <View style={styles.dividerLine} />
+          </View>
+        )}
+
+        {/* System templates grid */}
+        {personas !== undefined && (
+          <View style={styles.grid}>
+            {systemTemplates.map((template) => (
+              <Pressable
+                key={template.key}
+                style={({ pressed }) => [styles.card, styles.cardTemplate, pressed && styles.cardPressed]}
+                onPress={() => handleSelectTemplate(template.key)}
+                disabled={isPending}
+              >
+                <PersonaIcon icon={template.icon} size="lg" />
+                <Text style={styles.cardName}>{t(template.nameKey)}</Text>
+                <Text style={styles.cardDesc} numberOfLines={3}>{t(template.descKey)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* Pending indicator */}
+        {isPending && (
+          <View style={styles.pendingRow}>
+            <ActivityIndicator color={colors.accent} />
+            <Text style={styles.pendingText}>{t("personaSelector.creating")}</Text>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.paper },
-
-  /* Header */
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 64,
-    paddingHorizontal: 24,
-    paddingBottom: 12,
-  },
-  headerTitle: { fontSize: 20, fontWeight: "700", color: colors.ink },
-
-  /* Avatar (small — header) */
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.accentLight,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  avatarImage: { width: 36, height: 36, borderRadius: 18 },
-  avatarText: { fontSize: 14, fontWeight: "700", color: colors.accent },
-
-  /* Content */
-  content: {
+  root: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
+    backgroundColor: colors.paper,
   },
-  greeting: { fontSize: 24, fontWeight: "700", color: colors.ink, marginBottom: 6 },
-  email: { fontSize: 15, color: colors.inkMuted },
-
-  /* Profile modal */
-  modalContainer: { flex: 1, backgroundColor: colors.paper, paddingTop: 20 },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.rule,
+  header: {
+    paddingHorizontal: 12,
+    paddingBottom: 4,
   },
-  modalTitle: { fontSize: 18, fontWeight: "700", color: colors.ink },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.accentLight,
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
-
-  /* User info (inside modal) */
-  userInfo: {
-    alignItems: "center",
-    paddingVertical: 32,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.rule,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
   },
-  avatarLarge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.accentLight,
-    borderWidth: 1,
-    borderColor: colors.rule,
+  listHeader: {
+    alignItems: "center",
+    marginBottom: 24,
+    paddingTop: 16,
+  },
+  logoCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(139, 94, 60, 0.1)",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
     marginBottom: 16,
   },
-  avatarLargeImage: { width: 72, height: 72, borderRadius: 36 },
-  avatarLargeText: { fontSize: 28, fontWeight: "700", color: colors.accent },
-  userName: { fontSize: 20, fontWeight: "700", color: colors.ink, marginBottom: 4 },
-  userEmail: { fontSize: 14, color: colors.inkMuted },
-
-  /* Action list (inside modal) */
-  actionList: { paddingTop: 8 },
-  actionItem: {
+  logoText: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: colors.accent,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.ink,
+    textAlign: "center",
+    letterSpacing: -0.3,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: colors.inkMuted,
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 16,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  card: {
+    width: "48%",
+    flexGrow: 1,
+    alignItems: "center",
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.rule,
+    padding: 20,
+    gap: 8,
+  },
+  cardTemplate: {
+    borderStyle: "dashed",
+  },
+  cardPressed: {
+    backgroundColor: colors.accentLight,
+    transform: [{ scale: 0.97 }],
+  },
+  cardName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.ink,
+    textAlign: "center",
+  },
+  cardDesc: {
+    fontSize: 12,
+    color: colors.inkMuted,
+    textAlign: "center",
+    lineHeight: 16,
+  },
+  dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    gap: 12,
+    marginVertical: 16,
   },
-  actionPressed: { backgroundColor: colors.accentLight },
-  actionText: { fontSize: 16, color: colors.ink },
-  actionDestructive: { color: colors.error },
-  actionDivider: { height: 1, backgroundColor: colors.rule, marginHorizontal: 24 },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.rule,
+  },
+  dividerText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "rgba(107, 94, 79, 0.5)",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  pendingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingTop: 24,
+  },
+  pendingText: {
+    fontSize: 14,
+    color: colors.inkMuted,
+  },
+  skeletonCard: {
+    width: "48%",
+    flexGrow: 1,
+    height: 140,
+    borderRadius: 16,
+    backgroundColor: colors.accentLight,
+  },
 });

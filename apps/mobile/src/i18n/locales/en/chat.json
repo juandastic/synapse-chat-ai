@@ -1,0 +1,71 @@
+{
+  "personaSelector": {
+    "title": "Start a new conversation",
+    "subtitle": "Choose a companion to begin. Each brings evidence-based expertise and grows with your story.",
+    "templates": "Templates",
+    "creating": "Creating your conversation..."
+  },
+  "personaTemplates": {
+    "therapist": {
+      "name": "Compass",
+      "description": "Therapeutic companion grounded in ACT, DBT, and Polyvagal Theory. Neuroaffirmative by default."
+    },
+    "wellbeing": {
+      "name": "Solace",
+      "description": "Gentle emotional support through Positive Psychology, self-compassion, and mindfulness."
+    },
+    "coach": {
+      "name": "Momentum",
+      "description": "Growth-focused coach using Motivational Interviewing and behavioral strategies."
+    }
+  },
+  "chatView": {
+    "threadNotFound": "Thread not found",
+    "loadingThread": "Loading thread...",
+    "threadAccessDenied": "Thread not found or access denied",
+    "editTitleHint": "Tap to edit title",
+    "consolidateMemory": "Consolidate Memory",
+    "consolidationStarted": "Memory consolidation started...",
+    "consolidationFailed": "Failed to start consolidation",
+    "updateTitleFailed": "Failed to update title",
+    "consolidate": "Consolidate"
+  },
+  "chatInput": {
+    "waitingForResponse": "Waiting for response...",
+    "placeholder": "Share what's on your mind...",
+    "attachmentPreview": "Attachment preview",
+    "removeImage": "Remove image",
+    "attachImages": "Attach images",
+    "maxImages": "Maximum {{count}} images",
+    "sendMessage": "Send message",
+    "dailyLimitReached": "You've reached your daily limit of {{limit}} messages.",
+    "resetInfo": "{{info}}. For higher limits, reach out at",
+    "or": "or",
+    "messagesUsage": "{{used}} / {{limit}} messages today",
+    "mobileHint": "Tap send to submit.",
+    "fileSizeExceeded": "{{filename}} exceeds 10MB limit"
+  },
+  "messageItem": {
+    "error": "Error",
+    "copyMessage": "Copy message",
+    "copyAsMarkdown": "Copy as Markdown",
+    "copied": "Copied",
+    "copy": "Copy",
+    "share": "Share",
+    "retryMessage": "Retry message",
+    "retrying": "Retrying...",
+    "retry": "Retry",
+    "deleteMessage": "Delete message",
+    "confirmDeleteTitle": "Delete message?",
+    "confirmDeleteDescription": "This will also delete the paired response.",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "attachedImage": "Attached image"
+  },
+  "messageList": {
+    "loadingConversation": "Loading conversation...",
+    "startConversationWith": "Start your conversation with {{name}}",
+    "startConversation": "Start your conversation",
+    "emptyStateDescription": "Share what's on your mind, and we'll explore it together."
+  }
+}

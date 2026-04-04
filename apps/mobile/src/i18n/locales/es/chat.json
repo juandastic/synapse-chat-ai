@@ -1,0 +1,71 @@
+{
+  "personaSelector": {
+    "title": "Iniciar una nueva conversación",
+    "subtitle": "Elige un compañero para comenzar. Cada uno aporta experiencia basada en evidencia y crece con tu historia.",
+    "templates": "Plantillas",
+    "creating": "Creando tu conversación..."
+  },
+  "personaTemplates": {
+    "therapist": {
+      "name": "Brújula",
+      "description": "Compañero terapéutico basado en ACT, DBT y Teoría Polivagal. Neuroafirmativo por defecto."
+    },
+    "wellbeing": {
+      "name": "Calma",
+      "description": "Apoyo emocional amable a través de Psicología Positiva, autocompasión y mindfulness."
+    },
+    "coach": {
+      "name": "Impulso",
+      "description": "Coach enfocado en crecimiento usando Entrevista Motivacional y estrategias conductuales."
+    }
+  },
+  "chatView": {
+    "threadNotFound": "Hilo no encontrado",
+    "loadingThread": "Cargando hilo...",
+    "threadAccessDenied": "Hilo no encontrado o acceso denegado",
+    "editTitleHint": "Toca para editar título",
+    "consolidateMemory": "Consolidar memoria",
+    "consolidationStarted": "Consolidación de memoria iniciada...",
+    "consolidationFailed": "Error al iniciar la consolidación",
+    "updateTitleFailed": "Error al actualizar el título",
+    "consolidate": "Consolidar"
+  },
+  "chatInput": {
+    "waitingForResponse": "Esperando respuesta...",
+    "placeholder": "Comparte lo que tienes en mente...",
+    "attachmentPreview": "Vista previa del adjunto",
+    "removeImage": "Eliminar imagen",
+    "attachImages": "Adjuntar imágenes",
+    "maxImages": "Máximo {{count}} imágenes",
+    "sendMessage": "Enviar mensaje",
+    "dailyLimitReached": "Has alcanzado tu límite diario de {{limit}} mensajes.",
+    "resetInfo": "{{info}}. Para límites más altos, contáctanos en",
+    "or": "o",
+    "messagesUsage": "{{used}} / {{limit}} mensajes hoy",
+    "mobileHint": "Toca enviar para enviar.",
+    "fileSizeExceeded": "{{filename}} excede el límite de 10MB"
+  },
+  "messageItem": {
+    "error": "Error",
+    "copyMessage": "Copiar mensaje",
+    "copyAsMarkdown": "Copiar como Markdown",
+    "copied": "Copiado",
+    "copy": "Copiar",
+    "share": "Compartir",
+    "retryMessage": "Reintentar mensaje",
+    "retrying": "Reintentando...",
+    "retry": "Reintentar",
+    "deleteMessage": "Eliminar mensaje",
+    "confirmDeleteTitle": "¿Eliminar mensaje?",
+    "confirmDeleteDescription": "Esto también eliminará la respuesta asociada.",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "attachedImage": "Imagen adjunta"
+  },
+  "messageList": {
+    "loadingConversation": "Cargando conversación...",
+    "startConversationWith": "Inicia tu conversación con {{name}}",
+    "startConversation": "Inicia tu conversación",
+    "emptyStateDescription": "Comparte lo que tienes en mente y lo exploraremos juntos."
+  }
+}

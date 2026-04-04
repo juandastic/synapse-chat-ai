@@ -1,0 +1,53 @@
+{
+  "title": "Exportar a Notion",
+  "hero": {
+    "title": "Exporta tu memoria a Notion",
+    "description": "Transforma tu grafo de conocimiento en bases de datos estructuradas y navegables en Notion."
+  },
+  "config": {
+    "tokenLabel": "Token de integración",
+    "howToGetToken": "¿Cómo obtener un token?",
+    "tokenPlaceholder": "ntn_...",
+    "pageNameLabel": "Nombre de la página padre",
+    "pageNamePlaceholder": "ej. Synapse",
+    "languageLabel": "Idioma de salida",
+    "tokenRequired": "El token de integración de Notion es obligatorio",
+    "pageNameRequired": "El nombre de la página padre es obligatorio"
+  },
+  "export": {
+    "startingExport": "Iniciando exportación...",
+    "exportButton": "Exportar a Notion",
+    "startingSync": "Iniciando sincronización...",
+    "syncButton": "Sincronizar correcciones",
+    "failed": "Error al iniciar la exportación",
+    "correctionsFailed": "Error al iniciar las correcciones"
+  },
+  "pipeline": {
+    "exporting": "Exportando...",
+    "exportingDescription": "Esto puede tomar unos minutos. Puedes salir y volver.",
+    "correcting": "Sincronizando correcciones...",
+    "correctingDescription": "Leyendo filas marcadas de Notion y aplicándolas a tu grafo."
+  },
+  "steps": {
+    "hydrating": "Leyendo grafo de memoria",
+    "analyzing": "Diseñando esquemas",
+    "extracting_entries": "Extrayendo entradas",
+    "creating_databases": "Creando bases de datos",
+    "populating": "Poblando bases de datos",
+    "summarizing": "Creando resumen",
+    "done": "Listo",
+    "scanning": "Escaneando bases de datos",
+    "applying": "Aplicando correcciones"
+  },
+  "completed": {
+    "exportComplete": "Exportación completa",
+    "openInNotion": "Abrir en Notion",
+    "newExport": "Nueva exportación",
+    "correctionsApplied": "Correcciones aplicadas"
+  },
+  "failed": {
+    "exportFailed": "Exportación fallida",
+    "correctionsFailed": "Sincronización de correcciones fallida",
+    "reset": "Reiniciar"
+  }
+}

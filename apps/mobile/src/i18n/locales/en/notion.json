@@ -1,0 +1,53 @@
+{
+  "title": "Notion Export",
+  "hero": {
+    "title": "Export Your Memory to Notion",
+    "description": "Transform your knowledge graph into structured, browsable Notion databases."
+  },
+  "config": {
+    "tokenLabel": "Integration Token",
+    "howToGetToken": "How to get a token?",
+    "tokenPlaceholder": "ntn_...",
+    "pageNameLabel": "Parent Page Name",
+    "pageNamePlaceholder": "e.g. Synapse",
+    "languageLabel": "Output Language",
+    "tokenRequired": "Notion integration token is required",
+    "pageNameRequired": "Parent page name is required"
+  },
+  "export": {
+    "startingExport": "Starting export...",
+    "exportButton": "Export to Notion",
+    "startingSync": "Starting sync...",
+    "syncButton": "Sync Corrections",
+    "failed": "Failed to start export",
+    "correctionsFailed": "Failed to start corrections"
+  },
+  "pipeline": {
+    "exporting": "Exporting...",
+    "exportingDescription": "This can take a few minutes. You can leave and come back.",
+    "correcting": "Syncing corrections...",
+    "correctingDescription": "Reading flagged rows from Notion and applying them to your graph."
+  },
+  "steps": {
+    "hydrating": "Reading memory graph",
+    "analyzing": "Designing schemas",
+    "extracting_entries": "Extracting entries",
+    "creating_databases": "Creating databases",
+    "populating": "Populating databases",
+    "summarizing": "Creating summary",
+    "done": "Done",
+    "scanning": "Scanning databases",
+    "applying": "Applying corrections"
+  },
+  "completed": {
+    "exportComplete": "Export complete",
+    "openInNotion": "Open in Notion",
+    "newExport": "New Export",
+    "correctionsApplied": "Corrections applied"
+  },
+  "failed": {
+    "exportFailed": "Export failed",
+    "correctionsFailed": "Corrections sync failed",
+    "reset": "Reset"
+  }
+}
