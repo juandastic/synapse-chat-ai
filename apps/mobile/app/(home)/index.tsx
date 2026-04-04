@@ -10,12 +10,14 @@ import {
 import { useRouter } from "expo-router";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { useQuery, useMutation } from "convex/react";
+import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
 import { Menu } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { captureError } from "../../src/lib/analytics";
 
 import { colors } from "../../src/constants/colors";
 import { PersonaIcon } from "../../src/components/PersonaIcon";
@@ -35,6 +37,7 @@ const TEMPLATES_ES = [
 export default function PersonaSelectorScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const posthog = usePostHog();
   const personas = useQuery(api.personas.list);
   const createFromTemplate = useMutation(api.personas.createFromTemplate);
   const createThread = useMutation(api.threads.create);
@@ -46,22 +49,24 @@ export default function PersonaSelectorScreen() {
   const systemTemplates = i18n.language === "es" ? TEMPLATES_ES : TEMPLATES_EN;
 
   const handleSelectPersona = useCallback(
-    async (personaId: Id<"personas">) => {
+    async (personaId: Id<"personas">, personaName?: string) => {
       if (pendingRef.current) return;
       pendingRef.current = true;
       setIsPending(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       try {
+        posthog?.capture("persona_selected", { persona_id: personaId, ...(personaName ? { persona_name: personaName } : {}), type: "custom" });
         const threadId = await createThread({ personaId });
         router.push(`/(home)/${threadId}` as never);
       } catch (err) {
         console.error("[PersonaSelector] Failed to create thread:", err);
+        captureError(err, { source: "persona_selector", action: "create_thread" });
       } finally {
         pendingRef.current = false;
         setIsPending(false);
       }
     },
-    [createThread, router]
+    [createThread, router, posthog]
   );
 
   const handleSelectTemplate = useCallback(
@@ -71,17 +76,19 @@ export default function PersonaSelectorScreen() {
       setIsPending(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       try {
+        posthog?.capture("persona_selected", { persona_name: templateKey, type: "template" });
         const personaId = await createFromTemplate({ templateKey });
         const threadId = await createThread({ personaId });
         router.push(`/(home)/${threadId}` as never);
       } catch (err) {
         console.error("[PersonaSelector] Failed to create from template:", err);
+        captureError(err, { source: "persona_selector", action: "create_from_template" });
       } finally {
         pendingRef.current = false;
         setIsPending(false);
       }
     },
-    [createFromTemplate, createThread, router]
+    [createFromTemplate, createThread, router, posthog]
   );
 
   const hasCustomPersonas = personas && personas.length > 0;
@@ -125,7 +132,7 @@ export default function PersonaSelectorScreen() {
               <Pressable
                 key={persona._id}
                 style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-                onPress={() => handleSelectPersona(persona._id)}
+                onPress={() => handleSelectPersona(persona._id, persona.name)}
                 disabled={isPending}
               >
                 <PersonaIcon icon={persona.icon} size="lg" />

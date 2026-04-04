@@ -13,11 +13,13 @@ import {
 } from "react-native";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { useQuery, useMutation } from "convex/react";
+import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id, Doc } from "@synapse/backend/dataModel";
 import { Menu, Plus, Pencil, Trash2, ChevronLeft } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { captureError } from "../../src/lib/analytics";
 
 import { colors } from "../../src/constants/colors";
 import { PersonaIcon } from "../../src/components/PersonaIcon";
@@ -43,6 +45,7 @@ export default function PersonasScreen() {
   const { t } = useTranslation("settings");
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const posthog = usePostHog();
   const personas = useQuery(api.personas.list);
   const createPersona = useMutation(api.personas.create);
   const updatePersona = useMutation(api.personas.update);
@@ -64,11 +67,13 @@ export default function PersonasScreen() {
             onPress: async () => {
               try {
                 await removePersona({ id: persona._id });
-              } catch {
+                posthog?.capture("persona_deleted_mobile", { persona_id: persona._id });
+              } catch (err) {
                 Alert.alert(
                   t("personaSettings.cannotDelete"),
                   t("personaSettings.personaInUse")
                 );
+                captureError(err, { source: "personas", action: "delete" });
               }
             },
           },
@@ -91,6 +96,7 @@ export default function PersonasScreen() {
             description: data.description || undefined,
             systemPrompt: data.systemPrompt,
           });
+          posthog?.capture("persona_created_mobile", { name: data.name, language: data.language });
         } else if (view.mode === "edit") {
           await updatePersona({
             id: view.persona._id,
@@ -100,10 +106,12 @@ export default function PersonasScreen() {
             description: data.description || undefined,
             systemPrompt: data.systemPrompt,
           });
+          posthog?.capture("persona_edited_mobile", { persona_id: view.persona._id });
         }
         setView({ mode: "list" });
-      } catch {
+      } catch (err) {
         Alert.alert("Error", t("personaForm.submitError"));
+        captureError(err, { source: "personas", action: view.mode });
       } finally {
         setIsSubmitting(false);
       }

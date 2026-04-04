@@ -2,8 +2,10 @@ import { Drawer } from "expo-router/drawer";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StyleSheet } from "react-native";
 import { ThreadList } from "../../src/components/ThreadList";
+import { usePostHogIdentify } from "../../src/hooks/usePostHogIdentify";
 
 export default function HomeLayout() {
+  usePostHogIdentify();
   return (
     <GestureHandlerRootView style={styles.root}>
       <Drawer

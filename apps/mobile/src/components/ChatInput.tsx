@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useMutation, useQuery } from "convex/react";
+import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
@@ -17,6 +18,7 @@ import { useUploadFile } from "@convex-dev/r2/react";
 import { Send, ImagePlus, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { captureError } from "../lib/analytics";
 
 import { colors } from "../constants/colors";
 import { useChatContext } from "../contexts/useChatContext";
@@ -39,6 +41,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const uploadFile = useUploadFile(api.r2);
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
+  const posthog = usePostHog();
   const { t } = useTranslation("chat");
   const insets = useSafeAreaInsets();
 
@@ -87,6 +90,12 @@ export function ChatInput({ threadId }: ChatInputProps) {
         ...(imageKeys && imageKeys.length > 0 ? { imageKeys } : {}),
       });
 
+      posthog?.capture("message_sent_mobile", {
+        thread_id: threadId,
+        has_images: hasImages,
+        image_count: savedImages.length,
+      });
+
       startStreaming(result.assistantMessageId);
       void streamResponse(result.assistantMessageId, result.sessionId);
     } catch (err) {
@@ -97,6 +106,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
         err instanceof Error ? err.message : "Failed to send message";
       setError(message);
       console.error("[ChatInput] Failed to send message:", err);
+      captureError(err, { source: "chat_input", action: "send_message" });
     } finally {
       setIsSubmitting(false);
     }

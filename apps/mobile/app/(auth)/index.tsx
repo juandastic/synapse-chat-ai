@@ -26,11 +26,10 @@ import {
 } from "react-native";
 import { useSignIn, useAuth } from "@clerk/expo";
 import { useRouter } from "expo-router";
+import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { StatusBar } from "expo-status-bar";
 import {
-  Brain,
-  Network,
   Compass,
   Leaf,
   Zap,
@@ -53,6 +52,9 @@ const DEMO_AVAILABLE = Boolean(DEMO_EMAIL && DEMO_PASSWORD);
 
 /** Step numbers displayed next to each pipeline item. */
 const STEP_NUMS = ["01", "02", "03", "04"];
+
+/** Matches SLIDES order — used for analytics only. */
+const SLIDE_NAMES = ["welcome", "pipeline", "compass", "solace", "momentum", "cta"];
 
 // ---------------------------------------------------------------------------
 // Slide data — defines the order and type of each carousel page
@@ -94,8 +96,6 @@ function WelcomeSlide() {
       contentContainerStyle={styles.slideScrollContent}
       showsVerticalScrollIndicator={false}
     >
-      <IconBadge icon={Brain} />
-      <Text style={styles.tagline}>{t("welcome.tagline")}</Text>
       <Text style={styles.title}>{t("welcome.title")}</Text>
       <Text style={styles.description}>{t("welcome.description")}</Text>
 
@@ -131,7 +131,6 @@ function PipelineSlide() {
       contentContainerStyle={styles.slideScrollContent}
       showsVerticalScrollIndicator={false}
     >
-      <IconBadge icon={Network} />
       <Text style={styles.tagline}>{t("pipeline.tagline")}</Text>
       <Text style={styles.title}>{t("pipeline.title")}</Text>
       <Text style={styles.description}>{t("pipeline.description")}</Text>
@@ -272,6 +271,7 @@ export default function OnboardingScreen() {
   const { signOut, isSignedIn } = useAuth();
   const { t, i18n } = useTranslation("onboarding");
   const router = useRouter();
+  const posthog = usePostHog();
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [demoLoading, setDemoLoading] = useState(false);
@@ -281,10 +281,15 @@ export default function OnboardingScreen() {
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
       if (viewableItems.length > 0 && viewableItems[0].index != null) {
-        setActiveIndex(viewableItems[0].index);
+        const idx = viewableItems[0].index;
+        setActiveIndex(idx);
+        posthog?.capture("onboarding_slide_viewed", {
+          slide_index: idx,
+          slide_name: SLIDE_NAMES[idx],
+        });
       }
     },
-    []
+    [posthog]
   );
 
   const viewabilityConfig = useRef({
@@ -305,6 +310,7 @@ export default function OnboardingScreen() {
   /** Navigate to the full sign-in screen (Google + email + password). */
   const handleSignIn = () => {
     console.log("[Onboarding] User tapped 'Get started' → navigating to sign-in");
+    posthog?.capture("onboarding_completed", { method: "sign_in" });
     router.push("/(auth)/sign-in");
   };
 
@@ -327,6 +333,7 @@ export default function OnboardingScreen() {
       await signIn.password({ password: DEMO_PASSWORD });
       await signIn.finalize();
       console.log("[Onboarding] Demo sign-in successful");
+      posthog?.capture("onboarding_completed", { method: "demo" });
     } catch (error) {
       console.error("[Onboarding] Demo sign-in failed:", error);
       setDemoLoading(false);
@@ -337,6 +344,7 @@ export default function OnboardingScreen() {
   const toggleLanguage = () => {
     const next = i18n.language === "es" ? "en" : "es";
     console.log(`[Onboarding] Language changed to ${next}`);
+    posthog?.capture("language_toggled", { language: next });
     i18n.changeLanguage(next);
   };
 
@@ -407,12 +415,13 @@ export default function OnboardingScreen() {
 
           {/* Skip jumps directly to the CTA slide */}
           <Pressable
-            onPress={() =>
+            onPress={() => {
+              posthog?.capture("onboarding_skipped", { from_slide: activeIndex });
               flatListRef.current?.scrollToIndex({
                 index: SLIDES.length - 1,
                 animated: true,
-              })
-            }
+              });
+            }}
           >
             <Text style={styles.skip}>{t("nav.skip")}</Text>
           </Pressable>

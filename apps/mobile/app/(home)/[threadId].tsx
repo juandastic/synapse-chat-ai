@@ -10,14 +10,16 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { useQuery, useMutation } from "convex/react";
+import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
-import { Menu, Brain, ChevronLeft } from "lucide-react-native";
+import { Menu, Brain } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { captureError } from "../../src/lib/analytics";
 
 import { colors } from "../../src/constants/colors";
 import { ChatProvider } from "../../src/contexts/ChatContext";
@@ -76,7 +78,6 @@ function ChatHeader({
   threadId,
   title,
   personaIcon,
-  personaName,
 }: {
   threadId: Id<"threads">;
   title: string;
@@ -86,7 +87,7 @@ function ChatHeader({
   const { t } = useTranslation("chat");
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const router = useRouter();
+  const posthog = usePostHog();
   const updateTitle = useMutation(api.threads.updateTitle);
   const forceClose = useMutation(api.sessions.forceClose);
 
@@ -104,11 +105,13 @@ function ChatHeader({
     }
     try {
       await updateTitle({ threadId, title: trimmed });
-    } catch {
+      posthog?.capture("thread_title_edited", { thread_id: threadId });
+    } catch (err) {
       Alert.alert("Error", t("chatView.updateTitleFailed"));
       setEditValue(title);
+      captureError(err, { source: "chat_header", action: "update_title" });
     }
-  }, [editValue, title, updateTitle, threadId, t]);
+  }, [editValue, title, updateTitle, threadId, t, posthog]);
 
   const handleConsolidate = useCallback(async () => {
     if (consolidatingRef.current) return;
@@ -116,14 +119,16 @@ function ChatHeader({
     setIsConsolidating(true);
     try {
       await forceClose({ threadId });
+      posthog?.capture("memory_consolidation_triggered", { thread_id: threadId });
       Alert.alert("", t("chatView.consolidationStarted"));
-    } catch {
+    } catch (err) {
       Alert.alert("Error", t("chatView.consolidationFailed"));
+      captureError(err, { source: "chat_header", action: "consolidate_memory" });
     } finally {
       consolidatingRef.current = false;
       setIsConsolidating(false);
     }
-  }, [forceClose, threadId, t]);
+  }, [forceClose, threadId, t, posthog]);
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>

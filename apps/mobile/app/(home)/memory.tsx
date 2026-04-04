@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Menu, Search, ChevronRight, Send, RefreshCw } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { captureError } from "../../src/lib/analytics";
 
 import { colors } from "../../src/constants/colors";
 
@@ -62,8 +63,9 @@ export default function MemoryScreen() {
     try {
       const data = await fetchGraph() as GraphData;
       setGraphData(data);
-    } catch {
+    } catch (err) {
       setError(t("explorer.failedToLoad"));
+      captureError(err, { source: "memory", action: "fetch_graph" });
     } finally {
       setIsLoading(false);
     }
@@ -107,9 +109,10 @@ export default function MemoryScreen() {
       setCorrectionIsError(false);
       setCorrection("");
       refreshTimerRef.current = setTimeout(() => loadGraph(), 2000);
-    } catch {
+    } catch (err) {
       setCorrectionFeedback(t("correction.error"));
       setCorrectionIsError(true);
+      captureError(err, { source: "memory", action: "correct_graph" });
     } finally {
       setIsSendingCorrection(false);
     }

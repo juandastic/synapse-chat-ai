@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Menu, Database, Check, Circle, Loader2 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { captureError } from "../../src/lib/analytics";
 import { colors } from "../../src/constants/colors";
 
 type Phase = "config" | "exporting" | "completed" | "failed" | "correcting" | "corrections-completed" | "corrections-failed";
@@ -102,8 +103,9 @@ export default function NotionScreen() {
       setCurrentStep("hydrating");
       // Job ID stored in state only — no persistence across app restarts
       pollRef.current = setInterval(() => pollExportStatus(jobId), POLL_INTERVAL);
-    } catch {
+    } catch (err) {
       setError(t("export.failed"));
+      captureError(err, { source: "notion", action: "start_export" });
     } finally {
       setIsStarting(false);
     }
@@ -134,8 +136,9 @@ export default function NotionScreen() {
       setCurrentStep("scanning");
       const jobId = result.jobId;
       pollRef.current = setInterval(() => pollCorrectionsStatus(jobId), POLL_INTERVAL);
-    } catch {
+    } catch (err) {
       setError(t("export.correctionsFailed"));
+      captureError(err, { source: "notion", action: "start_corrections" });
     } finally {
       setIsStarting(false);
     }

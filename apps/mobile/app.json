@@ -3,27 +3,41 @@
     "name": "Synapse",
     "slug": "synapse-mobile",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "icon": "./assets/icon.png",
     "orientation": "portrait",
     "scheme": "synapse",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "updates": {
+      "url": "https://u.expo.dev/1dd9f32b-f7a4-4cf5-b61d-92770003dd3c"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.synapse.mobile",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Synapse needs access to your photos to attach images to messages."
+        "NSPhotoLibraryUsageDescription": "Synapse needs access to your photos to attach images to messages.",
+        "NSLocalNetworkUsageDescription": "Synapse uses the local network to connect to the development server.",
+        "NSBonjourServices": ["_expo-cdc._tcp"]
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F5F0E8"
       },
-      "package": "com.synapse.mobile"
+      "package": "com.synapse.mobile",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "@clerk/expo",
       "expo-router",
       "expo-secure-store",
+      "expo-updates",
       [
         "expo-image-picker",
         {
@@ -33,6 +47,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1dd9f32b-f7a4-4cf5-b61d-92770003dd3c"
+      }
+    },
+    "owner": "juandastic"
   }
 }

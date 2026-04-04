@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { useQuery } from "convex/react";
+import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Menu, Zap, Sparkles, Heart, CheckCircle, X } from "lucide-react-native";
@@ -23,6 +24,7 @@ export default function PlansScreen() {
   const { t } = useTranslation("plans");
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const posthog = usePostHog();
   const user = useQuery(api.users.me);
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
 
@@ -75,7 +77,10 @@ export default function PlansScreen() {
           isHighlighted
           badge={t("pro.badge")}
           ctaLabel={t("pro.cta")}
-          onCta={() => setContactModal("Pro")}
+          onCta={() => {
+            posthog?.capture("pricing_plan_selected", { plan: "pro", source: "mobile" });
+            setContactModal("Pro");
+          }}
           currentPlanLabel={t("currentPlan")}
         />
 
@@ -88,7 +93,10 @@ export default function PlansScreen() {
           features={t("therapeutic.features", { returnObjects: true }) as string[]}
           isCurrent={currentPlan === "unlimited"}
           ctaLabel={t("therapeutic.cta")}
-          onCta={() => setContactModal("Therapeutic")}
+          onCta={() => {
+            posthog?.capture("pricing_plan_selected", { plan: "therapeutic", source: "mobile" });
+            setContactModal("Therapeutic");
+          }}
           currentPlanLabel={t("currentPlan")}
         />
       </ScrollView>
@@ -97,6 +105,7 @@ export default function PlansScreen() {
       {contactModal && (
         <ContactModal
           planName={contactModal}
+          userId={user?._id}
           onClose={() => setContactModal(null)}
         />
       )}
@@ -163,8 +172,9 @@ function PlanCard({
   );
 }
 
-function ContactModal({ planName, onClose }: { planName: string; onClose: () => void }) {
+function ContactModal({ planName, userId, onClose }: { planName: string; userId?: string; onClose: () => void }) {
   const { t } = useTranslation("plans");
+  const posthog = usePostHog();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -173,12 +183,21 @@ function ContactModal({ planName, onClose }: { planName: string; onClose: () => 
   const handleSubmit = useCallback(async () => {
     if (!name.trim() || !email.trim() || !message.trim()) return;
     setIsSending(true);
-    // In production this would post to PostHog or an API
-    await new Promise((r) => setTimeout(r, 1000));
+
+    posthog?.capture("contact_form_submitted", {
+      plan: planName.toLowerCase(),
+      name: name.trim(),
+      email: email.trim(),
+      message: message.trim(),
+      source: "mobile",
+      ...(userId ? { user_id: userId } : {}),
+    });
+
+    await new Promise((r) => setTimeout(r, 300));
     setIsSending(false);
     Alert.alert("", t("contactModal.success"));
     onClose();
-  }, [name, email, message, onClose, t]);
+  }, [name, email, message, planName, userId, onClose, t, posthog]);
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
