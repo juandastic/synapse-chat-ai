@@ -1,32 +1,65 @@
 /**
  * Shared color tokens for the Synapse mobile app.
  *
- * These match the web landing page theme (warm paper aesthetic).
- * Import this instead of defining colors inline in each screen.
+ * Light palette matches the web landing page theme (warm paper aesthetic).
+ * Dark palette matches the web dark mode (warm dark tones).
+ *
+ * Components should use `useColors()` from ThemeContext instead of
+ * importing these directly, so they respond to theme changes.
  */
-export const colors = {
-  /** Warm cream background — the "paper" base */
+
+export interface ColorPalette {
+  paper: string;
+  ink: string;
+  inkMuted: string;
+  accent: string;
+  accentLight: string;
+  rule: string;
+  white: string;
+  error: string;
+  errorLight: string;
+  card: string;
+  primary: string;
+  primaryForeground: string;
+  amber: string;
+}
+
+/** Light mode — warm cream/paper aesthetic */
+export const lightColors: ColorPalette = {
   paper: "#f5f0e8",
-  /** Primary text — dark brown */
   ink: "#2c2418",
-  /** Secondary/muted text */
   inkMuted: "#6b5e4f",
-  /** Brand accent — warm brown used for highlights, icons, tags */
   accent: "#8b5e3c",
-  /** Very light accent fill for badges and cards */
   accentLight: "rgba(139, 94, 60, 0.08)",
-  /** Subtle border/divider color */
   rule: "rgba(44, 36, 24, 0.1)",
-  /** Pure white for input backgrounds, chat bubbles */
   white: "#ffffff",
-  /** Destructive action color (sign out, errors) */
   error: "#c0392b",
-  /** Card background — slightly lighter than paper, for assistant bubbles */
+  errorLight: "rgba(192, 57, 43, 0.08)",
   card: "#faf7f2",
-  /** Primary action color (send button, active states) */
   primary: "#8b5e3c",
-  /** Text on primary-colored surfaces */
   primaryForeground: "#faf7f2",
-  /** Warning color for usage limits */
   amber: "#d97706",
-} as const;
+};
+
+/** Dark mode — warm dark tones matching web .dark palette */
+export const darkColors: ColorPalette = {
+  paper: "#1c1814",
+  ink: "#e8dfcf",
+  inkMuted: "#9a8e7f",
+  accent: "#c4975a",
+  accentLight: "rgba(196, 151, 90, 0.12)",
+  rule: "rgba(232, 223, 207, 0.1)",
+  white: "#252018",
+  error: "#c0392b",
+  errorLight: "rgba(192, 57, 43, 0.12)",
+  card: "#242019",
+  primary: "#c4975a",
+  primaryForeground: "#1c1814",
+  amber: "#d97706",
+};
+
+/**
+ * @deprecated Use `useColors()` from ThemeContext instead.
+ * Kept for backward compatibility during migration.
+ */
+export const colors = lightColors;

@@ -8,28 +8,35 @@
  * Usage:
  *   <IconBadge icon={Brain} />
  */
+import { useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
-import { colors } from "../constants/colors";
+import { useColors } from "../contexts/ThemeContext";
 
 export function IconBadge({ icon: Icon }: { icon: LucideIcon }) {
+  const colors = useColors();
+
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          width: 52,
+          height: 52,
+          borderRadius: 14,
+          backgroundColor: colors.accentLight,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 20,
+        },
+      }),
+    [colors]
+  );
+
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
       <Icon size={28} color={colors.accent} strokeWidth={1.8} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: colors.accentLight,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-});

@@ -1,10 +1,20 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  Pressable,
+  Animated,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import type { Doc } from "@synapse/backend/dataModel";
 
-import { colors } from "../constants/colors";
+import { useColors } from "../contexts/ThemeContext";
 import { useChatContext } from "../contexts/useChatContext";
 import { MessageItem } from "./MessageItem";
 import { MessageActions } from "./MessageActions";
@@ -20,13 +30,68 @@ type ListItem =
   | { type: "message"; data: Doc<"messages">; isStreaming: boolean }
   | { type: "session-divider"; timestamp: number; key: string };
 
+/** Threshold (px) to consider the user "scrolled away" from the bottom */
+const SCROLL_THRESHOLD = 60;
+
 export function MessageList({ personaIcon, personaName }: MessageListProps) {
   const { messages, isLoading } = useChatContext();
   const { t } = useTranslation("chat");
+  const colors = useColors();
 
+  const flatListRef = useRef<FlatList>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [selectedMessage, setSelectedMessage] = useState<Doc<"messages"> | null>(null);
   const snapPoints = useMemo(() => ["35%"], []);
+
+  // Scroll-to-bottom button state
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const scrollButtonOpacity = useRef(new Animated.Value(0)).current;
+  const prevMessageCountRef = useRef(0);
+
+  // Track whether user is near the bottom (offset 0 in inverted list)
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetY = event.nativeEvent.contentOffset.y;
+      const isNearBottom = offsetY < SCROLL_THRESHOLD;
+      setShowScrollButton(!isNearBottom);
+    },
+    []
+  );
+
+  // Animate the scroll button in/out
+  useEffect(() => {
+    const anim = Animated.timing(scrollButtonOpacity, {
+      toValue: showScrollButton ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [showScrollButton, scrollButtonOpacity]);
+
+  // Only auto-scroll when a NEW message is added, not during streaming updates
+  useEffect(() => {
+    if (!messages || messages.length === 0) return;
+    const count = messages.length;
+    const hadMessages = prevMessageCountRef.current > 0;
+    const hasNewMessage = count > prevMessageCountRef.current;
+    prevMessageCountRef.current = count;
+
+    if (!hadMessages) {
+      // First load — jump to bottom instantly
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+      setShowScrollButton(false);
+    } else if (hasNewMessage) {
+      // New message added — smooth scroll to bottom
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }
+    // During streaming content updates (same message count), do NOT scroll
+  }, [messages]);
+
+  const scrollToBottom = useCallback(() => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    setShowScrollButton(false);
+  }, []);
 
   const handleMessageLongPress = useCallback((message: Doc<"messages">) => {
     setSelectedMessage(message);
@@ -87,29 +152,105 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
     return item.data._id;
   }, []);
 
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        listContainer: {
+          flex: 1,
+          position: "relative",
+        },
+        list: {
+          flex: 1,
+        },
+        listContent: {
+          paddingHorizontal: 12,
+          paddingTop: 8,
+          paddingBottom: 8,
+          gap: 8,
+        },
+        scrollButton: {
+          position: "absolute",
+          bottom: 12,
+          right: 16,
+          zIndex: 10,
+        },
+        scrollButtonInner: {
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: colors.ink,
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 4,
+        },
+        scrollButtonArrow: {
+          color: colors.paper,
+          fontSize: 18,
+          fontWeight: "700",
+        },
+        centered: {
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 32,
+          gap: 8,
+        },
+        loadingText: {
+          fontSize: 14,
+          color: colors.inkMuted,
+        },
+        emptyIcon: {
+          marginBottom: 16,
+        },
+        emptyTitle: {
+          fontSize: 20,
+          fontWeight: "700",
+          color: colors.ink,
+          textAlign: "center",
+        },
+        emptyDesc: {
+          fontSize: 14,
+          color: colors.inkMuted,
+          textAlign: "center",
+          lineHeight: 20,
+        },
+        sheetBackground: {
+          backgroundColor: colors.paper,
+        },
+        sheetHandle: {
+          backgroundColor: colors.rule,
+        },
+      }),
+    [colors]
+  );
+
   if (isLoading) {
     return (
-      <View style={styles.centered}>
+      <View style={s.centered}>
         <ActivityIndicator color={colors.accent} />
-        <Text style={styles.loadingText}>{t("messageList.loadingConversation")}</Text>
+        <Text style={s.loadingText}>{t("messageList.loadingConversation")}</Text>
       </View>
     );
   }
 
   if (!messages || messages.length === 0) {
     return (
-      <View style={styles.centered}>
+      <View style={s.centered}>
         {personaIcon && (
-          <View style={styles.emptyIcon}>
+          <View style={s.emptyIcon}>
             <PersonaIcon icon={personaIcon} size="xl" />
           </View>
         )}
-        <Text style={styles.emptyTitle}>
+        <Text style={s.emptyTitle}>
           {personaName
             ? t("messageList.startConversationWith", { name: personaName })
             : t("messageList.startConversation")}
         </Text>
-        <Text style={styles.emptyDesc}>
+        <Text style={s.emptyDesc}>
           {t("messageList.emptyStateDescription")}
         </Text>
       </View>
@@ -118,17 +259,33 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
 
   return (
     <>
-      <FlatList
-        data={listItems}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        inverted
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        keyboardDismissMode="interactive"
-        keyboardShouldPersistTaps="handled"
-      />
+      <View style={s.listContainer}>
+        <FlatList
+          ref={flatListRef}
+          data={listItems}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          inverted
+          style={s.list}
+          contentContainerStyle={s.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
+        />
+
+        {/* Scroll-to-bottom floating button */}
+        <Animated.View
+          style={[s.scrollButton, { opacity: scrollButtonOpacity }]}
+          pointerEvents={showScrollButton ? "auto" : "none"}
+        >
+          <Pressable onPress={scrollToBottom} style={s.scrollButtonInner}>
+            <Text style={s.scrollButtonArrow}>↓</Text>
+          </Pressable>
+        </Animated.View>
+      </View>
 
       {/* Shared action bottom sheet */}
       <BottomSheet
@@ -136,8 +293,8 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
         index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
-        backgroundStyle={styles.sheetBackground}
-        handleIndicatorStyle={styles.sheetHandle}
+        backgroundStyle={s.sheetBackground}
+        handleIndicatorStyle={s.sheetHandle}
       >
         <BottomSheetView>
           {selectedMessage && (
@@ -148,47 +305,3 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 8,
-    gap: 8,
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
-    gap: 8,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: colors.inkMuted,
-  },
-  emptyIcon: {
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.ink,
-    textAlign: "center",
-  },
-  emptyDesc: {
-    fontSize: 14,
-    color: colors.inkMuted,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  sheetBackground: {
-    backgroundColor: colors.paper,
-  },
-  sheetHandle: {
-    backgroundColor: colors.rule,
-  },
-});

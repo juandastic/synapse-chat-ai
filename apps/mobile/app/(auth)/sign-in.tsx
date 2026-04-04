@@ -9,7 +9,7 @@
  * After successful auth, the AuthGate in _layout.tsx detects the session
  * change and redirects to /(home) automatically.
  */
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -27,7 +27,7 @@ import { useTranslation } from "react-i18next";
 import * as WebBrowser from "expo-web-browser";
 import { Mail, ArrowLeft } from "lucide-react-native";
 
-import { colors } from "../../src/constants/colors";
+import { useColors } from "../../src/contexts/ThemeContext";
 
 // Let expo-web-browser finish any pending OAuth redirect when the app reopens
 WebBrowser.maybeCompleteAuthSession();
@@ -58,6 +58,7 @@ export default function SignInScreen() {
   const { startSSOFlow } = useSSO();
   const router = useRouter();
   const { t } = useTranslation("auth");
+  const colors = useColors();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,6 +68,96 @@ export default function SignInScreen() {
   // Derived state — the email submit button is only active when both fields
   // are filled and the email looks valid
   const canSubmitEmail = email.trim().length > 0 && password.length > 0 && isValidEmail(email);
+
+  const s = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.paper },
+    scrollContent: { paddingHorizontal: 32, paddingTop: 60, paddingBottom: 40 },
+
+    back: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.accentLight,
+      borderWidth: 1,
+      borderColor: colors.rule,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 32,
+    },
+    title: { fontSize: 26, fontWeight: "700", color: colors.ink, marginBottom: 8 },
+    subtitle: { fontSize: 15, lineHeight: 22, color: colors.inkMuted, marginBottom: 28 },
+
+    error: {
+      fontSize: 14,
+      color: colors.error,
+      backgroundColor: colors.errorLight,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 10,
+      marginBottom: 16,
+      overflow: "hidden",
+    },
+
+    /* Google button */
+    googleButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 50,
+      paddingVertical: 14,
+    },
+    googleIcon: { fontSize: 16, fontWeight: "700" },
+    googleText: { fontSize: 15, fontWeight: "600", color: colors.ink },
+
+    /* Divider */
+    divider: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 20 },
+    dividerLine: { flex: 1, height: 1, backgroundColor: colors.rule },
+    dividerText: { fontSize: 13, color: colors.inkMuted },
+
+    /* Inputs */
+    inputGroup: { marginBottom: 16 },
+    label: { fontSize: 13, fontWeight: "600", color: colors.ink, marginBottom: 6 },
+    input: {
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: colors.ink,
+    },
+
+    /* Primary submit */
+    primaryButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: colors.ink,
+      borderRadius: 50,
+      paddingVertical: 16,
+    },
+    primaryText: { fontSize: 15, fontWeight: "600", color: colors.paper },
+    disabled: { opacity: 0.4 },
+    pressed: { opacity: 0.8 },
+
+    /* Demo button */
+    demoButton: {
+      backgroundColor: colors.accentLight,
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 50,
+      paddingVertical: 14,
+      alignItems: "center",
+    },
+    demoText: { fontSize: 15, fontWeight: "600", color: colors.ink },
+    demoNote: { fontSize: 13, color: colors.inkMuted, textAlign: "center", marginTop: 8 },
+  }), [colors]);
 
   // -----------------------------------------------------------------------
   // Auth handlers
@@ -156,28 +247,28 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={s.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={s.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Back → returns to onboarding carousel */}
-        <Pressable style={styles.back} onPress={() => router.back()}>
+        <Pressable style={s.back} onPress={() => router.back()}>
           <ArrowLeft size={20} color={colors.ink} />
         </Pressable>
 
-        <Text style={styles.title}>{t("signIn.title")}</Text>
-        <Text style={styles.subtitle}>{t("signIn.subtitle")}</Text>
+        <Text style={s.title}>{t("signIn.title")}</Text>
+        <Text style={s.subtitle}>{t("signIn.subtitle")}</Text>
 
         {/* Error banner — only visible when something went wrong */}
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && <Text style={s.error}>{error}</Text>}
 
         {/* --- Google OAuth --- */}
         <Pressable
-          style={({ pressed }) => [styles.googleButton, pressed && styles.pressed]}
+          style={({ pressed }) => [s.googleButton, pressed && s.pressed]}
           onPress={handleGoogleSignIn}
           disabled={loading !== null}
         >
@@ -185,24 +276,24 @@ export default function SignInScreen() {
             <ActivityIndicator size="small" color={colors.ink} />
           ) : (
             <>
-              <Text style={styles.googleIcon}>G</Text>
-              <Text style={styles.googleText}>{t("signIn.continueWithGoogle")}</Text>
+              <Text style={s.googleIcon}>G</Text>
+              <Text style={s.googleText}>{t("signIn.continueWithGoogle")}</Text>
             </>
           )}
         </Pressable>
 
         {/* Divider */}
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>{t("signIn.or")}</Text>
-          <View style={styles.dividerLine} />
+        <View style={s.divider}>
+          <View style={s.dividerLine} />
+          <Text style={s.dividerText}>{t("signIn.or")}</Text>
+          <View style={s.dividerLine} />
         </View>
 
         {/* --- Email + Password --- */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t("signIn.emailLabel")}</Text>
+        <View style={s.inputGroup}>
+          <Text style={s.label}>{t("signIn.emailLabel")}</Text>
           <TextInput
-            style={styles.input}
+            style={s.input}
             placeholder={t("signIn.emailPlaceholder")}
             placeholderTextColor={colors.rule}
             value={email}
@@ -214,10 +305,10 @@ export default function SignInScreen() {
           />
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>{t("signIn.passwordLabel")}</Text>
+        <View style={s.inputGroup}>
+          <Text style={s.label}>{t("signIn.passwordLabel")}</Text>
           <TextInput
-            style={styles.input}
+            style={s.input}
             placeholder={t("signIn.passwordPlaceholder")}
             placeholderTextColor={colors.rule}
             value={password}
@@ -230,9 +321,9 @@ export default function SignInScreen() {
 
         <Pressable
           style={({ pressed }) => [
-            styles.primaryButton,
-            pressed && styles.pressed,
-            !canSubmitEmail && styles.disabled,
+            s.primaryButton,
+            pressed && s.pressed,
+            !canSubmitEmail && s.disabled,
           ]}
           onPress={handleEmailSignIn}
           disabled={loading !== null || !canSubmitEmail}
@@ -242,7 +333,7 @@ export default function SignInScreen() {
           ) : (
             <>
               <Mail size={18} color={colors.paper} strokeWidth={2} />
-              <Text style={styles.primaryText}>{t("signIn.signInWithEmail")}</Text>
+              <Text style={s.primaryText}>{t("signIn.signInWithEmail")}</Text>
             </>
           )}
         </Pressable>
@@ -250,121 +341,27 @@ export default function SignInScreen() {
         {/* --- Demo account --- */}
         {DEMO_AVAILABLE && (
           <>
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>{t("signIn.or")}</Text>
-              <View style={styles.dividerLine} />
+            <View style={s.divider}>
+              <View style={s.dividerLine} />
+              <Text style={s.dividerText}>{t("signIn.or")}</Text>
+              <View style={s.dividerLine} />
             </View>
 
             <Pressable
-              style={({ pressed }) => [styles.demoButton, pressed && styles.pressed]}
+              style={({ pressed }) => [s.demoButton, pressed && s.pressed]}
               onPress={handleDemo}
               disabled={loading !== null}
             >
               {loading === "demo" ? (
                 <ActivityIndicator size="small" color={colors.ink} />
               ) : (
-                <Text style={styles.demoText}>{t("signIn.tryDemo")}</Text>
+                <Text style={s.demoText}>{t("signIn.tryDemo")}</Text>
               )}
             </Pressable>
-            <Text style={styles.demoNote}>{t("signIn.demoNote")}</Text>
+            <Text style={s.demoNote}>{t("signIn.demoNote")}</Text>
           </>
         )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.paper },
-  scrollContent: { paddingHorizontal: 32, paddingTop: 60, paddingBottom: 40 },
-
-  back: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.accentLight,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 32,
-  },
-  title: { fontSize: 26, fontWeight: "700", color: colors.ink, marginBottom: 8 },
-  subtitle: { fontSize: 15, lineHeight: 22, color: colors.inkMuted, marginBottom: 28 },
-
-  error: {
-    fontSize: 14,
-    color: colors.error,
-    backgroundColor: "rgba(192, 57, 43, 0.08)",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginBottom: 16,
-    overflow: "hidden",
-  },
-
-  /* Google button */
-  googleButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 50,
-    paddingVertical: 14,
-  },
-  googleIcon: { fontSize: 16, fontWeight: "700" },
-  googleText: { fontSize: 15, fontWeight: "600", color: colors.ink },
-
-  /* Divider */
-  divider: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 20 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.rule },
-  dividerText: { fontSize: 13, color: colors.inkMuted },
-
-  /* Inputs */
-  inputGroup: { marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: "600", color: colors.ink, marginBottom: 6 },
-  input: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: colors.ink,
-  },
-
-  /* Primary submit */
-  primaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: colors.ink,
-    borderRadius: 50,
-    paddingVertical: 16,
-  },
-  primaryText: { fontSize: 15, fontWeight: "600", color: colors.paper },
-  disabled: { opacity: 0.4 },
-  pressed: { opacity: 0.8 },
-
-  /* Demo button */
-  demoButton: {
-    backgroundColor: colors.accentLight,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 50,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  demoText: { fontSize: 15, fontWeight: "600", color: colors.ink },
-  demoNote: { fontSize: 13, color: colors.inkMuted, textAlign: "center", marginTop: 8 },
-});

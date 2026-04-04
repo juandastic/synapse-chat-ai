@@ -25,6 +25,13 @@ import { ConvexReactClient } from "convex/react";
 import { PostHogProvider, usePostHog } from "posthog-react-native";
 import * as SecureStore from "expo-secure-store";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
+import { ThemeProvider, useTheme } from "../src/contexts/ThemeContext";
+
+/** StatusBar that adapts to the current theme. */
+function ThemedStatusBar() {
+  const { theme } = useTheme();
+  return <StatusBar style={theme === "dark" ? "light" : "dark"} />;
+}
 import { setPostHogInstance } from "../src/lib/analytics";
 
 // ---------------------------------------------------------------------------
@@ -177,10 +184,12 @@ export default function RootLayout() {
           >
             <PostHogInit />
             <ScreenTracker />
-            <ErrorBoundary>
-              <AuthGate />
-            </ErrorBoundary>
-            <StatusBar style="auto" />
+            <ThemeProvider>
+              <ErrorBoundary>
+                <AuthGate />
+              </ErrorBoundary>
+              <ThemedStatusBar />
+            </ThemeProvider>
           </PostHogProvider>
         </ConvexProviderWithClerk>
       </ClerkLoaded>

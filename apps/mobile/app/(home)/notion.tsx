@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -14,10 +14,10 @@ import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
-import { Menu, Database, Check, Circle, Loader2 } from "lucide-react-native";
+import { Menu, Database, Check, Circle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { captureError } from "../../src/lib/analytics";
-import { colors } from "../../src/constants/colors";
+import { useColors } from "../../src/contexts/ThemeContext";
 
 type Phase = "config" | "exporting" | "completed" | "failed" | "correcting" | "corrections-completed" | "corrections-failed";
 
@@ -30,6 +30,7 @@ export default function NotionScreen() {
   const { t, i18n } = useTranslation("notion");
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const colors = useColors();
 
   const notionConfig = useQuery(api.notionConfig.getNotionConfig);
   const saveConfig = useMutation(api.notionConfig.saveNotionConfig);
@@ -52,6 +53,42 @@ export default function NotionScreen() {
   const [exportError, setExportError] = useState<string | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const s = useMemo(() => StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.paper },
+    header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.rule },
+    headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+    headerTitle: { flex: 1, fontSize: 18, fontWeight: "700", color: colors.ink, textAlign: "center" },
+    content: { padding: 16, gap: 12 },
+    hero: { alignItems: "center", gap: 12, paddingVertical: 24 },
+    heroTitle: { fontSize: 22, fontWeight: "700", color: colors.ink, textAlign: "center" },
+    heroDesc: { fontSize: 14, color: colors.inkMuted, textAlign: "center", lineHeight: 20 },
+    errorBanner: { fontSize: 13, color: colors.error, backgroundColor: colors.errorLight, padding: 12, borderRadius: 8 },
+    fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.ink, marginTop: 8 },
+    input: { fontSize: 15, color: colors.ink, backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.rule, paddingHorizontal: 12, paddingVertical: 10, marginTop: 4 },
+    langRow: { flexDirection: "row", gap: 8, marginTop: 4 },
+    langChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: colors.rule },
+    langChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    langChipText: { fontSize: 14, color: colors.inkMuted },
+    langChipTextActive: { color: colors.primaryForeground },
+    primaryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 16 },
+    primaryBtnText: { fontSize: 16, fontWeight: "600", color: colors.primaryForeground },
+    secondaryBtn: { borderWidth: 1, borderColor: colors.rule, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 8 },
+    secondaryBtnText: { fontSize: 16, fontWeight: "600", color: colors.ink },
+    btnDisabled: { opacity: 0.6 },
+    pipelineSection: { alignItems: "center", gap: 12, paddingVertical: 32 },
+    pipelineTitle: { fontSize: 20, fontWeight: "700", color: colors.ink },
+    pipelineDesc: { fontSize: 14, color: colors.inkMuted, textAlign: "center", lineHeight: 20 },
+    stepsContainer: { width: "100%", gap: 12, marginTop: 16 },
+    stepRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    stepText: { fontSize: 14, color: colors.inkMuted },
+    stepDone: { color: colors.accent },
+    stepActive: { color: colors.ink, fontWeight: "600" },
+    resultSection: { alignItems: "center", gap: 16, paddingVertical: 48 },
+    resultTitle: { fontSize: 22, fontWeight: "700", color: colors.ink },
+    errorTitle: { fontSize: 20, fontWeight: "700", color: colors.error },
+    errorDetail: { fontSize: 14, color: colors.inkMuted, textAlign: "center" },
+  }), [colors]);
 
   // Load saved config
   useEffect(() => {
@@ -157,75 +194,75 @@ export default function NotionScreen() {
   const hasSavedConfig = notionConfig?.notionToken;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Pressable style={styles.headerBtn} onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
+    <View style={[s.root, { paddingTop: insets.top }]}>
+      <View style={s.header}>
+        <Pressable style={s.headerBtn} onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
           <Menu size={22} color={colors.ink} />
         </Pressable>
-        <Text style={styles.headerTitle}>{t("title")}</Text>
-        <View style={styles.headerBtn} />
+        <Text style={s.headerTitle}>{t("title")}</Text>
+        <View style={s.headerBtn} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={s.content}>
         {/* Config phase */}
         {phase === "config" && (
           <>
-            <View style={styles.hero}>
+            <View style={s.hero}>
               <Database size={40} color={colors.accent} />
-              <Text style={styles.heroTitle}>{t("hero.title")}</Text>
-              <Text style={styles.heroDesc}>{t("hero.description")}</Text>
+              <Text style={s.heroTitle}>{t("hero.title")}</Text>
+              <Text style={s.heroDesc}>{t("hero.description")}</Text>
             </View>
 
-            {error && <Text style={styles.errorBanner}>{error}</Text>}
+            {error && <Text style={s.errorBanner}>{error}</Text>}
 
-            <Text style={styles.fieldLabel}>{t("config.tokenLabel")}</Text>
+            <Text style={s.fieldLabel}>{t("config.tokenLabel")}</Text>
             <TextInput
-              style={styles.input}
+              style={s.input}
               value={token}
               onChangeText={setToken}
               placeholder={t("config.tokenPlaceholder")}
-              placeholderTextColor="rgba(107,94,79,0.4)"
+              placeholderTextColor={colors.inkMuted}
               secureTextEntry
               autoCapitalize="none"
             />
 
-            <Text style={styles.fieldLabel}>{t("config.pageNameLabel")}</Text>
+            <Text style={s.fieldLabel}>{t("config.pageNameLabel")}</Text>
             <TextInput
-              style={styles.input}
+              style={s.input}
               value={pageName}
               onChangeText={setPageName}
               placeholder={t("config.pageNamePlaceholder")}
-              placeholderTextColor="rgba(107,94,79,0.4)"
+              placeholderTextColor={colors.inkMuted}
             />
 
-            <Text style={styles.fieldLabel}>{t("config.languageLabel")}</Text>
-            <View style={styles.langRow}>
+            <Text style={s.fieldLabel}>{t("config.languageLabel")}</Text>
+            <View style={s.langRow}>
               {[{ v: "en", l: "English" }, { v: "es", l: "Español" }].map((opt) => (
                 <Pressable
                   key={opt.v}
-                  style={[styles.langChip, language === opt.v && styles.langChipActive]}
+                  style={[s.langChip, language === opt.v && s.langChipActive]}
                   onPress={() => setLanguage(opt.v)}
                 >
-                  <Text style={[styles.langChipText, language === opt.v && styles.langChipTextActive]}>{opt.l}</Text>
+                  <Text style={[s.langChipText, language === opt.v && s.langChipTextActive]}>{opt.l}</Text>
                 </Pressable>
               ))}
             </View>
 
             <Pressable
-              style={[styles.primaryBtn, isStarting && styles.btnDisabled]}
+              style={[s.primaryBtn, isStarting && s.btnDisabled]}
               onPress={handleExport}
               disabled={isStarting}
             >
-              {isStarting ? <ActivityIndicator color={colors.primaryForeground} /> : <Text style={styles.primaryBtnText}>{t("export.exportButton")}</Text>}
+              {isStarting ? <ActivityIndicator color={colors.primaryForeground} /> : <Text style={s.primaryBtnText}>{t("export.exportButton")}</Text>}
             </Pressable>
 
             {hasSavedConfig && (
               <Pressable
-                style={[styles.secondaryBtn, isStarting && styles.btnDisabled]}
+                style={[s.secondaryBtn, isStarting && s.btnDisabled]}
                 onPress={handleSync}
                 disabled={isStarting}
               >
-                <Text style={styles.secondaryBtnText}>{t("export.syncButton")}</Text>
+                <Text style={s.secondaryBtnText}>{t("export.syncButton")}</Text>
               </Pressable>
             )}
           </>
@@ -233,14 +270,14 @@ export default function NotionScreen() {
 
         {/* Exporting / Correcting */}
         {(phase === "exporting" || phase === "correcting") && (
-          <View style={styles.pipelineSection}>
-            <Text style={styles.pipelineTitle}>
+          <View style={s.pipelineSection}>
+            <Text style={s.pipelineTitle}>
               {phase === "exporting" ? t("pipeline.exporting") : t("pipeline.correcting")}
             </Text>
-            <Text style={styles.pipelineDesc}>
+            <Text style={s.pipelineDesc}>
               {phase === "exporting" ? t("pipeline.exportingDescription") : t("pipeline.correctingDescription")}
             </Text>
-            <View style={styles.stepsContainer}>
+            <View style={s.stepsContainer}>
               {(phase === "exporting" ? EXPORT_STEPS : CORRECTION_STEPS).map((step) => {
                 const steps = phase === "exporting" ? EXPORT_STEPS : CORRECTION_STEPS;
                 const stepIndex = (steps as readonly string[]).indexOf(step);
@@ -248,7 +285,7 @@ export default function NotionScreen() {
                 const isDone = stepIndex < currentIndex || currentStep === "done";
                 const isActive = step === currentStep && currentStep !== "done";
                 return (
-                  <View key={step} style={styles.stepRow}>
+                  <View key={step} style={s.stepRow}>
                     {isDone ? (
                       <Check size={16} color={colors.accent} />
                     ) : isActive ? (
@@ -256,7 +293,7 @@ export default function NotionScreen() {
                     ) : (
                       <Circle size={16} color={colors.inkMuted} />
                     )}
-                    <Text style={[styles.stepText, isDone && styles.stepDone, isActive && styles.stepActive]}>
+                    <Text style={[s.stepText, isDone && s.stepDone, isActive && s.stepActive]}>
                       {t(`steps.${step}`)}
                     </Text>
                   </View>
@@ -268,40 +305,40 @@ export default function NotionScreen() {
 
         {/* Completed */}
         {phase === "completed" && (
-          <View style={styles.resultSection}>
+          <View style={s.resultSection}>
             <Check size={48} color={colors.accent} />
-            <Text style={styles.resultTitle}>{t("completed.exportComplete")}</Text>
+            <Text style={s.resultTitle}>{t("completed.exportComplete")}</Text>
             {exportResult?.summaryPageUrl && (
-              <Pressable style={styles.primaryBtn} onPress={() => Linking.openURL(exportResult.summaryPageUrl!)}>
-                <Text style={styles.primaryBtnText}>{t("completed.openInNotion")}</Text>
+              <Pressable style={s.primaryBtn} onPress={() => Linking.openURL(exportResult.summaryPageUrl!)}>
+                <Text style={s.primaryBtnText}>{t("completed.openInNotion")}</Text>
               </Pressable>
             )}
-            <Pressable style={styles.secondaryBtn} onPress={handleReset}>
-              <Text style={styles.secondaryBtnText}>{t("completed.newExport")}</Text>
+            <Pressable style={s.secondaryBtn} onPress={handleReset}>
+              <Text style={s.secondaryBtnText}>{t("completed.newExport")}</Text>
             </Pressable>
           </View>
         )}
 
         {/* Failed */}
         {(phase === "failed" || phase === "corrections-failed") && (
-          <View style={styles.resultSection}>
-            <Text style={styles.errorTitle}>
+          <View style={s.resultSection}>
+            <Text style={s.errorTitle}>
               {phase === "failed" ? t("failed.exportFailed") : t("failed.correctionsFailed")}
             </Text>
-            {exportError && <Text style={styles.errorDetail}>{exportError}</Text>}
-            <Pressable style={styles.secondaryBtn} onPress={handleReset}>
-              <Text style={styles.secondaryBtnText}>{t("failed.reset")}</Text>
+            {exportError && <Text style={s.errorDetail}>{exportError}</Text>}
+            <Pressable style={s.secondaryBtn} onPress={handleReset}>
+              <Text style={s.secondaryBtnText}>{t("failed.reset")}</Text>
             </Pressable>
           </View>
         )}
 
         {/* Corrections completed */}
         {phase === "corrections-completed" && (
-          <View style={styles.resultSection}>
+          <View style={s.resultSection}>
             <Check size={48} color={colors.accent} />
-            <Text style={styles.resultTitle}>{t("completed.correctionsApplied")}</Text>
-            <Pressable style={styles.secondaryBtn} onPress={handleReset}>
-              <Text style={styles.secondaryBtnText}>{t("failed.reset")}</Text>
+            <Text style={s.resultTitle}>{t("completed.correctionsApplied")}</Text>
+            <Pressable style={s.secondaryBtn} onPress={handleReset}>
+              <Text style={s.secondaryBtnText}>{t("failed.reset")}</Text>
             </Pressable>
           </View>
         )}
@@ -309,39 +346,3 @@ export default function NotionScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.paper },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.rule },
-  headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: "700", color: colors.ink, textAlign: "center" },
-  content: { padding: 16, gap: 12 },
-  hero: { alignItems: "center", gap: 12, paddingVertical: 24 },
-  heroTitle: { fontSize: 22, fontWeight: "700", color: colors.ink, textAlign: "center" },
-  heroDesc: { fontSize: 14, color: colors.inkMuted, textAlign: "center", lineHeight: 20 },
-  errorBanner: { fontSize: 13, color: colors.error, backgroundColor: "rgba(192,57,43,0.08)", padding: 12, borderRadius: 8 },
-  fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.ink, marginTop: 8 },
-  input: { fontSize: 15, color: colors.ink, backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.rule, paddingHorizontal: 12, paddingVertical: 10, marginTop: 4 },
-  langRow: { flexDirection: "row", gap: 8, marginTop: 4 },
-  langChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: colors.rule },
-  langChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  langChipText: { fontSize: 14, color: colors.inkMuted },
-  langChipTextActive: { color: colors.primaryForeground },
-  primaryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 16 },
-  primaryBtnText: { fontSize: 16, fontWeight: "600", color: colors.primaryForeground },
-  secondaryBtn: { borderWidth: 1, borderColor: colors.rule, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 8 },
-  secondaryBtnText: { fontSize: 16, fontWeight: "600", color: colors.ink },
-  btnDisabled: { opacity: 0.6 },
-  pipelineSection: { alignItems: "center", gap: 12, paddingVertical: 32 },
-  pipelineTitle: { fontSize: 20, fontWeight: "700", color: colors.ink },
-  pipelineDesc: { fontSize: 14, color: colors.inkMuted, textAlign: "center", lineHeight: 20 },
-  stepsContainer: { width: "100%", gap: 12, marginTop: 16 },
-  stepRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  stepText: { fontSize: 14, color: colors.inkMuted },
-  stepDone: { color: colors.accent },
-  stepActive: { color: colors.ink, fontWeight: "600" },
-  resultSection: { alignItems: "center", gap: 16, paddingVertical: 48 },
-  resultTitle: { fontSize: 22, fontWeight: "700", color: colors.ink },
-  errorTitle: { fontSize: 20, fontWeight: "700", color: colors.error },
-  errorDetail: { fontSize: 14, color: colors.inkMuted, textAlign: "center" },
-});

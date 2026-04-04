@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { captureError } from "../../src/lib/analytics";
 
-import { colors } from "../../src/constants/colors";
+import { useColors } from "../../src/contexts/ThemeContext";
 import { PersonaIcon } from "../../src/components/PersonaIcon";
 
 const TEMPLATES_EN = [
@@ -45,8 +45,136 @@ export default function PersonaSelectorScreen() {
   const insets = useSafeAreaInsets();
   const [isPending, setIsPending] = useState(false);
   const pendingRef = useRef(false);
+  const colors = useColors();
 
   const systemTemplates = i18n.language === "es" ? TEMPLATES_ES : TEMPLATES_EN;
+
+  const s = useMemo(() => StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.paper,
+    },
+    header: {
+      paddingHorizontal: 12,
+      paddingBottom: 4,
+    },
+    menuButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    scrollContent: {
+      paddingHorizontal: 16,
+      paddingBottom: 32,
+    },
+    listHeader: {
+      alignItems: "center",
+      marginBottom: 24,
+      paddingTop: 16,
+    },
+    logoCircle: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.accentLight,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 16,
+    },
+    logoText: {
+      fontSize: 28,
+      fontWeight: "700",
+      color: colors.accent,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.ink,
+      textAlign: "center",
+      letterSpacing: -0.3,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.inkMuted,
+      textAlign: "center",
+      lineHeight: 20,
+      paddingHorizontal: 16,
+    },
+    grid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 12,
+    },
+    card: {
+      width: "48%",
+      flexGrow: 1,
+      alignItems: "center",
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.rule,
+      padding: 20,
+      gap: 8,
+    },
+    cardTemplate: {
+      borderStyle: "dashed",
+    },
+    cardPressed: {
+      backgroundColor: colors.accentLight,
+      transform: [{ scale: 0.97 }],
+    },
+    cardName: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.ink,
+      textAlign: "center",
+    },
+    cardDesc: {
+      fontSize: 12,
+      color: colors.inkMuted,
+      textAlign: "center",
+      lineHeight: 16,
+    },
+    dividerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginVertical: 16,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.rule,
+    },
+    dividerText: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.inkMuted,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+    },
+    pendingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingTop: 24,
+    },
+    pendingText: {
+      fontSize: 14,
+      color: colors.inkMuted,
+    },
+    skeletonCard: {
+      width: "48%",
+      flexGrow: 1,
+      height: 140,
+      borderRadius: 16,
+      backgroundColor: colors.accentLight,
+    },
+  }), [colors]);
 
   const handleSelectPersona = useCallback(
     async (personaId: Id<"personas">, personaName?: string) => {
@@ -94,11 +222,11 @@ export default function PersonaSelectorScreen() {
   const hasCustomPersonas = personas && personas.length > 0;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
+    <View style={[s.root, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={s.header}>
         <Pressable
-          style={styles.menuButton}
+          style={s.menuButton}
           onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
           accessibilityLabel="Open menu"
         >
@@ -106,39 +234,39 @@ export default function PersonaSelectorScreen() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={s.scrollContent}>
         {/* Logo + title */}
-        <View style={styles.listHeader}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>S</Text>
+        <View style={s.listHeader}>
+          <View style={s.logoCircle}>
+            <Text style={s.logoText}>S</Text>
           </View>
-          <Text style={styles.title}>{t("personaSelector.title")}</Text>
-          <Text style={styles.subtitle}>{t("personaSelector.subtitle")}</Text>
+          <Text style={s.title}>{t("personaSelector.title")}</Text>
+          <Text style={s.subtitle}>{t("personaSelector.subtitle")}</Text>
         </View>
 
         {/* Loading skeleton */}
         {personas === undefined && (
-          <View style={styles.grid}>
+          <View style={s.grid}>
             {[0, 1, 2].map((i) => (
-              <View key={i} style={styles.skeletonCard} />
+              <View key={i} style={s.skeletonCard} />
             ))}
           </View>
         )}
 
         {/* Custom personas grid */}
         {hasCustomPersonas && (
-          <View style={styles.grid}>
+          <View style={s.grid}>
             {personas.map((persona) => (
               <Pressable
                 key={persona._id}
-                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                style={({ pressed }) => [s.card, pressed && s.cardPressed]}
                 onPress={() => handleSelectPersona(persona._id, persona.name)}
                 disabled={isPending}
               >
                 <PersonaIcon icon={persona.icon} size="lg" />
-                <Text style={styles.cardName}>{persona.name}</Text>
+                <Text style={s.cardName}>{persona.name}</Text>
                 {persona.description ? (
-                  <Text style={styles.cardDesc} numberOfLines={3}>{persona.description}</Text>
+                  <Text style={s.cardDesc} numberOfLines={3}>{persona.description}</Text>
                 ) : null}
               </Pressable>
             ))}
@@ -147,26 +275,26 @@ export default function PersonaSelectorScreen() {
 
         {/* Templates divider */}
         {hasCustomPersonas && (
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>{t("personaSelector.templates")}</Text>
-            <View style={styles.dividerLine} />
+          <View style={s.dividerRow}>
+            <View style={s.dividerLine} />
+            <Text style={s.dividerText}>{t("personaSelector.templates")}</Text>
+            <View style={s.dividerLine} />
           </View>
         )}
 
         {/* System templates grid */}
         {personas !== undefined && (
-          <View style={styles.grid}>
+          <View style={s.grid}>
             {systemTemplates.map((template) => (
               <Pressable
                 key={template.key}
-                style={({ pressed }) => [styles.card, styles.cardTemplate, pressed && styles.cardPressed]}
+                style={({ pressed }) => [s.card, s.cardTemplate, pressed && s.cardPressed]}
                 onPress={() => handleSelectTemplate(template.key)}
                 disabled={isPending}
               >
                 <PersonaIcon icon={template.icon} size="lg" />
-                <Text style={styles.cardName}>{t(template.nameKey)}</Text>
-                <Text style={styles.cardDesc} numberOfLines={3}>{t(template.descKey)}</Text>
+                <Text style={s.cardName}>{t(template.nameKey)}</Text>
+                <Text style={s.cardDesc} numberOfLines={3}>{t(template.descKey)}</Text>
               </Pressable>
             ))}
           </View>
@@ -174,139 +302,12 @@ export default function PersonaSelectorScreen() {
 
         {/* Pending indicator */}
         {isPending && (
-          <View style={styles.pendingRow}>
+          <View style={s.pendingRow}>
             <ActivityIndicator color={colors.accent} />
-            <Text style={styles.pendingText}>{t("personaSelector.creating")}</Text>
+            <Text style={s.pendingText}>{t("personaSelector.creating")}</Text>
           </View>
         )}
       </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.paper,
-  },
-  header: {
-    paddingHorizontal: 12,
-    paddingBottom: 4,
-  },
-  menuButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-  },
-  listHeader: {
-    alignItems: "center",
-    marginBottom: 24,
-    paddingTop: 16,
-  },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(139, 94, 60, 0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: colors.accent,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: colors.ink,
-    textAlign: "center",
-    letterSpacing: -0.3,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: colors.inkMuted,
-    textAlign: "center",
-    lineHeight: 20,
-    paddingHorizontal: 16,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  card: {
-    width: "48%",
-    flexGrow: 1,
-    alignItems: "center",
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    padding: 20,
-    gap: 8,
-  },
-  cardTemplate: {
-    borderStyle: "dashed",
-  },
-  cardPressed: {
-    backgroundColor: colors.accentLight,
-    transform: [{ scale: 0.97 }],
-  },
-  cardName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.ink,
-    textAlign: "center",
-  },
-  cardDesc: {
-    fontSize: 12,
-    color: colors.inkMuted,
-    textAlign: "center",
-    lineHeight: 16,
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginVertical: 16,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.rule,
-  },
-  dividerText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "rgba(107, 94, 79, 0.5)",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  pendingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingTop: 24,
-  },
-  pendingText: {
-    fontSize: 14,
-    color: colors.inkMuted,
-  },
-  skeletonCard: {
-    width: "48%",
-    flexGrow: 1,
-    height: 140,
-    borderRadius: 16,
-    backgroundColor: colors.accentLight,
-  },
-});

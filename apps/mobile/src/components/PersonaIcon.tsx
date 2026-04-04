@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import {
   Compass,
@@ -24,7 +25,7 @@ import {
   Anchor,
   type LucideIcon,
 } from "lucide-react-native";
-import { colors } from "../constants/colors";
+import { useColors } from "../contexts/ThemeContext";
 
 const LUCIDE_ICON_MAP: Record<string, LucideIcon> = {
   compass: Compass,
@@ -64,14 +65,27 @@ interface PersonaIconProps {
 }
 
 export function PersonaIcon({ icon, size = "md" }: PersonaIconProps) {
+  const colors = useColors();
   const config = SIZE_CONFIG[size];
   const Icon = LUCIDE_ICON_MAP[icon];
+
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.accentLight,
+        },
+      }),
+    [colors]
+  );
 
   if (Icon) {
     return (
       <View
         style={[
-          styles.container,
+          s.container,
           {
             width: config.container,
             height: config.container,
@@ -88,11 +102,3 @@ export function PersonaIcon({ icon, size = "md" }: PersonaIconProps) {
     <Text style={{ fontSize: config.emoji }}>{icon}</Text>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(139, 94, 60, 0.1)",
-  },
-});

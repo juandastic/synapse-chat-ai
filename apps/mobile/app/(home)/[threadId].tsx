@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import { Menu, Brain } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { captureError } from "../../src/lib/analytics";
 
-import { colors } from "../../src/constants/colors";
+import { useColors } from "../../src/contexts/ThemeContext";
 import { ChatProvider } from "../../src/contexts/ChatContext";
 import { PersonaIcon } from "../../src/components/PersonaIcon";
 import { MessageList } from "../../src/components/MessageList";
@@ -33,20 +33,85 @@ export default function ChatScreen() {
   const thread = useQuery(api.threads.get, { threadId });
   const { t } = useTranslation("chat");
   const insets = useSafeAreaInsets();
+  const colors = useColors();
+
+  const s = useMemo(() => StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.paper,
+    },
+    centered: {
+      flex: 1,
+      backgroundColor: colors.paper,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 12,
+    },
+    loadingText: {
+      fontSize: 14,
+      color: colors.inkMuted,
+    },
+    errorText: {
+      fontSize: 15,
+      color: colors.error,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 12,
+      paddingBottom: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.rule,
+      backgroundColor: colors.paper,
+    },
+    headerButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    headerButtonDisabled: {
+      opacity: 0.5,
+    },
+    headerCenter: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginHorizontal: 4,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.ink,
+      flexShrink: 1,
+    },
+    titleInput: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.ink,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.accent,
+      paddingVertical: 2,
+      paddingHorizontal: 4,
+    },
+  }), [colors]);
 
   if (thread === undefined) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top }]}>
+      <View style={[s.centered, { paddingTop: insets.top }]}>
         <ActivityIndicator color={colors.accent} />
-        <Text style={styles.loadingText}>{t("chatView.loadingThread")}</Text>
+        <Text style={s.loadingText}>{t("chatView.loadingThread")}</Text>
       </View>
     );
   }
 
   if (thread === null) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top }]}>
-        <Text style={styles.errorText}>{t("chatView.threadAccessDenied")}</Text>
+      <View style={[s.centered, { paddingTop: insets.top }]}>
+        <Text style={s.errorText}>{t("chatView.threadAccessDenied")}</Text>
       </View>
     );
   }
@@ -54,7 +119,7 @@ export default function ChatScreen() {
   return (
     <ChatProvider threadId={threadId}>
       <KeyboardAvoidingView
-        style={styles.root}
+        style={s.root}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={0}
       >
@@ -63,6 +128,8 @@ export default function ChatScreen() {
           title={thread.title}
           personaIcon={thread.persona.icon}
           personaName={thread.persona.name}
+          s={s}
+          colors={colors}
         />
         <MessageList
           personaIcon={thread.persona.icon}
@@ -78,11 +145,15 @@ function ChatHeader({
   threadId,
   title,
   personaIcon,
+  s,
+  colors,
 }: {
   threadId: Id<"threads">;
   title: string;
   personaIcon: string;
   personaName: string;
+  s: any;
+  colors: any;
 }) {
   const { t } = useTranslation("chat");
   const insets = useSafeAreaInsets();
@@ -131,20 +202,20 @@ function ChatHeader({
   }, [forceClose, threadId, t, posthog]);
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+    <View style={[s.header, { paddingTop: insets.top + 8 }]}>
       <Pressable
-        style={styles.headerButton}
+        style={s.headerButton}
         onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
         accessibilityLabel="Open menu"
       >
         <Menu size={22} color={colors.ink} />
       </Pressable>
 
-      <View style={styles.headerCenter}>
+      <View style={s.headerCenter}>
         <PersonaIcon icon={personaIcon} size="sm" />
         {isEditing ? (
           <TextInput
-            style={styles.titleInput}
+            style={s.titleInput}
             value={editValue}
             onChangeText={setEditValue}
             onBlur={handleTitleSave}
@@ -156,7 +227,7 @@ function ChatHeader({
           />
         ) : (
           <Pressable onPress={() => { setEditValue(title); setIsEditing(true); }}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
+            <Text style={s.headerTitle} numberOfLines={1}>
               {title}
             </Text>
           </Pressable>
@@ -164,7 +235,7 @@ function ChatHeader({
       </View>
 
       <Pressable
-        style={[styles.headerButton, isConsolidating && styles.headerButtonDisabled]}
+        style={[s.headerButton, isConsolidating && s.headerButtonDisabled]}
         onPress={handleConsolidate}
         disabled={isConsolidating}
         accessibilityLabel={t("chatView.consolidateMemory")}
@@ -178,67 +249,3 @@ function ChatHeader({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.paper,
-  },
-  centered: {
-    flex: 1,
-    backgroundColor: colors.paper,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: colors.inkMuted,
-  },
-  errorText: {
-    fontSize: 15,
-    color: colors.error,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.rule,
-    backgroundColor: colors.paper,
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerButtonDisabled: {
-    opacity: 0.5,
-  },
-  headerCenter: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginHorizontal: 4,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.ink,
-    flexShrink: 1,
-  },
-  titleInput: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.ink,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.accent,
-    paddingVertical: 2,
-    paddingHorizontal: 4,
-  },
-});

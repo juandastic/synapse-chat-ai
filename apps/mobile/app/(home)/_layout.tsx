@@ -1,19 +1,31 @@
+import { useMemo } from "react";
 import { Drawer } from "expo-router/drawer";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StyleSheet } from "react-native";
 import { ThreadList } from "../../src/components/ThreadList";
 import { usePostHogIdentify } from "../../src/hooks/usePostHogIdentify";
+import { useColors } from "../../src/contexts/ThemeContext";
 
 export default function HomeLayout() {
   usePostHogIdentify();
+  const colors = useColors();
+
+  const s = useMemo(() => StyleSheet.create({
+    root: { flex: 1 },
+    drawer: {
+      width: 300,
+      backgroundColor: colors.paper,
+    },
+  }), [colors]);
+
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <GestureHandlerRootView style={s.root}>
       <Drawer
         drawerContent={(props) => <ThreadList {...props} />}
         screenOptions={{
           headerShown: false,
           drawerType: "front",
-          drawerStyle: styles.drawer,
+          drawerStyle: s.drawer,
           swipeEdgeWidth: 50,
         }}
       >
@@ -27,11 +39,3 @@ export default function HomeLayout() {
     </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  drawer: {
-    width: 300,
-    backgroundColor: "#f5f0e8",
-  },
-});

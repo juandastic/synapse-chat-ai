@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { captureError } from "../lib/analytics";
 
-import { colors } from "../constants/colors";
+import { useColors } from "../contexts/ThemeContext";
 import { useChatContext } from "../contexts/useChatContext";
 import { useStreamResponse } from "../hooks/useStreamResponse";
 import { useImagePicker, PickedImage } from "../hooks/useImagePicker";
@@ -35,6 +35,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textInputRef = useRef<TextInput>(null);
+  const colors = useColors();
 
   const { isGenerating, startStreaming } = useChatContext();
   const sendMessage = useMutation(api.messages.send);
@@ -137,26 +138,134 @@ export function ChatInput({ threadId }: ChatInputProps) {
     (content.trim().length > 0 || images.length > 0) && !isDisabled;
   const canAttach = images.length < maxImages && !isDisabled;
 
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        wrapper: {
+          paddingHorizontal: 12,
+          paddingTop: 6,
+          backgroundColor: colors.paper,
+        },
+        container: {
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          backgroundColor: colors.card,
+          overflow: "hidden",
+        },
+        imageStrip: {
+          maxHeight: 72,
+        },
+        imageStripContent: {
+          gap: 8,
+          paddingHorizontal: 12,
+          paddingTop: 10,
+        },
+        imagePreview: {
+          width: 56,
+          height: 56,
+          borderRadius: 8,
+          overflow: "hidden",
+        },
+        previewImage: {
+          width: 56,
+          height: 56,
+        },
+        removeImageButton: {
+          position: "absolute",
+          top: -2,
+          right: -2,
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          backgroundColor: colors.error,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        inputRow: {
+          flexDirection: "row",
+          alignItems: "flex-end",
+          paddingHorizontal: 4,
+          paddingVertical: 4,
+        },
+        attachButton: {
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        attachButtonDisabled: {
+          opacity: 0.4,
+        },
+        textInput: {
+          flex: 1,
+          fontSize: 15,
+          lineHeight: 20,
+          color: colors.ink,
+          maxHeight: 120,
+          paddingVertical: 8,
+          paddingHorizontal: 4,
+        },
+        sendButton: {
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        sendButtonActive: {
+          backgroundColor: colors.primary,
+        },
+        sendButtonDisabled: {
+          backgroundColor: colors.accentLight,
+        },
+        errorText: {
+          fontSize: 12,
+          color: colors.error,
+          textAlign: "center",
+          marginTop: 6,
+        },
+        usage: {
+          fontSize: 11,
+          color: colors.inkMuted,
+          textAlign: "center",
+          marginTop: 6,
+        },
+        usageWarning: {
+          color: colors.amber,
+        },
+        limitReached: {
+          fontSize: 12,
+          color: colors.error,
+          textAlign: "center",
+          marginTop: 6,
+          fontWeight: "500",
+        },
+      }),
+    [colors]
+  );
+
   return (
-    <View style={[styles.wrapper, { paddingBottom: insets.bottom + 4 }]}>
-      <View style={styles.container}>
+    <View style={[s.wrapper, { paddingBottom: insets.bottom + 4 }]}>
+      <View style={s.container}>
         {/* Image previews */}
         {images.length > 0 && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.imageStrip}
-            contentContainerStyle={styles.imageStripContent}
+            style={s.imageStrip}
+            contentContainerStyle={s.imageStripContent}
           >
             {images.map((img) => (
-              <View key={img.id} style={styles.imagePreview}>
-                <Image source={{ uri: img.uri }} style={styles.previewImage} />
+              <View key={img.id} style={s.imagePreview}>
+                <Image source={{ uri: img.uri }} style={s.previewImage} />
                 <Pressable
-                  style={styles.removeImageButton}
+                  style={s.removeImageButton}
                   onPress={() => removeImage(img.id)}
                   accessibilityLabel={t("chatInput.removeImage")}
                 >
-                  <X size={12} color="#fff" />
+                  <X size={12} color={colors.white} />
                 </Pressable>
               </View>
             ))}
@@ -164,22 +273,22 @@ export function ChatInput({ threadId }: ChatInputProps) {
         )}
 
         {/* Input row */}
-        <View style={styles.inputRow}>
+        <View style={s.inputRow}>
           <Pressable
-            style={[styles.attachButton, !canAttach && styles.attachButtonDisabled]}
+            style={[s.attachButton, !canAttach && s.attachButtonDisabled]}
             onPress={pickImages}
             disabled={!canAttach}
             accessibilityLabel={t("chatInput.attachImages")}
           >
             <ImagePlus
               size={20}
-              color={canAttach ? colors.inkMuted : "rgba(107, 94, 79, 0.25)"}
+              color={canAttach ? colors.inkMuted : colors.rule}
             />
           </Pressable>
 
           <TextInput
             ref={textInputRef}
-            style={styles.textInput}
+            style={s.textInput}
             value={content}
             onChangeText={(text) => {
               setContent(text);
@@ -190,7 +299,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
                 ? t("chatInput.waitingForResponse")
                 : t("chatInput.placeholder")
             }
-            placeholderTextColor="rgba(107, 94, 79, 0.4)"
+            placeholderTextColor={colors.inkMuted}
             multiline
             maxLength={10000}
             editable={!isDisabled}
@@ -198,7 +307,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
           />
 
           <Pressable
-            style={[styles.sendButton, canSubmit ? styles.sendButtonActive : styles.sendButtonDisabled]}
+            style={[s.sendButton, canSubmit ? s.sendButtonActive : s.sendButtonDisabled]}
             onPress={handleSubmit}
             disabled={!canSubmit}
             accessibilityLabel={t("chatInput.sendMessage")}
@@ -208,7 +317,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
             ) : (
               <Send
                 size={18}
-                color={canSubmit ? colors.primaryForeground : "rgba(107, 94, 79, 0.3)"}
+                color={canSubmit ? colors.primaryForeground : colors.inkMuted}
               />
             )}
           </Pressable>
@@ -217,17 +326,17 @@ export function ChatInput({ threadId }: ChatInputProps) {
 
       {/* Error */}
       {error && (
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={s.errorText}>{error}</Text>
       )}
 
       {/* Usage indicator */}
       {!isUnlimited && msgLimit != null && (
         isAtLimit ? (
-          <Text style={styles.limitReached}>
+          <Text style={s.limitReached}>
             {t("chatInput.dailyLimitReached", { limit: msgLimit.limit })}
           </Text>
         ) : (
-          <Text style={[styles.usage, usagePercent >= 0.8 && styles.usageWarning]}>
+          <Text style={[s.usage, usagePercent >= 0.8 && s.usageWarning]}>
             {t("chatInput.messagesUsage", { used: msgLimit.used, limit: msgLimit.limit })}
           </Text>
         )
@@ -235,107 +344,3 @@ export function ChatInput({ threadId }: ChatInputProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: {
-    paddingHorizontal: 12,
-    paddingTop: 6,
-    backgroundColor: colors.paper,
-  },
-  container: {
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    backgroundColor: colors.card,
-    overflow: "hidden",
-  },
-  imageStrip: {
-    maxHeight: 72,
-  },
-  imageStripContent: {
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-  },
-  imagePreview: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  previewImage: {
-    width: 56,
-    height: 56,
-  },
-  removeImageButton: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.error,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-  },
-  attachButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  attachButtonDisabled: {
-    opacity: 0.4,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 20,
-    color: colors.ink,
-    maxHeight: 120,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sendButtonActive: {
-    backgroundColor: colors.primary,
-  },
-  sendButtonDisabled: {
-    backgroundColor: "rgba(139, 94, 60, 0.08)",
-  },
-  errorText: {
-    fontSize: 12,
-    color: colors.error,
-    textAlign: "center",
-    marginTop: 6,
-  },
-  usage: {
-    fontSize: 11,
-    color: "rgba(107, 94, 79, 0.5)",
-    textAlign: "center",
-    marginTop: 6,
-  },
-  usageWarning: {
-    color: colors.amber,
-  },
-  limitReached: {
-    fontSize: 12,
-    color: colors.error,
-    textAlign: "center",
-    marginTop: 6,
-    fontWeight: "500",
-  },
-});

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import { api } from "@synapse/backend/api";
 import { Menu, Zap, Sparkles, Heart, CheckCircle, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors } from "../../src/constants/colors";
+import { useColors } from "../../src/contexts/ThemeContext";
 
 export default function PlansScreen() {
   const { t } = useTranslation("plans");
@@ -27,6 +27,7 @@ export default function PlansScreen() {
   const posthog = usePostHog();
   const user = useQuery(api.users.me);
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
+  const colors = useColors();
 
   const [contactModal, setContactModal] = useState<string | null>(null);
 
@@ -34,24 +35,62 @@ export default function PlansScreen() {
   const msgLimit = usageStatus?.dailyMessages;
   const isUnlimited = msgLimit?.limit === -1;
 
+  const s = useMemo(() => StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.paper },
+    header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.rule },
+    headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+    headerTitle: { flex: 1, fontSize: 18, fontWeight: "700", color: colors.ink, textAlign: "center" },
+    usageText: { fontSize: 10, color: colors.inkMuted },
+    content: { padding: 16, gap: 16, paddingBottom: 48 },
+    tagline: { fontSize: 22, fontWeight: "700", color: colors.ink, textAlign: "center" },
+    description: { fontSize: 14, color: colors.inkMuted, textAlign: "center", lineHeight: 20 },
+    planCard: { backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.rule, padding: 20, gap: 8, alignItems: "center" },
+    planCardHighlighted: { borderColor: colors.accent, borderWidth: 2 },
+    badge: { backgroundColor: colors.primary, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
+    badgeText: { fontSize: 11, fontWeight: "600", color: colors.primaryForeground },
+    planName: { fontSize: 20, fontWeight: "700", color: colors.ink },
+    planPrice: { fontSize: 16, fontWeight: "600", color: colors.accent },
+    planDesc: { fontSize: 13, color: colors.inkMuted, textAlign: "center", lineHeight: 18 },
+    featureList: { width: "100%", gap: 8, marginTop: 8 },
+    featureRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+    featureText: { fontSize: 13, color: colors.ink, flex: 1, lineHeight: 18 },
+    currentBadge: { backgroundColor: colors.accentLight, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, marginTop: 8 },
+    currentBadgeText: { fontSize: 13, fontWeight: "600", color: colors.accent },
+    ctaBtn: { borderWidth: 1, borderColor: colors.rule, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 24, marginTop: 8 },
+    ctaBtnHighlighted: { backgroundColor: colors.primary, borderColor: colors.primary },
+    ctaBtnText: { fontSize: 14, fontWeight: "600", color: colors.ink },
+    ctaBtnTextHighlighted: { color: colors.primaryForeground },
+    // Modal
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+    modalContent: { backgroundColor: colors.paper, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 8 },
+    modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    modalTitle: { fontSize: 18, fontWeight: "700", color: colors.ink },
+    modalDesc: { fontSize: 14, color: colors.inkMuted },
+    fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.ink, marginTop: 4 },
+    modalInput: { fontSize: 15, color: colors.ink, backgroundColor: colors.card, borderRadius: 10, borderWidth: 1, borderColor: colors.rule, paddingHorizontal: 12, paddingVertical: 10, marginTop: 2 },
+    submitBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 12 },
+    submitBtnText: { fontSize: 16, fontWeight: "600", color: colors.primaryForeground },
+    btnDisabled: { opacity: 0.6 },
+  }), [colors]);
+
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
+    <View style={[s.root, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <Pressable style={styles.headerBtn} onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
+      <View style={s.header}>
+        <Pressable style={s.headerBtn} onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
           <Menu size={22} color={colors.ink} />
         </Pressable>
-        <Text style={styles.headerTitle}>{t("title")}</Text>
-        <View style={styles.headerBtn}>
+        <Text style={s.headerTitle}>{t("title")}</Text>
+        <View style={s.headerBtn}>
           {!isUnlimited && msgLimit && (
-            <Text style={styles.usageText}>{t("usage", { used: msgLimit.used, limit: msgLimit.limit })}</Text>
+            <Text style={s.usageText}>{t("usage", { used: msgLimit.used, limit: msgLimit.limit })}</Text>
           )}
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.tagline}>{t("tagline")}</Text>
-        <Text style={styles.description}>{t("description")}</Text>
+      <ScrollView contentContainerStyle={s.content}>
+        <Text style={s.tagline}>{t("tagline")}</Text>
+        <Text style={s.description}>{t("description")}</Text>
 
         {/* Free plan */}
         <PlanCard
@@ -64,6 +103,8 @@ export default function PlansScreen() {
           ctaLabel={t("free.cta")}
           onCta={() => navigation.dispatch(DrawerActions.openDrawer())}
           currentPlanLabel={t("currentPlan")}
+          s={s}
+          colors={colors}
         />
 
         {/* Pro plan */}
@@ -82,6 +123,8 @@ export default function PlansScreen() {
             setContactModal("Pro");
           }}
           currentPlanLabel={t("currentPlan")}
+          s={s}
+          colors={colors}
         />
 
         {/* Therapeutic plan */}
@@ -98,6 +141,8 @@ export default function PlansScreen() {
             setContactModal("Therapeutic");
           }}
           currentPlanLabel={t("currentPlan")}
+          s={s}
+          colors={colors}
         />
       </ScrollView>
 
@@ -107,6 +152,8 @@ export default function PlansScreen() {
           planName={contactModal}
           userId={user?._id}
           onClose={() => setContactModal(null)}
+          s={s}
+          colors={colors}
         />
       )}
     </View>
@@ -125,6 +172,8 @@ function PlanCard({
   ctaLabel,
   onCta,
   currentPlanLabel,
+  s,
+  colors,
 }: {
   icon: React.ReactNode;
   name: string;
@@ -137,42 +186,44 @@ function PlanCard({
   ctaLabel: string;
   onCta: () => void;
   currentPlanLabel: string;
+  s: any;
+  colors: any;
 }) {
   return (
-    <View style={[styles.planCard, isHighlighted && styles.planCardHighlighted]}>
+    <View style={[s.planCard, isHighlighted && s.planCardHighlighted]}>
       {badge && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{badge}</Text>
+        <View style={s.badge}>
+          <Text style={s.badgeText}>{badge}</Text>
         </View>
       )}
       {icon}
-      <Text style={styles.planName}>{name}</Text>
-      <Text style={styles.planPrice}>{price}</Text>
-      <Text style={styles.planDesc}>{description}</Text>
+      <Text style={s.planName}>{name}</Text>
+      <Text style={s.planPrice}>{price}</Text>
+      <Text style={s.planDesc}>{description}</Text>
 
-      <View style={styles.featureList}>
+      <View style={s.featureList}>
         {features.map((feature, i) => (
-          <View key={i} style={styles.featureRow}>
+          <View key={i} style={s.featureRow}>
             <CheckCircle size={14} color={colors.accent} />
-            <Text style={styles.featureText}>{feature}</Text>
+            <Text style={s.featureText}>{feature}</Text>
           </View>
         ))}
       </View>
 
       {isCurrent ? (
-        <View style={styles.currentBadge}>
-          <Text style={styles.currentBadgeText}>{currentPlanLabel}</Text>
+        <View style={s.currentBadge}>
+          <Text style={s.currentBadgeText}>{currentPlanLabel}</Text>
         </View>
       ) : (
-        <Pressable style={[styles.ctaBtn, isHighlighted && styles.ctaBtnHighlighted]} onPress={onCta}>
-          <Text style={[styles.ctaBtnText, isHighlighted && styles.ctaBtnTextHighlighted]}>{ctaLabel}</Text>
+        <Pressable style={[s.ctaBtn, isHighlighted && s.ctaBtnHighlighted]} onPress={onCta}>
+          <Text style={[s.ctaBtnText, isHighlighted && s.ctaBtnTextHighlighted]}>{ctaLabel}</Text>
         </Pressable>
       )}
     </View>
   );
 }
 
-function ContactModal({ planName, userId, onClose }: { planName: string; userId?: string; onClose: () => void }) {
+function ContactModal({ planName, userId, onClose, s, colors }: { planName: string; userId?: string; onClose: () => void; s: any; colors: any }) {
   const { t } = useTranslation("plans");
   const posthog = usePostHog();
   const [name, setName] = useState("");
@@ -201,68 +252,30 @@ function ContactModal({ planName, userId, onClose }: { planName: string; userId?
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{t("contactModal.title")}</Text>
+      <View style={s.modalOverlay}>
+        <View style={s.modalContent}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>{t("contactModal.title")}</Text>
             <Pressable onPress={onClose}>
               <X size={20} color={colors.ink} />
             </Pressable>
           </View>
-          <Text style={styles.modalDesc}>{t("contactModal.description")}</Text>
+          <Text style={s.modalDesc}>{t("contactModal.description")}</Text>
 
-          <Text style={styles.fieldLabel}>{t("contactModal.nameLabel")}</Text>
-          <TextInput style={styles.modalInput} value={name} onChangeText={setName} placeholder={t("contactModal.namePlaceholder")} placeholderTextColor="rgba(107,94,79,0.4)" />
+          <Text style={s.fieldLabel}>{t("contactModal.nameLabel")}</Text>
+          <TextInput style={s.modalInput} value={name} onChangeText={setName} placeholder={t("contactModal.namePlaceholder")} placeholderTextColor={colors.inkMuted} />
 
-          <Text style={styles.fieldLabel}>{t("contactModal.emailLabel")}</Text>
-          <TextInput style={styles.modalInput} value={email} onChangeText={setEmail} placeholder={t("contactModal.emailPlaceholder")} placeholderTextColor="rgba(107,94,79,0.4)" keyboardType="email-address" autoCapitalize="none" />
+          <Text style={s.fieldLabel}>{t("contactModal.emailLabel")}</Text>
+          <TextInput style={s.modalInput} value={email} onChangeText={setEmail} placeholder={t("contactModal.emailPlaceholder")} placeholderTextColor={colors.inkMuted} keyboardType="email-address" autoCapitalize="none" />
 
-          <Text style={styles.fieldLabel}>{t("contactModal.messageLabel")}</Text>
-          <TextInput style={[styles.modalInput, { minHeight: 80 }]} value={message} onChangeText={setMessage} placeholder={t("contactModal.messagePlaceholder")} placeholderTextColor="rgba(107,94,79,0.4)" multiline />
+          <Text style={s.fieldLabel}>{t("contactModal.messageLabel")}</Text>
+          <TextInput style={[s.modalInput, { minHeight: 80 }]} value={message} onChangeText={setMessage} placeholder={t("contactModal.messagePlaceholder")} placeholderTextColor={colors.inkMuted} multiline />
 
-          <Pressable style={[styles.submitBtn, isSending && styles.btnDisabled]} onPress={handleSubmit} disabled={isSending}>
-            {isSending ? <ActivityIndicator color={colors.primaryForeground} /> : <Text style={styles.submitBtnText}>{t("contactModal.submit")}</Text>}
+          <Pressable style={[s.submitBtn, isSending && s.btnDisabled]} onPress={handleSubmit} disabled={isSending}>
+            {isSending ? <ActivityIndicator color={colors.primaryForeground} /> : <Text style={s.submitBtnText}>{t("contactModal.submit")}</Text>}
           </Pressable>
         </View>
       </View>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.paper },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.rule },
-  headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: "700", color: colors.ink, textAlign: "center" },
-  usageText: { fontSize: 10, color: colors.inkMuted },
-  content: { padding: 16, gap: 16, paddingBottom: 48 },
-  tagline: { fontSize: 22, fontWeight: "700", color: colors.ink, textAlign: "center" },
-  description: { fontSize: 14, color: colors.inkMuted, textAlign: "center", lineHeight: 20 },
-  planCard: { backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.rule, padding: 20, gap: 8, alignItems: "center" },
-  planCardHighlighted: { borderColor: colors.accent, borderWidth: 2 },
-  badge: { backgroundColor: colors.primary, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
-  badgeText: { fontSize: 11, fontWeight: "600", color: colors.primaryForeground },
-  planName: { fontSize: 20, fontWeight: "700", color: colors.ink },
-  planPrice: { fontSize: 16, fontWeight: "600", color: colors.accent },
-  planDesc: { fontSize: 13, color: colors.inkMuted, textAlign: "center", lineHeight: 18 },
-  featureList: { width: "100%", gap: 8, marginTop: 8 },
-  featureRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  featureText: { fontSize: 13, color: colors.ink, flex: 1, lineHeight: 18 },
-  currentBadge: { backgroundColor: colors.accentLight, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, marginTop: 8 },
-  currentBadgeText: { fontSize: 13, fontWeight: "600", color: colors.accent },
-  ctaBtn: { borderWidth: 1, borderColor: colors.rule, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 24, marginTop: 8 },
-  ctaBtnHighlighted: { backgroundColor: colors.primary, borderColor: colors.primary },
-  ctaBtnText: { fontSize: 14, fontWeight: "600", color: colors.ink },
-  ctaBtnTextHighlighted: { color: colors.primaryForeground },
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-  modalContent: { backgroundColor: colors.paper, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 8 },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  modalTitle: { fontSize: 18, fontWeight: "700", color: colors.ink },
-  modalDesc: { fontSize: 14, color: colors.inkMuted },
-  fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.ink, marginTop: 4 },
-  modalInput: { fontSize: 15, color: colors.ink, backgroundColor: colors.card, borderRadius: 10, borderWidth: 1, borderColor: colors.rule, paddingHorizontal: 12, paddingVertical: 10, marginTop: 2 },
-  submitBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 12 },
-  submitBtnText: { fontSize: 16, fontWeight: "600", color: colors.primaryForeground },
-  btnDisabled: { opacity: 0.6 },
-});

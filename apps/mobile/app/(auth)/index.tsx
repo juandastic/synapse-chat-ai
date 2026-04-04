@@ -12,7 +12,7 @@
  * All text comes from i18n ("onboarding" namespace) so it works in EN and ES.
  * The language toggle (top-right) switches the entire app language on the fly.
  */
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -37,7 +37,7 @@ import {
 } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 
-import { colors } from "../../src/constants/colors";
+import { useColors } from "../../src/contexts/ThemeContext";
 import { IconBadge, Tag, UseCase, ChatBubble } from "../../src/components";
 
 // ---------------------------------------------------------------------------
@@ -84,31 +84,157 @@ const SLIDES: SlideData[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Shared styles hook
+// ---------------------------------------------------------------------------
+
+function useScreenStyles() {
+  const colors = useColors();
+  const s = useMemo(() => StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.paper },
+
+    /* Language toggle */
+    langToggle: {
+      position: "absolute",
+      top: 54,
+      right: 24,
+      zIndex: 10,
+      backgroundColor: colors.accentLight,
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+    },
+    langToggleText: {
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 1,
+      color: colors.accent,
+    },
+
+    /* Slide layout */
+    slideScroll: { flex: 1 },
+    slideScrollContent: { paddingHorizontal: 32, paddingTop: 80, paddingBottom: 24 },
+
+    /* Typography */
+    tagline: {
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 3,
+      color: colors.accent,
+      marginBottom: 10,
+    },
+    title: {
+      fontSize: 30,
+      fontWeight: "700",
+      color: colors.ink,
+      lineHeight: 38,
+      marginBottom: 14,
+    },
+    description: {
+      fontSize: 15,
+      lineHeight: 23,
+      color: colors.inkMuted,
+      marginBottom: 24,
+    },
+
+    /* Comparison */
+    comparisonContainer: { marginTop: 4, gap: 16 },
+    comparisonSection: { gap: 8 },
+    comparisonLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 2,
+      color: colors.inkMuted,
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
+    comparisonDivider: { height: 1, backgroundColor: colors.rule },
+
+    /* Pipeline */
+    pipelineList: { gap: 16 },
+    pipelineStep: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
+    pipelineNum: { fontSize: 13, fontWeight: "700", color: colors.accent, width: 24, paddingTop: 2 },
+    pipelineBody: { flex: 1 },
+    pipelineTitle: { fontSize: 16, fontWeight: "700", color: colors.ink, marginBottom: 3 },
+    pipelineDesc: { fontSize: 14, lineHeight: 20, color: colors.inkMuted },
+
+    /* Persona slides */
+    personaHeader: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 },
+    personaHeaderText: { flex: 1 },
+    personaName: { fontSize: 24, fontWeight: "700", color: colors.ink },
+    personaSubtitle: { fontSize: 13, color: colors.inkMuted, marginTop: 2 },
+    personaApproach: { fontSize: 15, lineHeight: 23, color: colors.inkMuted, marginBottom: 24 },
+    sectionLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 2, color: colors.accent, marginBottom: 10 },
+    tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 },
+    useCaseList: { gap: 12 },
+
+    /* CTA slide */
+    ctaContainer: { flex: 1, justifyContent: "center", paddingHorizontal: 32 },
+    ctaButtons: { gap: 12 },
+    demoButton: {
+      backgroundColor: colors.accentLight,
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 50,
+      paddingVertical: 16,
+      paddingHorizontal: 48,
+      width: "100%",
+      alignItems: "center",
+    },
+    demoButtonText: { color: colors.ink, fontSize: 16, fontWeight: "600" },
+    demoNote: { fontSize: 13, color: colors.inkMuted, textAlign: "center", marginTop: 4 },
+    ctaFooter: { fontSize: 13, color: colors.inkMuted, textAlign: "center", marginTop: 32 },
+
+    /* Bottom controls */
+    bottom: { paddingHorizontal: 32, paddingBottom: 50, paddingTop: 12, alignItems: "center", gap: 14 },
+    dots: { flexDirection: "row", gap: 8, marginBottom: 4 },
+    dot: { height: 8, borderRadius: 4 },
+    dotActive: { backgroundColor: colors.accent, width: 24 },
+    dotInactive: { backgroundColor: colors.rule, width: 8 },
+    button: {
+      backgroundColor: colors.ink,
+      borderRadius: 50,
+      paddingVertical: 16,
+      paddingHorizontal: 48,
+      width: "100%",
+      alignItems: "center",
+    },
+    buttonPressed: { opacity: 0.85 },
+    buttonText: { color: colors.paper, fontSize: 16, fontWeight: "600" },
+    skip: { color: colors.inkMuted, fontSize: 14 },
+  }), [colors]);
+
+  return { s, colors };
+}
+
+// ---------------------------------------------------------------------------
 // Slide components — each renders inside a full-width FlatList page
 // ---------------------------------------------------------------------------
 
 /** Slide 1: hero copy + Regular AI vs Synapse chat comparison. */
 function WelcomeSlide() {
   const { t } = useTranslation("onboarding");
+  const { s } = useScreenStyles();
   return (
     <ScrollView
-      style={styles.slideScroll}
-      contentContainerStyle={styles.slideScrollContent}
+      style={s.slideScroll}
+      contentContainerStyle={s.slideScrollContent}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.title}>{t("welcome.title")}</Text>
-      <Text style={styles.description}>{t("welcome.description")}</Text>
+      <Text style={s.title}>{t("welcome.title")}</Text>
+      <Text style={s.description}>{t("welcome.description")}</Text>
 
       {/* Side-by-side chat comparison showing the value of memory */}
-      <View style={styles.comparisonContainer}>
-        <View style={styles.comparisonSection}>
-          <Text style={styles.comparisonLabel}>{t("welcome.regularAI")}</Text>
+      <View style={s.comparisonContainer}>
+        <View style={s.comparisonSection}>
+          <Text style={s.comparisonLabel}>{t("welcome.regularAI")}</Text>
           <ChatBubble role="user" text={t("welcome.regularUser")} muted />
           <ChatBubble role="ai" text={t("welcome.regularBot")} muted />
         </View>
-        <View style={styles.comparisonDivider} />
-        <View style={styles.comparisonSection}>
-          <Text style={styles.comparisonLabel}>{t("welcome.synapse")}</Text>
+        <View style={s.comparisonDivider} />
+        <View style={s.comparisonSection}>
+          <Text style={s.comparisonLabel}>{t("welcome.synapse")}</Text>
           <ChatBubble role="user" text={t("welcome.synapseUser")} />
           <ChatBubble role="ai" text={t("welcome.synapseBot")} />
         </View>
@@ -120,6 +246,7 @@ function WelcomeSlide() {
 /** Slide 2: four-step pipeline (Converse → Ingest → Compile → Evolve). */
 function PipelineSlide() {
   const { t } = useTranslation("onboarding");
+  const { s } = useScreenStyles();
   const steps = t("pipeline.steps", { returnObjects: true }) as Array<{
     title: string;
     desc: string;
@@ -127,21 +254,21 @@ function PipelineSlide() {
 
   return (
     <ScrollView
-      style={styles.slideScroll}
-      contentContainerStyle={styles.slideScrollContent}
+      style={s.slideScroll}
+      contentContainerStyle={s.slideScrollContent}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.tagline}>{t("pipeline.tagline")}</Text>
-      <Text style={styles.title}>{t("pipeline.title")}</Text>
-      <Text style={styles.description}>{t("pipeline.description")}</Text>
+      <Text style={s.tagline}>{t("pipeline.tagline")}</Text>
+      <Text style={s.title}>{t("pipeline.title")}</Text>
+      <Text style={s.description}>{t("pipeline.description")}</Text>
 
-      <View style={styles.pipelineList}>
+      <View style={s.pipelineList}>
         {steps.map((step, i) => (
-          <View key={i} style={styles.pipelineStep}>
-            <Text style={styles.pipelineNum}>{STEP_NUMS[i]}</Text>
-            <View style={styles.pipelineBody}>
-              <Text style={styles.pipelineTitle}>{step.title}</Text>
-              <Text style={styles.pipelineDesc}>{step.desc}</Text>
+          <View key={i} style={s.pipelineStep}>
+            <Text style={s.pipelineNum}>{STEP_NUMS[i]}</Text>
+            <View style={s.pipelineBody}>
+              <Text style={s.pipelineTitle}>{step.title}</Text>
+              <Text style={s.pipelineDesc}>{step.desc}</Text>
             </View>
           </View>
         ))}
@@ -159,42 +286,43 @@ function PersonaSlide({
   icon: LucideIcon;
 }) {
   const { t } = useTranslation("onboarding");
+  const { s } = useScreenStyles();
   const prefix = `personas.${personaKey}`;
   const theories = t(`${prefix}.theories`, { returnObjects: true }) as string[];
   const useCases = t(`${prefix}.useCases`, { returnObjects: true }) as string[];
 
   return (
     <ScrollView
-      style={styles.slideScroll}
-      contentContainerStyle={styles.slideScrollContent}
+      style={s.slideScroll}
+      contentContainerStyle={s.slideScrollContent}
       showsVerticalScrollIndicator={false}
     >
       {/* Persona header: icon + name + subtitle */}
-      <View style={styles.personaHeader}>
+      <View style={s.personaHeader}>
         <IconBadge icon={icon} />
-        <View style={styles.personaHeaderText}>
-          <Text style={styles.personaName}>{t(`${prefix}.name`)}</Text>
-          <Text style={styles.personaSubtitle}>
+        <View style={s.personaHeaderText}>
+          <Text style={s.personaName}>{t(`${prefix}.name`)}</Text>
+          <Text style={s.personaSubtitle}>
             {t(`${prefix}.subtitle`)}
           </Text>
         </View>
       </View>
 
-      <Text style={styles.personaApproach}>{t(`${prefix}.approach`)}</Text>
+      <Text style={s.personaApproach}>{t(`${prefix}.approach`)}</Text>
 
       {/* Theoretical foundations as pill tags */}
-      <Text style={styles.sectionLabel}>
+      <Text style={s.sectionLabel}>
         {t("personas.theoreticalFoundations")}
       </Text>
-      <View style={styles.tagRow}>
+      <View style={s.tagRow}>
         {theories.map((th, i) => (
           <Tag key={i} label={th} />
         ))}
       </View>
 
       {/* Key use cases with checkmark icons */}
-      <Text style={styles.sectionLabel}>{t("personas.perfectFor")}</Text>
-      <View style={styles.useCaseList}>
+      <Text style={s.sectionLabel}>{t("personas.perfectFor")}</Text>
+      <View style={s.useCaseList}>
         {useCases.map((uc, i) => (
           <UseCase key={i} text={uc} />
         ))}
@@ -214,30 +342,31 @@ function CTASlide({
   demoLoading: boolean;
 }) {
   const { t } = useTranslation("onboarding");
+  const { s, colors } = useScreenStyles();
 
   return (
-    <View style={styles.ctaContainer}>
+    <View style={s.ctaContainer}>
       <IconBadge icon={Sparkles} />
-      <Text style={styles.tagline}>{t("cta.tagline")}</Text>
-      <Text style={styles.title}>{t("cta.title")}</Text>
-      <Text style={styles.description}>{t("cta.description")}</Text>
+      <Text style={s.tagline}>{t("cta.tagline")}</Text>
+      <Text style={s.title}>{t("cta.title")}</Text>
+      <Text style={s.description}>{t("cta.description")}</Text>
 
-      <View style={styles.ctaButtons}>
+      <View style={s.ctaButtons}>
         <Pressable
           style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
+            s.button,
+            pressed && s.buttonPressed,
           ]}
           onPress={onSignIn}
         >
-          <Text style={styles.buttonText}>{t("cta.getStarted")}</Text>
+          <Text style={s.buttonText}>{t("cta.getStarted")}</Text>
         </Pressable>
 
         {DEMO_AVAILABLE && (
           <Pressable
             style={({ pressed }) => [
-              styles.demoButton,
-              pressed && styles.buttonPressed,
+              s.demoButton,
+              pressed && s.buttonPressed,
             ]}
             onPress={onDemo}
             disabled={demoLoading}
@@ -245,17 +374,17 @@ function CTASlide({
             {demoLoading ? (
               <ActivityIndicator size="small" color={colors.ink} />
             ) : (
-              <Text style={styles.demoButtonText}>{t("cta.tryDemo")}</Text>
+              <Text style={s.demoButtonText}>{t("cta.tryDemo")}</Text>
             )}
           </Pressable>
         )}
 
         {DEMO_AVAILABLE && (
-          <Text style={styles.demoNote}>{t("cta.demoNote")}</Text>
+          <Text style={s.demoNote}>{t("cta.demoNote")}</Text>
         )}
       </View>
 
-      <Text style={styles.ctaFooter}>
+      <Text style={s.ctaFooter}>
         {t("cta.personal")} {t("cta.openSource")}
       </Text>
     </View>
@@ -272,6 +401,7 @@ export default function OnboardingScreen() {
   const { t, i18n } = useTranslation("onboarding");
   const router = useRouter();
   const posthog = usePostHog();
+  const { s } = useScreenStyles();
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [demoLoading, setDemoLoading] = useState(false);
@@ -349,12 +479,12 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
       <StatusBar style="dark" />
 
       {/* Language toggle — top right, always visible */}
-      <Pressable style={styles.langToggle} onPress={toggleLanguage}>
-        <Text style={styles.langToggleText}>
+      <Pressable style={s.langToggle} onPress={toggleLanguage}>
+        <Text style={s.langToggleText}>
           {i18n.language === "es" ? "EN" : "ES"}
         </Text>
       </Pressable>
@@ -389,15 +519,15 @@ export default function OnboardingScreen() {
 
       {/* Bottom navigation — hidden on CTA slide (it has its own buttons) */}
       {!isLastSlide && (
-        <View style={styles.bottom}>
+        <View style={s.bottom}>
           {/* Pagination dots */}
-          <View style={styles.dots}>
+          <View style={s.dots}>
             {SLIDES.map((_, i) => (
               <View
                 key={i}
                 style={[
-                  styles.dot,
-                  i === activeIndex ? styles.dotActive : styles.dotInactive,
+                  s.dot,
+                  i === activeIndex ? s.dotActive : s.dotInactive,
                 ]}
               />
             ))}
@@ -405,12 +535,12 @@ export default function OnboardingScreen() {
 
           <Pressable
             style={({ pressed }) => [
-              styles.button,
-              pressed && styles.buttonPressed,
+              s.button,
+              pressed && s.buttonPressed,
             ]}
             onPress={handleNext}
           >
-            <Text style={styles.buttonText}>{t("nav.next")}</Text>
+            <Text style={s.buttonText}>{t("nav.next")}</Text>
           </Pressable>
 
           {/* Skip jumps directly to the CTA slide */}
@@ -423,130 +553,10 @@ export default function OnboardingScreen() {
               });
             }}
           >
-            <Text style={styles.skip}>{t("nav.skip")}</Text>
+            <Text style={s.skip}>{t("nav.skip")}</Text>
           </Pressable>
         </View>
       )}
     </View>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.paper },
-
-  /* Language toggle */
-  langToggle: {
-    position: "absolute",
-    top: 54,
-    right: 24,
-    zIndex: 10,
-    backgroundColor: colors.accentLight,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  langToggleText: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1,
-    color: colors.accent,
-  },
-
-  /* Slide layout */
-  slideScroll: { flex: 1 },
-  slideScrollContent: { paddingHorizontal: 32, paddingTop: 80, paddingBottom: 24 },
-
-  /* Typography */
-  tagline: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 3,
-    color: colors.accent,
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: colors.ink,
-    lineHeight: 38,
-    marginBottom: 14,
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: colors.inkMuted,
-    marginBottom: 24,
-  },
-
-  /* Comparison */
-  comparisonContainer: { marginTop: 4, gap: 16 },
-  comparisonSection: { gap: 8 },
-  comparisonLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 2,
-    color: colors.inkMuted,
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  comparisonDivider: { height: 1, backgroundColor: colors.rule },
-
-  /* Pipeline */
-  pipelineList: { gap: 16 },
-  pipelineStep: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
-  pipelineNum: { fontSize: 13, fontWeight: "700", color: colors.accent, width: 24, paddingTop: 2 },
-  pipelineBody: { flex: 1 },
-  pipelineTitle: { fontSize: 16, fontWeight: "700", color: colors.ink, marginBottom: 3 },
-  pipelineDesc: { fontSize: 14, lineHeight: 20, color: colors.inkMuted },
-
-  /* Persona slides */
-  personaHeader: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 },
-  personaHeaderText: { flex: 1 },
-  personaName: { fontSize: 24, fontWeight: "700", color: colors.ink },
-  personaSubtitle: { fontSize: 13, color: colors.inkMuted, marginTop: 2 },
-  personaApproach: { fontSize: 15, lineHeight: 23, color: colors.inkMuted, marginBottom: 24 },
-  sectionLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 2, color: colors.accent, marginBottom: 10 },
-  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 },
-  useCaseList: { gap: 12 },
-
-  /* CTA slide */
-  ctaContainer: { flex: 1, justifyContent: "center", paddingHorizontal: 32 },
-  ctaButtons: { gap: 12 },
-  demoButton: {
-    backgroundColor: colors.accentLight,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 50,
-    paddingVertical: 16,
-    paddingHorizontal: 48,
-    width: "100%",
-    alignItems: "center",
-  },
-  demoButtonText: { color: colors.ink, fontSize: 16, fontWeight: "600" },
-  demoNote: { fontSize: 13, color: colors.inkMuted, textAlign: "center", marginTop: 4 },
-  ctaFooter: { fontSize: 13, color: colors.inkMuted, textAlign: "center", marginTop: 32 },
-
-  /* Bottom controls */
-  bottom: { paddingHorizontal: 32, paddingBottom: 50, paddingTop: 12, alignItems: "center", gap: 14 },
-  dots: { flexDirection: "row", gap: 8, marginBottom: 4 },
-  dot: { height: 8, borderRadius: 4 },
-  dotActive: { backgroundColor: colors.accent, width: 24 },
-  dotInactive: { backgroundColor: colors.rule, width: 8 },
-  button: {
-    backgroundColor: colors.ink,
-    borderRadius: 50,
-    paddingVertical: 16,
-    paddingHorizontal: 48,
-    width: "100%",
-    alignItems: "center",
-  },
-  buttonPressed: { opacity: 0.85 },
-  buttonText: { color: colors.paper, fontSize: 16, fontWeight: "600" },
-  skip: { color: colors.inkMuted, fontSize: 14 },
-});

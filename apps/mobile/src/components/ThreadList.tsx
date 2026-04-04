@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -16,10 +16,10 @@ import { useAuth, useUser } from "@clerk/expo";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
-import { Plus, Brain, Settings, Database, CreditCard, LogOut, Globe } from "lucide-react-native";
+import { Plus, Brain, Settings, Database, CreditCard, Globe, Sun, Moon } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors } from "../constants/colors";
+import { useColors, useTheme } from "../contexts/ThemeContext";
 import { ThreadListItem } from "./ThreadListItem";
 
 export function ThreadList({ navigation }: DrawerContentComponentProps) {
@@ -30,6 +30,8 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
   const { user } = useUser();
   const { t, i18n } = useTranslation("sidebar");
   const insets = useSafeAreaInsets();
+  const colors = useColors();
+  const { theme, toggleTheme } = useTheme();
 
   const closeDrawer = useCallback(() => {
     navigation.closeDrawer();
@@ -81,71 +83,210 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
     [handleDelete, closeDrawer]
   );
 
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.paper,
+        },
+        header: {
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+        },
+        logoRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+        },
+        logoCircle: {
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          backgroundColor: colors.accentLight,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        logoText: {
+          fontSize: 16,
+          fontWeight: "700",
+          color: colors.accent,
+        },
+        appName: {
+          fontSize: 16,
+          fontWeight: "700",
+          color: colors.ink,
+          letterSpacing: -0.3,
+        },
+        actions: {
+          paddingHorizontal: 8,
+          paddingBottom: 8,
+          gap: 2,
+        },
+        actionButton: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+          paddingVertical: 8,
+          paddingHorizontal: 12,
+          borderRadius: 12,
+        },
+        actionPressed: {
+          backgroundColor: colors.accentLight,
+        },
+        actionLabel: {
+          fontSize: 14,
+          color: colors.inkMuted,
+        },
+        divider: {
+          height: 1,
+          backgroundColor: colors.rule,
+          marginHorizontal: 12,
+        },
+        list: {
+          flex: 1,
+        },
+        emptyContainer: {
+          flex: 1,
+          justifyContent: "center" as const,
+        },
+        empty: {
+          alignItems: "center" as const,
+          paddingHorizontal: 32,
+          paddingVertical: 48,
+        },
+        emptyTitle: {
+          fontSize: 13,
+          color: colors.inkMuted,
+          marginBottom: 4,
+        },
+        emptySubtitle: {
+          fontSize: 12,
+          color: colors.inkMuted,
+          opacity: 0.6,
+        },
+        footer: {
+          flexDirection: "row" as const,
+          alignItems: "center" as const,
+          justifyContent: "space-between" as const,
+          paddingHorizontal: 16,
+          paddingTop: 8,
+          borderTopWidth: 1,
+          borderTopColor: colors.rule,
+        },
+        footerLeft: {
+          flexDirection: "row" as const,
+          alignItems: "center" as const,
+          gap: 8,
+        },
+        footerRight: {
+          flexDirection: "row" as const,
+          alignItems: "center" as const,
+          gap: 4,
+        },
+        avatar: {
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          backgroundColor: colors.accentLight,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          alignItems: "center" as const,
+          justifyContent: "center" as const,
+          overflow: "hidden" as const,
+        },
+        avatarImage: {
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+        },
+        avatarText: {
+          fontSize: 12,
+          fontWeight: "700" as const,
+          color: colors.accent,
+        },
+        footerButton: {
+          flexDirection: "row" as const,
+          alignItems: "center" as const,
+          gap: 4,
+          paddingVertical: 6,
+          paddingHorizontal: 8,
+          borderRadius: 8,
+        },
+        footerButtonText: {
+          fontSize: 12,
+          fontWeight: "600" as const,
+          color: colors.inkMuted,
+        },
+      }),
+    [colors]
+  );
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[s.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <Pressable style={styles.logoRow} onPress={handleNewChat}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>S</Text>
+      <View style={s.header}>
+        <Pressable style={s.logoRow} onPress={handleNewChat}>
+          <View style={s.logoCircle}>
+            <Text style={s.logoText}>S</Text>
           </View>
-          <Text style={styles.appName}>Synapse</Text>
+          <Text style={s.appName}>Synapse</Text>
         </Pressable>
       </View>
 
       {/* Actions */}
-      <View style={styles.actions}>
+      <View style={s.actions}>
         <Pressable
-          style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+          style={({ pressed }) => [s.actionButton, pressed && s.actionPressed]}
           onPress={handleNewChat}
         >
           <Plus size={16} color={colors.inkMuted} />
-          <Text style={styles.actionLabel}>{t("newChat")}</Text>
+          <Text style={s.actionLabel}>{t("newChat")}</Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+          style={({ pressed }) => [s.actionButton, pressed && s.actionPressed]}
           onPress={() => { closeDrawer(); router.push("/(home)/memory" as never); }}
         >
           <Brain size={16} color={colors.inkMuted} />
-          <Text style={styles.actionLabel}>{t("memory")}</Text>
+          <Text style={s.actionLabel}>{t("memory")}</Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+          style={({ pressed }) => [s.actionButton, pressed && s.actionPressed]}
           onPress={() => { closeDrawer(); router.push("/(home)/notion" as never); }}
         >
           <Database size={16} color={colors.inkMuted} />
-          <Text style={styles.actionLabel}>Notion</Text>
+          <Text style={s.actionLabel}>Notion</Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+          style={({ pressed }) => [s.actionButton, pressed && s.actionPressed]}
           onPress={() => { closeDrawer(); router.push("/(home)/personas" as never); }}
         >
           <Settings size={16} color={colors.inkMuted} />
-          <Text style={styles.actionLabel}>{t("personas")}</Text>
+          <Text style={s.actionLabel}>{t("personas")}</Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+          style={({ pressed }) => [s.actionButton, pressed && s.actionPressed]}
           onPress={() => { closeDrawer(); router.push("/(home)/plans" as never); }}
         >
           <CreditCard size={16} color={colors.inkMuted} />
-          <Text style={styles.actionLabel}>{t("plans")}</Text>
+          <Text style={s.actionLabel}>{t("plans")}</Text>
         </Pressable>
       </View>
 
-      <View style={styles.divider} />
+      <View style={s.divider} />
 
       {/* Thread list */}
       <FlatList
         data={threads ?? []}
         renderItem={renderItem}
         keyExtractor={(item) => item._id}
-        style={styles.list}
-        contentContainerStyle={threads?.length === 0 ? styles.emptyContainer : undefined}
+        style={s.list}
+        contentContainerStyle={threads?.length === 0 ? s.emptyContainer : undefined}
         ListEmptyComponent={
           threads !== undefined ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>{t("noConversations")}</Text>
-              <Text style={styles.emptySubtitle}>{t("startNewChat")}</Text>
+            <View style={s.empty}>
+              <Text style={s.emptyTitle}>{t("noConversations")}</Text>
+              <Text style={s.emptySubtitle}>{t("startNewChat")}</Text>
             </View>
           ) : null
         }
@@ -159,20 +300,27 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
       />
 
       {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
-        <View style={styles.footerLeft}>
-          <Pressable style={styles.avatar} onPress={handleSignOut}>
+      <View style={[s.footer, { paddingBottom: insets.bottom + 8 }]}>
+        <View style={s.footerLeft}>
+          <Pressable style={s.avatar} onPress={handleSignOut}>
             {user?.imageUrl ? (
-              <Image source={{ uri: user.imageUrl }} style={styles.avatarImage} />
+              <Image source={{ uri: user.imageUrl }} style={s.avatarImage} />
             ) : (
-              <Text style={styles.avatarText}>{initials}</Text>
+              <Text style={s.avatarText}>{initials}</Text>
             )}
           </Pressable>
         </View>
-        <View style={styles.footerRight}>
-          <Pressable style={styles.footerButton} onPress={toggleLanguage}>
+        <View style={s.footerRight}>
+          <Pressable style={s.footerButton} onPress={toggleTheme}>
+            {theme === "dark" ? (
+              <Sun size={14} color={colors.inkMuted} />
+            ) : (
+              <Moon size={14} color={colors.inkMuted} />
+            )}
+          </Pressable>
+          <Pressable style={s.footerButton} onPress={toggleLanguage}>
             <Globe size={14} color={colors.inkMuted} />
-            <Text style={styles.footerButtonText}>
+            <Text style={s.footerButtonText}>
               {i18n.language === "en" ? "ES" : "EN"}
             </Text>
           </Pressable>
@@ -181,137 +329,3 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.paper,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  logoCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(139, 94, 60, 0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.accent,
-  },
-  appName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.ink,
-    letterSpacing: -0.3,
-  },
-  actions: {
-    paddingHorizontal: 8,
-    paddingBottom: 8,
-    gap: 2,
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  actionPressed: {
-    backgroundColor: colors.accentLight,
-  },
-  actionLabel: {
-    fontSize: 14,
-    color: colors.inkMuted,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.rule,
-    marginHorizontal: 12,
-  },
-  list: {
-    flex: 1,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  empty: {
-    alignItems: "center",
-    paddingHorizontal: 32,
-    paddingVertical: 48,
-  },
-  emptyTitle: {
-    fontSize: 13,
-    color: colors.inkMuted,
-    marginBottom: 4,
-  },
-  emptySubtitle: {
-    fontSize: 12,
-    color: "rgba(107, 94, 79, 0.5)",
-  },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.rule,
-  },
-  footerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  footerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.accentLight,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  avatarImage: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-  },
-  avatarText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.accent,
-  },
-  footerButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-  },
-  footerButtonText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.inkMuted,
-  },
-});
