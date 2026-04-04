@@ -1,0 +1,75 @@
+{
+  "welcome": {
+    "tagline": "BEYOND CHAT HISTORY",
+    "title": "What if your AI\nactually understood\nwho you are?",
+    "description": "Synapse turns your conversations into a knowledge graph — people, places, goals, emotions, patterns. An AI that learns who you are, not just what you said last.",
+    "regularAI": "Regular AI",
+    "synapse": "Synapse",
+    "regularUser": "Everything feels overwhelming again.",
+    "regularBot": "Have you tried deep breaths or going for a walk?",
+    "synapseUser": "Everything feels overwhelming again.",
+    "synapseBot": "The last three times you felt this, it followed tense interactions with David. Did something happen today?"
+  },
+  "pipeline": {
+    "tagline": "HOW IT WORKS",
+    "title": "Memory engineering,\nnot memorization",
+    "description": "Four steps from conversation to structured knowledge.",
+    "steps": [
+      { "title": "Converse", "desc": "Talk about your day, your goals, your worries. Every session is captured." },
+      { "title": "Ingest", "desc": "Entities and relationships are extracted into a knowledge graph." },
+      { "title": "Compile", "desc": "Your graph is injected into future sessions as structured context." },
+      { "title": "Evolve", "desc": "Each conversation refines the graph. The more you talk, the better it gets." }
+    ]
+  },
+  "personas": {
+    "compass": {
+      "name": "Compass",
+      "subtitle": "Therapeutic companion — neuroaffirmative by default",
+      "approach": "Maps your emotional patterns across conversations. Connects today's anxiety to recurring triggers. Never minimizes, never defaults to toxic positivity.",
+      "theories": ["ACT", "DBT", "Polyvagal Theory", "Somatic Experiencing"],
+      "useCases": [
+        "Processing recurring anxiety, grief, or anger with full pattern awareness",
+        "Tracking your nervous system states and window of tolerance over time",
+        "Complementing formal therapy between sessions"
+      ]
+    },
+    "solace": {
+      "name": "Solace",
+      "subtitle": "Wellbeing companion — reflective, not prescriptive",
+      "approach": "A gentle, unhurried space for emotional reflection. Notices shifts in your mood and energy over time. Like a calm conversation over tea.",
+      "theories": ["PERMA Model", "Self-Compassion (Neff)", "MBSR"],
+      "useCases": [
+        "Daily emotional check-ins without the pressure of \"doing therapy\"",
+        "Tracking what brings you joy, flow, or calm — and being reminded when you forget",
+        "Building emotional literacy: naming what you feel so you can work with it"
+      ]
+    },
+    "momentum": {
+      "name": "Momentum",
+      "subtitle": "Growth coach — direct, honest, action-oriented",
+      "approach": "Holds you accountable to your goals — and knows what actually derails you. Direct and clear, no fluff. Respects that rest is a strategy, not a failure.",
+      "theories": ["Motivational Interviewing", "Implementation Intentions", "Behavioral Activation", "SMART Goals"],
+      "useCases": [
+        "Setting and tracking goals with someone who remembers your commitments",
+        "Breaking through procrastination by identifying your specific triggers",
+        "Getting honest feedback — not cheerleading — when you're avoiding something"
+      ]
+    },
+    "theoreticalFoundations": "THEORETICAL FOUNDATIONS",
+    "perfectFor": "PERFECT FOR"
+  },
+  "cta": {
+    "tagline": "BEGIN YOUR JOURNEY",
+    "title": "The conversation\nthat remembers",
+    "description": "Start talking. The graph builds itself. The AI gets better the more you use it.",
+    "getStarted": "Get started",
+    "tryDemo": "Try the demo",
+    "demoNote": "Explore with a pre-built account — no sign-up needed.",
+    "personal": "Personal.",
+    "openSource": "Open source."
+  },
+  "nav": {
+    "next": "Next",
+    "skip": "Skip"
+  }
+}

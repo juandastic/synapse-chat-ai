@@ -1,0 +1,75 @@
+{
+  "welcome": {
+    "tagline": "MAS ALLA DEL HISTORIAL",
+    "title": "¿Y si tu IA\nrealmente entendiera\nquién eres?",
+    "description": "Synapse convierte tus conversaciones en un grafo de conocimiento — personas, lugares, metas, emociones, patrones. Una IA que aprende quién eres, no solo lo que dijiste la última vez.",
+    "regularAI": "IA regular",
+    "synapse": "Synapse",
+    "regularUser": "Tuve un día terrible. Todo se siente abrumador otra vez.",
+    "regularBot": "¿Has intentado respirar profundo o salir a caminar?",
+    "synapseUser": "Todo se siente abrumador otra vez.",
+    "synapseBot": "Las últimas tres veces que describiste esta sensación, fue después de interacciones tensas con David. ¿Pasó algo en la reunión de hoy?"
+  },
+  "pipeline": {
+    "tagline": "CÓMO FUNCIONA",
+    "title": "Ingeniería de memoria,\nno memorización",
+    "description": "Cuatro pasos de conversación a conocimiento estructurado.",
+    "steps": [
+      { "title": "Conversa", "desc": "Habla sobre tu día, tus metas, tus preocupaciones. Cada sesión se captura automáticamente." },
+      { "title": "Ingesta", "desc": "Se extraen entidades y relaciones en un grafo de conocimiento." },
+      { "title": "Compila", "desc": "Tu grafo se inyecta en futuras sesiones como contexto estructurado." },
+      { "title": "Evoluciona", "desc": "Cada conversación refina el grafo. Mientras más hables, mejor se vuelve." }
+    ]
+  },
+  "personas": {
+    "compass": {
+      "name": "Brújula",
+      "subtitle": "Compañero terapéutico — neuroafirmativo por defecto",
+      "approach": "Mapea tus patrones emocionales entre conversaciones. Conecta la ansiedad de hoy con detonantes recurrentes. Nunca minimiza, nunca recurre a la positividad tóxica.",
+      "theories": ["ACT", "TDC", "Teoría Polivagal", "Somatic Experiencing"],
+      "useCases": [
+        "Procesar ansiedad, duelo o rabia recurrente con conciencia completa del patrón",
+        "Rastrear los estados de tu sistema nervioso y ventana de tolerancia a lo largo del tiempo",
+        "Complementar terapia formal entre sesiones"
+      ]
+    },
+    "solace": {
+      "name": "Calma",
+      "subtitle": "Compañero de bienestar — reflexivo, no prescriptivo",
+      "approach": "Un espacio amable y sin prisa para la reflexión emocional. Nota cambios en tu estado de ánimo y energía con el tiempo. Como una conversación tranquila tomando té.",
+      "theories": ["Modelo PERMA", "Autocompasión (Neff)", "MBSR"],
+      "useCases": [
+        "Check-ins emocionales diarios sin la presión de \"hacer terapia\"",
+        "Rastrear qué te da alegría, flow o calma — y que te lo recuerden cuando lo olvidas",
+        "Construir alfabetización emocional: nombrar lo que sientes para poder trabajar con ello"
+      ]
+    },
+    "momentum": {
+      "name": "Impulso",
+      "subtitle": "Coach de crecimiento — directo, honesto, orientado a la acción",
+      "approach": "Te acompaña en la rendición de cuentas con tus metas — y sabe qué realmente te descarrila. Directo y claro, sin relleno. Respeta que el descanso es una estrategia, no un fracaso.",
+      "theories": ["Entrevista Motivacional", "Intenciones de Implementación", "Activación Conductual", "Metas SMART"],
+      "useCases": [
+        "Establecer y rastrear metas con alguien que recuerda tus compromisos",
+        "Superar la procrastinación identificando tus detonantes específicos",
+        "Recibir feedback honesto — no porras vacías — cuando estás evitando algo"
+      ]
+    },
+    "theoreticalFoundations": "FUNDAMENTOS TEÓRICOS",
+    "perfectFor": "IDEAL PARA"
+  },
+  "cta": {
+    "tagline": "COMIENZA TU CAMINO",
+    "title": "La conversación\nque recuerda",
+    "description": "Empieza a hablar. El grafo se construye solo. La IA mejora mientras más la uses.",
+    "getStarted": "Comenzar",
+    "tryDemo": "Probar la demo",
+    "demoNote": "Explora con una cuenta precargada — sin necesidad de registro.",
+    "personal": "Personal.",
+    "openSource": "Código abierto."
+  },
+  "nav": {
+    "next": "Siguiente",
+    "skip": "Saltar"
+  }
+}

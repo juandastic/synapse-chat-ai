@@ -18,6 +18,7 @@
       "package": "com.synapse.mobile"
     },
     "plugins": [
+      "@clerk/expo",
       "expo-router",
       "expo-secure-store"
     ],

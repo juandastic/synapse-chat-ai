@@ -1,0 +1,9 @@
+{
+  "header": "Synapse",
+  "welcome": "Bienvenido",
+  "account": {
+    "title": "Cuenta",
+    "manageAccount": "Administrar cuenta",
+    "signOut": "Cerrar sesión"
+  }
+}
