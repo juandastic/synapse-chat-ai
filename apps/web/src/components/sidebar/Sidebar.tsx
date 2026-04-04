@@ -140,6 +140,12 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
           onClick={handleSettings}
           active={location.pathname === "/settings/personas"}
         />
+        <SidebarButton
+          icon={<CreditCard className="h-4 w-4" />}
+          label={t("plans")}
+          onClick={handlePlans}
+          active={location.pathname === "/plans"}
+        />
       </nav>
 
       {/* Divider + thread list */}
@@ -208,18 +214,6 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
               },
             }}
           />
-          <button
-            onClick={handlePlans}
-            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-              location.pathname === "/plans"
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-            aria-label={t("plans")}
-            title={t("plans")}
-          >
-            <CreditCard className="h-4 w-4" />
-          </button>
         </div>
         <div className="flex items-center gap-1">
           <button

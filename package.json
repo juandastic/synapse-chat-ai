@@ -5,6 +5,7 @@
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "turbo dev --filter=@synapse/web --filter=@synapse/backend",
+    "dev:web": "turbo dev --filter=@synapse/web",
     "dev:mobile": "turbo dev --filter=@synapse/mobile --filter=@synapse/backend",
     "dev:expo": "npm run dev --workspace=@synapse/mobile",
     "dev:expo:ios": "npm run ios --workspace=@synapse/mobile",

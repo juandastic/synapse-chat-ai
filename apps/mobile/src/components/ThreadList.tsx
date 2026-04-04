@@ -123,6 +123,13 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
           <Settings size={16} color={colors.inkMuted} />
           <Text style={styles.actionLabel}>{t("personas")}</Text>
         </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+          onPress={() => { closeDrawer(); router.push("/(home)/plans" as never); }}
+        >
+          <CreditCard size={16} color={colors.inkMuted} />
+          <Text style={styles.actionLabel}>{t("plans")}</Text>
+        </Pressable>
       </View>
 
       <View style={styles.divider} />
@@ -160,12 +167,6 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
             ) : (
               <Text style={styles.avatarText}>{initials}</Text>
             )}
-          </Pressable>
-          <Pressable
-            style={styles.footerButton}
-            onPress={() => { closeDrawer(); router.push("/(home)/plans" as never); }}
-          >
-            <CreditCard size={14} color={colors.inkMuted} />
           </Pressable>
         </View>
         <View style={styles.footerRight}>
