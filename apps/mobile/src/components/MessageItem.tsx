@@ -158,7 +158,7 @@ export const MessageItem = memo(function MessageItem({
           paddingVertical: 10,
         },
         bubbleUser: {
-          backgroundColor: colors.ink,
+          backgroundColor: colors.primary,
           borderBottomRightRadius: 4,
         },
         bubbleAssistant: {
@@ -176,7 +176,7 @@ export const MessageItem = memo(function MessageItem({
         userText: {
           fontSize: 15,
           lineHeight: 22,
-          color: colors.paper,
+          color: colors.primaryForeground,
         },
         errorHint: {
           fontSize: 12,

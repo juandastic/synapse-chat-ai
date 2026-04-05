@@ -178,7 +178,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
           width: 40,
           height: 40,
           borderRadius: 20,
-          backgroundColor: colors.ink,
+          backgroundColor: colors.primary,
           alignItems: "center",
           justifyContent: "center",
           shadowColor: "#000",
@@ -188,7 +188,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
           elevation: 4,
         },
         scrollButtonArrow: {
-          color: colors.paper,
+          color: colors.primaryForeground,
           fontSize: 18,
           fontWeight: "700",
         },
