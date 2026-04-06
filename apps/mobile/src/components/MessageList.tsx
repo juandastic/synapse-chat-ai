@@ -27,7 +27,7 @@ interface MessageListProps {
 }
 
 type ListItem =
-  | { type: "message"; data: Doc<"messages">; isStreaming: boolean }
+  | { type: "message"; data: Doc<"messages">; isStreaming: boolean; isLast: boolean }
   | { type: "session-divider"; timestamp: number; key: string };
 
 /** Threshold (px) to consider the user "scrolled away" from the bottom */
@@ -125,6 +125,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
         data: msg,
         isStreaming:
           msg.role === "assistant" && msg.completedAt === undefined,
+        isLast: i === messages.length - 1,
       });
     }
 
@@ -140,6 +141,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
         <MessageItem
           message={item.data}
           isStreaming={item.isStreaming}
+          isLast={item.isLast}
           onLongPress={handleMessageLongPress}
         />
       );

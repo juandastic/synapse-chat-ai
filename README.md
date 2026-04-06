@@ -83,8 +83,8 @@ graph TD
     subgraph client ["Frontend (React 19 + Vite)"]
         AppLayout["AppLayout (shell)"]
         Sidebar["Sidebar (threads)"]
-        PersonaSelector["PersonaSelector"]
-        ChatView["ChatView"]
+        PersonaSelector["PersonaSelector + MemoryPulse"]
+        ChatView["ChatView + MemoryStatus"]
         MemoryExplorer["MemoryExplorer"]
         NotionExportPage["NotionExportPage"]
         PersonaSettings["PersonaSettings"]
@@ -109,6 +109,8 @@ graph TD
         CortexProcessor["cortexProcessor.ts"]
         NotionAPI["notion.ts"]
         NotionConfigAPI["notionConfig.ts"]
+        UserMemoryAPI["userMemory.ts"]
+        UserKnowledgeCacheAPI["userKnowledgeCache.ts"]
     end
 
     subgraph cortex ["Synapse Cortex (external)"]
@@ -131,6 +133,8 @@ graph TD
         SessionsTable["sessions"]
         MessagesTable["messages"]
         CortexJobsTable["cortex_jobs"]
+        UserMemoryTable["user_memory"]
+        UserKnowledgeCacheTable["user_knowledge_cache"]
     end
 
     subgraph neo4j ["Neo4j (Graphiti)"]
@@ -145,6 +149,8 @@ graph TD
     ChatView -->|"send message"| MessagesAPI
     ChatView -->|"HTTP stream /chat"| HttpAPI
     ChatView -->|"consolidate memory"| SessionsAPI
+    PersonaSelector -->|"memory stats"| UserMemoryAPI
+    ChatView -->|"memory stats"| UserMemoryAPI
     MemoryExplorer -->|"fetch graph"| GraphAPI
     MemoryExplorer -->|"submit correction"| GraphAPI
     MemoryExplorer -->|"subscribe job status"| CortexJobs
@@ -172,6 +178,7 @@ graph TD
     CortexProcessor -->|"poll GET /ingest/status"| IngestStatusEndpoint
     CortexProcessor -->|"POST /correction"| CorrectionEndpoint
     CortexProcessor -->|"create draft"| SessionsAPI
+    ChatAPI -->|"read knowledge"| UserKnowledgeCacheAPI
 
     %% Direct Cortex calls (fast, no queue needed)
     CortexAPI -->|"POST /hydrate"| HydrateEndpoint
@@ -184,7 +191,10 @@ graph TD
     SessionsAPI --> SessionsTable
     MessagesAPI --> MessagesTable
     CortexJobs --> CortexJobsTable
-    CortexAPI --> SessionsTable
+    CortexAPI --> UserMemoryTable
+    CortexAPI --> UserKnowledgeCacheTable
+    CortexProcessor --> UserMemoryTable
+    CortexProcessor --> UserKnowledgeCacheTable
 
     %% External services
     HydrateEndpoint --> KG
@@ -235,8 +245,6 @@ erDiagram
         id userId
         id threadId
         string status
-        string cachedUserKnowledge
-        any compilationMetadata
         string cachedSystemPrompt
         number startedAt
         number endedAt
@@ -278,6 +286,23 @@ erDiagram
         number totalIngestedChars
         any dailyStats
     }
+    user_memory {
+        id userId
+        number entityCount
+        number relationshipCount
+        number includedEntityCount
+        number includedRelationshipCount
+        number totalChars
+        number totalTokens
+        boolean isPartial
+        number lastUpdatedAt
+    }
+    user_knowledge_cache {
+        id userId
+        string cachedUserKnowledge
+        any compilationMetadata
+        number lastUpdatedAt
+    }
 
     users ||--o{ personas : owns
     users ||--o{ threads : owns
@@ -288,12 +313,17 @@ erDiagram
     threads ||--o{ messages : contains
     sessions ||--o{ messages : groups
     sessions ||--o{ cortex_jobs : "ingest jobs"
+    users ||--|| user_memory : "has stats"
+    users ||--|| user_knowledge_cache : "has knowledge"
 ```
 
 Key points:
 
-- **Sessions** store `cachedSystemPrompt`, `cachedUserKnowledge`, and `compilationMetadata` as snapshots -- decoupling the running conversation from live persona/knowledge changes.
-- **Messages** store analytics in `metadata`: token counts, latency, cost, finish reason, and error details.
+- **Sessions** store `cachedSystemPrompt` as a snapshot — decoupling the running conversation from live persona changes.
+- **User memory** (`user_memory`) stores lightweight graph stats (~200 bytes) — entity/relationship counts, token estimates, and whether RAG is active (`isPartial`). This is the only table the frontend subscribes to, keeping reactive query bandwidth minimal.
+- **User knowledge cache** (`user_knowledge_cache`) stores the heavy compiled knowledge string (~30K) and `compilationMetadata`. Only read by the backend (`chat.prepareContext`) — never exposed to the frontend.
+- **2-table split rationale**: Convex charges per full document read regardless of field projection. Separating lightweight stats from the heavy knowledge blob means the frontend subscription reads ~200 bytes instead of ~30K on every update.
+- **Messages** store analytics in `metadata`: token counts, latency, cost, finish reason, error details, and RAG recall stats (`ragEnabled`, `ragNodes`, `ragEdges`).
 - **Cortex jobs** decouple heavy AI calls from the UI. Status lifecycle: `pending` → `processing` → `completed` | `failed`. Ingest: POST returns 202, poll GET /ingest/status (5m, 10m×5). Retry on POST failure: 0 → 2m → 10m → 30m → 30m.
 - **Session status** is primarily `active`/`closed` in runtime flow. `processing` exists in schema for guarded transitions but is not part of the current `/chat` streaming path.
 
@@ -319,13 +349,12 @@ sequenceDiagram
         Sess->>Sess: Fetch persona.systemPrompt
         Sess->>Sess: Fetch user.customInstructions
         Sess->>Sess: Build cachedSystemPrompt (prompt + instructions + language)
-        Sess->>Sess: Inherit knowledge from prev session OR undefined
         Sess->>Sess: Create session (status: active)
         Sess-->>Cortex: schedule hydrate(userId, sessionId)
         Note right of Cortex: Async background job
         Cortex->>API: POST /hydrate {userId}
-        API-->>Cortex: userKnowledgeCompilation
-        Cortex->>Sess: patch session.cachedUserKnowledge
+        API-->>Cortex: userKnowledgeCompilation + graphStats
+        Cortex->>Cortex: Write user_memory (stats) + user_knowledge_cache (knowledge)
     end
 
     Msg->>Msg: Insert user message
@@ -338,7 +367,7 @@ sequenceDiagram
     UI->>Http: POST /chat (JWT, sessionId, threadId, assistantMessageId)
 
     Http->>Chat: prepareContext(sessionId, assistantMessageId)
-    Chat->>Chat: Read session snapshot, getRecent by sessionId
+    Chat->>Chat: Read session snapshot + user_knowledge_cache, getRecent by sessionId
     Chat->>Chat: Resolve R2 image URLs
     Chat-->>Http: apiMessages, userId, requestId
 
@@ -369,7 +398,7 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> Created: First message in thread or after session close
-    Created --> Active: Session created with dual snapshot
+    Created --> Active: Session created with system prompt snapshot
 
     Active --> Active: Messages sent (touch resets 3h timer)
     Active --> Active: AI response generation (/chat stream)
@@ -394,9 +423,9 @@ stateDiagram-v2
         1. cachedSystemPrompt = persona.systemPrompt
            + user.customInstructions
            + persona.language
-        2. cachedUserKnowledge = inherited from
-           previous session OR undefined
-        3. Schedule cortex.hydrate (background)
+        2. Schedule cortex.hydrate (background)
+           → writes user_memory (stats)
+           → writes user_knowledge_cache (knowledge)
     end note
 
     note right of Queued
@@ -416,8 +445,8 @@ stateDiagram-v2
 
 **Why sessions matter:**
 
-- **Snapshot isolation**: Sessions freeze the system prompt and knowledge, so changes to the persona or new knowledge don't affect an ongoing conversation mid-flow.
-- **Knowledge evolution**: When a session closes, its messages are ingested into the knowledge graph. The next session starts with updated knowledge.
+- **Snapshot isolation**: Sessions freeze the system prompt, so changes to the persona don't affect an ongoing conversation mid-flow. Knowledge is read from the centralized `user_knowledge_cache` at generation time.
+- **Knowledge evolution**: When a session closes, its messages are ingested into the knowledge graph. Both `user_memory` (stats) and `user_knowledge_cache` (knowledge) are updated, and the next session automatically uses the latest knowledge.
 - **Race condition handling**: If a user sends a message while ingestion is creating a draft session, the system detects the existing active session and updates it instead of creating a duplicate.
 
 ---
@@ -471,15 +500,15 @@ flowchart TD
     POLL -->|"scheduler.runAfter(5m, 10m...)"| POLL
     POLL -->|"max poll attempts"| FAIL
 
-    OK -->|"ingest jobs"| DRAFT
-    FAIL -->|"ingest jobs: fallback knowledge"| DRAFT
+    OK -->|"ingest jobs: update user_memory + user_knowledge_cache"| DRAFT
+    FAIL -->|"ingest jobs: fallback (cache unchanged)"| DRAFT
     JOB -.->|"useQuery subscription"| UI
 ```
 
 **Ingest flow (async API):**
 
 1. **POST /ingest** — submit session + messages; returns `202 Accepted` with `status: "processing"` or `"skipped"`.
-2. **Skipped** — too few messages; `userKnowledgeCompilation` returned immediately → create draft, done.
+2. **Skipped** — too few messages; `userKnowledgeCompilation` returned immediately → update `user_knowledge_cache`, create draft, done.
 3. **Processing** — schedule `pollIngestStatus` to poll `GET /ingest/status/{jobId}` until completed or failed.
 
 **Poll schedule (ingest status — linear, no exponential backoff):**
@@ -502,7 +531,7 @@ flowchart TD
 **Key design decisions:**
 
 - **Throws = retryable, returns = graceful.** The processor distinguishes between transient failures (HTTP 503, network errors) that warrant retry and non-retryable cases (no messages, content blocked) that resolve with fallback knowledge.
-- **Fallback draft on permanent failure.** Even if all 5 attempts fail, the thread always gets a usable draft session with the previous session's knowledge so the user isn't left stuck.
+- **Fallback draft on permanent failure.** Even if all 5 attempts fail, the thread always gets a usable draft session. `user_knowledge_cache` retains the latest knowledge from the previous successful hydration/ingest.
 - **Real-time UI subscriptions.** The frontend subscribes to `cortexJobs.getActiveByUser` via Convex reactive queries, giving instant status updates without polling.
 - **Manual retry.** Users can retry failed jobs from the Memory Explorer UI.
 
@@ -531,9 +560,10 @@ flowchart LR
         UPDATE --> COMPILE["Knowledge Compilation"]
     end
 
-    subgraph nextSession ["Next Session"]
-        COMPILE --> HYDRATE["cortex.hydrate"]
-        HYDRATE --> INJECT["Inject into AI context"]
+    subgraph memoryUpdate ["Memory Update"]
+        COMPILE --> STATS["Update user_memory (stats)"]
+        COMPILE --> CACHE["Update user_knowledge_cache"]
+        CACHE --> INJECT["Inject into AI context"]
         INJECT --> AI["AI sees user knowledge"]
     end
 
@@ -548,14 +578,14 @@ flowchart LR
 **Pipeline stages:**
 
 1. **Conversation**: User interacts with AI within a session. Messages accumulate.
-2. **Ingestion** (on session close): An ingest job is enqueued in `cortex_jobs`. The processor sends all session messages to Cortex `POST /ingest`, which returns `202 Accepted` with `status: "processing"` or `"skipped"`. When processing, `pollIngestStatus` polls `GET /ingest/status/{jobId}` (5m, then 10m intervals) until completion. Cortex processes messages through Graphiti — extracting entities, resolving duplicates, and updating the Neo4j graph. Failures are retried with slow backoff.
-3. **Hydration** (on session creation): A cheap Cypher query fetches the compiled knowledge and injects it into the new session's cached context. No AI processing needed.
+2. **Ingestion** (on session close): An ingest job is enqueued in `cortex_jobs`. The processor sends all session messages to Cortex `POST /ingest`, which returns `202 Accepted` with `status: "processing"` or `"skipped"`. When processing, `pollIngestStatus` polls `GET /ingest/status/{jobId}` (5m, then 10m intervals) until completion. Cortex processes messages through Graphiti — extracting entities, resolving duplicates, and updating the Neo4j graph. On completion, both `user_memory` (stats from `graphStats`) and `user_knowledge_cache` (knowledge) are updated. Failures are retried with slow backoff.
+3. **Hydration** (on session creation): A background action calls `POST /hydrate` to compile the latest knowledge. The result updates both `user_memory` (graph stats) and `user_knowledge_cache` (compiled knowledge). No per-session storage — knowledge is centralized per user.
 4. **Correction** (user-initiated): A correction job is enqueued in `cortex_jobs`. Users submit natural language corrections (e.g., *"I no longer live in Colombia, I moved to Canada"*) that Graphiti processes to invalidate outdated edges and create new ones.
 
 **Graceful degradation:**
 
-- If hydration fails → session continues without knowledge (works fine, just less personalized).
-- If ingestion fails after all retries → fallback draft created with previous session's knowledge.
+- If hydration fails → session continues without knowledge (works fine, just less personalized). `user_knowledge_cache` retains previous knowledge.
+- If ingestion fails after all retries → fallback draft created. `user_knowledge_cache` already has the latest knowledge from the previous hydration.
 - If correction fails after all retries → job marked as failed, user can retry from Memory Explorer.
 - If graph fetch fails → Memory Explorer shows empty graph with no errors.
 
@@ -567,8 +597,8 @@ flowchart LR
 
 - **Multi-Thread Conversations**: Create multiple threads, each with a dedicated persona and independent history.
 - **Real-time Streaming**: HTTP streaming directly to the client with zero intermediate DB writes; single atomic write at the end. ChatContext overlays streamed content locally for smooth, character-by-character rendering.
-- **Session-Scoped Context**: The AI sees the last 20 messages from the current `sessionId`; cross-session continuity comes from `cachedUserKnowledge`.
-- **Session Snapshotting**: Dual snapshot (system prompt + knowledge) ensures consistency within a session.
+- **Session-Scoped Context**: The AI sees the last 20 messages from the current `sessionId`; cross-session continuity comes from `user_knowledge_cache`.
+- **Session Snapshotting**: System prompt snapshot ensures consistency within a session. Knowledge is read from the centralized `user_knowledge_cache` at generation time.
 - **Smart Auto-scroll**: Auto-scrolls to bottom on new messages, with scroll-to-bottom button when scrolled up.
 - **Markdown Rendering**: Rich markdown support with streaming animation via Streamdown.
 - **Error Categorization**: Structured error types (CONFIG_ERROR, API_ERROR, PROVIDER_ERROR) with user-friendly messages and technical details in metadata.
@@ -580,12 +610,18 @@ flowchart LR
 - **Async Cortex Job Queue**: Heavy AI operations (ingestion, corrections) are decoupled from the UI via a persistent job queue. Ingest uses async API: POST returns 202, then poll GET /ingest/status (5m, 10m×5). POST/correction failures retry with slow backoff (5 attempts: 0 → 2m → 10m → 30m → 30m).
 - **Real-time Job Status**: Users see live processing status (pending, processing, retrying with countdown, failed with retry button) via Convex reactive subscriptions.
 - **Manual Memory Consolidation**: "Consolidate Memory" button in the chat UI force-closes the active session and enqueues an ingest job immediately.
-- **Knowledge Hydration**: On session creation, a background job fetches the latest compiled knowledge via a cheap Cypher query (no AI processing).
-- **Knowledge Compilation**: Cortex compiles raw graph data into a structured text summary injected into the AI's context window.
-- **Draft Session Pre-loading**: After ingestion, a draft session is pre-created with the latest knowledge, ready for the next interaction.
-- **Knowledge Inheritance**: New sessions inherit knowledge from the previous session while hydration completes in the background.
+- **Knowledge Hydration**: On session creation, a background action compiles the latest knowledge and updates both `user_memory` (stats) and `user_knowledge_cache` (knowledge).
+- **Knowledge Compilation**: Cortex compiles raw graph data into a structured text summary injected into the AI's context window. When the graph exceeds the compilation budget, `isPartial` is set and GraphRAG activates to retrieve long-tail memories.
+- **Centralized Memory Store**: Knowledge is stored once per user in `user_knowledge_cache` (not per session), eliminating ~30K string duplication across sessions.
+- **Memory Awareness UI**: Real-time memory stats visible throughout the app:
+  - **Memory Pulse** (home screen): Shows total memories count, token estimate, and contextual description.
+  - **Memory Status** (chat header): Compact indicator with expandable tooltip showing included vs total memories and RAG activation.
+  - **RAG Recall Badge** (per-message): Shows how many memories were consulted for the last assistant response.
+- **2-Table Split Optimization**: Lightweight stats (~200 bytes in `user_memory`) separated from heavy knowledge blob (~30K in `user_knowledge_cache`) to minimize Convex reactive query bandwidth.
+- **Early Return Optimization**: `userMemory.upsert` skips `db.patch` when stats haven't changed, avoiding unnecessary reactive subscription triggers.
+- **Draft Session Pre-loading**: After ingestion, a draft session is pre-created, ready for the next interaction.
 - **Race Condition Handling**: Concurrent session creation during knowledge processing is detected and handled gracefully.
-- **Graceful Degradation**: Every stage fails safely -- sessions work without knowledge, ingestion failures create fallback drafts with previous knowledge, corrections can be retried.
+- **Graceful Degradation**: Every stage fails safely — sessions work without knowledge, ingestion failures leave `user_knowledge_cache` intact with previous knowledge, corrections can be retried.
 
 ### Memory Explorer
 
@@ -627,8 +663,9 @@ flowchart LR
 | ------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Realtime**              | Convex reactive queries auto-update UI when DB changes -- no polling, no WebSocket management           |
 | **Streaming**             | HTTP streaming to client; local state overlay during generation; single DB write at end; frontend derives `isGenerating` from message state |
-| **Session snapshot**      | Dual snapshot (system prompt + knowledge) decouples running conversation from live changes              |
-| **Knowledge pipeline**    | Async hydrate on create → conversation → enqueue ingest on close → POST /ingest (202) → poll status → draft |
+| **Session snapshot**      | System prompt snapshot decouples conversation from persona changes; knowledge read from centralized cache |
+| **Memory awareness**      | 2-table split: `user_memory` (stats, ~200B, frontend) + `user_knowledge_cache` (knowledge, ~30K, backend only). Early return skips writes when unchanged. |
+| **Knowledge pipeline**    | Hydrate on create → conversation → enqueue ingest on close → POST /ingest (202) → poll status → update user_memory + user_knowledge_cache → draft |
 | **Async job queue**       | Persistent `cortex_jobs` table; ingest: POST returns 202, poll GET /ingest/status (5m, 10m×5); retry on POST failure (5 attempts); real-time UI |
 | **Auto-close timer**      | 3h debounced via Convex scheduled functions; each message cancels previous and reschedules              |
 | **Cross-session context** | Messages queried by `threadId` (not `sessionId`) for full thread continuity                             |
@@ -646,60 +683,57 @@ flowchart LR
 
 ```
 synapse-ai-chat/
-├── convex/                       # Convex backend (serverless functions + database)
-│   ├── schema.ts                 # Database schema (7 tables, indexed; users has Notion config fields)
-│   ├── users.ts                  # User management + customInstructions
-│   ├── personas.ts               # Persona CRUD + default templates
-│   ├── threads.ts                # Thread CRUD + cascade delete
-│   ├── sessions.ts               # Session lifecycle (3h auto-close, dual snapshot, forceClose, draft creation)
-│   ├── messages.ts               # Message mutations/queries (streaming support, analytics)
-│   ├── http.ts                   # HTTP streaming endpoint (direct client streaming, single DB write)
-│   ├── chat.ts                   # Context preparation for AI generation (session snapshot, R2 URL resolution)
-│   ├── cortex.ts                 # Cortex integration (hydrate only)
-│   ├── cortexJobs.ts             # Job queue management (enqueue, status, retry)
-│   ├── cortexProcessor.ts        # Job processor (ingest: POST + pollIngestStatus; correction; slow-backoff retry)
-│   ├── graph.ts                  # Knowledge graph queries + NLP corrections (enqueues correction jobs)
-│   ├── notion.ts                 # Notion actions ("use node"): startExport, getExportStatus, startCorrections, getCorrectionsStatus
-│   ├── notionConfig.ts           # Notion config query/mutation (getNotionConfig, saveNotionConfig, saveNotionConfigInternal)
-│   └── auth.config.ts            # Clerk auth configuration
-├── src/
-│   ├── components/
-│   │   ├── chat/                 # Chat components
-│   │   │   ├── ChatView.tsx           # Thread chat view (route: /t/:threadId)
-│   │   │   ├── ChatInput.tsx          # Message input with threadId
-│   │   │   ├── MessageList.tsx        # Messages with content-visibility + auto-scroll
-│   │   │   ├── MessageItem.tsx        # Individual message rendering (streaming detection)
-│   │   │   ├── PersonaSelector.tsx    # Inline persona selection (route: /)
-│   │   │   └── SessionDivider.tsx     # Visual session separator
-│   │   ├── memory/               # Knowledge graph visualization
-│   │   │   ├── MemoryExplorer.tsx     # Main memory view (route: /memory)
-│   │   │   ├── GraphCanvas.tsx        # Force-directed graph (react-force-graph-2d)
-│   │   │   ├── EntityList.tsx         # Searchable entity list
-│   │   │   ├── NodeInspector.tsx      # Entity detail + relationships
-│   │   │   ├── MemoryCorrection.tsx   # NLP correction input
-│   │   │   ├── CortexJobStatus.tsx    # Real-time async job status panel
-│   │   │   └── types.ts              # Graph data types
-│   │   ├── notion/               # Notion export & corrections
-│   │   │   └── NotionExportPage.tsx   # Full page (route: /notion): config form, export pipeline, corrections pipeline
-│   │   ├── layout/
-│   │   │   └── AppLayout.tsx          # Sidebar + outlet shell (responsive)
-│   │   ├── settings/
-│   │   │   ├── PersonaSettings.tsx    # Persona CRUD interface
-│   │   │   ├── PersonaForm.tsx        # Reusable persona form
-│   │   │   └── EmojiPicker.tsx        # Emoji picker for persona icons
-│   │   ├── sidebar/
-│   │   │   ├── Sidebar.tsx            # Thread list + navigation
-│   │   │   └── ThreadItem.tsx         # Memoized thread list item
-│   │   └── ui/                   # Reusable UI primitives (shadcn, sonner toasts)
-│   ├── contexts/
-│   │   ├── ChatContext.tsx        # Chat state provider (thread-scoped messages)
-│   │   └── useChatContext.ts      # Chat context hook
-│   ├── lib/
-│   │   ├── utils.ts               # Utility functions
-│   │   └── markdown-security.ts   # Markdown sanitization
-│   ├── App.tsx                    # Routes (/, /t/:threadId, /settings/personas, /memory, /notion)
-│   ├── main.tsx                   # Entry point (BrowserRouter + providers)
-│   └── index.css                  # Global styles + Tailwind
+├── packages/
+│   └── backend/
+│       └── convex/                       # Convex backend (serverless functions + database)
+│           ├── schema.ts                 # Database schema (9 tables, indexed; includes user_memory + user_knowledge_cache)
+│           ├── users.ts                  # User management + customInstructions
+│           ├── personas.ts               # Persona CRUD + default templates
+│           ├── threads.ts                # Thread CRUD + cascade delete
+│           ├── sessions.ts               # Session lifecycle (3h auto-close, snapshot, forceClose, draft creation)
+│           ├── messages.ts               # Message mutations/queries (streaming support, analytics)
+│           ├── http.ts                   # HTTP streaming endpoint (direct client streaming, single DB write)
+│           ├── chat.ts                   # Context preparation (reads user_knowledge_cache, session snapshot, R2 URLs)
+│           ├── cortex.ts                 # Cortex integration (hydrate → user_memory + user_knowledge_cache)
+│           ├── cortexJobs.ts             # Job queue management (enqueue, status, retry)
+│           ├── cortexProcessor.ts        # Job processor (ingest + poll → user_memory + user_knowledge_cache; correction; retry)
+│           ├── userMemory.ts             # User memory stats (public query for frontend, internal upsert with early return)
+│           ├── userKnowledgeCache.ts     # User knowledge cache (internal only — never exposed to frontend)
+│           ├── graph.ts                  # Knowledge graph queries + NLP corrections
+│           ├── notion.ts                 # Notion actions: startExport, getExportStatus, startCorrections, getCorrectionsStatus
+│           ├── notionConfig.ts           # Notion config query/mutation
+│           └── auth.config.ts            # Clerk auth configuration
+├── apps/
+│   ├── web/src/                          # Web frontend (React 19 + Vite)
+│   │   ├── components/
+│   │   │   ├── chat/
+│   │   │   │   ├── ChatView.tsx           # Thread chat view + MemoryStatus indicator (route: /t/:threadId)
+│   │   │   │   ├── ChatInput.tsx          # Message input with threadId
+│   │   │   │   ├── MessageList.tsx        # Messages with auto-scroll + isLast tracking
+│   │   │   │   ├── MessageItem.tsx        # Message rendering (streaming, RagBadge on last message)
+│   │   │   │   ├── MemoryPulse.tsx        # Home screen memory stats (entity+relationship count, tokens, description)
+│   │   │   │   ├── PersonaSelector.tsx    # Inline persona selection + MemoryPulse (route: /)
+│   │   │   │   └── SessionDivider.tsx     # Visual session separator
+│   │   │   ├── memory/                    # Knowledge graph visualization
+│   │   │   ├── notion/                    # Notion export & corrections
+│   │   │   ├── layout/                    # AppLayout shell
+│   │   │   ├── settings/                  # Persona CRUD
+│   │   │   ├── sidebar/                   # Thread list + navigation
+│   │   │   └── ui/                        # Reusable UI primitives (shadcn, sonner)
+│   │   ├── contexts/                      # ChatContext, ThemeContext
+│   │   ├── hooks/                         # useStreamResponse, etc.
+│   │   ├── i18n/locales/{en,es}/          # Internationalization (EN + ES)
+│   │   └── lib/                           # Utils, markdown security
+│   └── mobile/src/                        # Mobile frontend (Expo + React Native)
+│       ├── components/
+│       │   ├── MessageList.tsx            # Messages (inverted FlatList, session dividers, isLast tracking)
+│       │   ├── MessageItem.tsx            # Message rendering (streaming, RagBadge on last message)
+│       │   ├── MemoryPulse.tsx            # Home screen memory stats (native)
+│       │   └── ...                        # Other native components
+│       ├── app/(home)/
+│       │   ├── index.tsx                  # Home + PersonaSelector + MemoryPulse
+│       │   └── [threadId].tsx             # Chat view + MobileMemoryStatus
+│       └── i18n/locales/{en,es}/          # Internationalization (EN + ES)
 └── package.json
 ```
 
@@ -710,8 +744,9 @@ synapse-ai-chat/
 
 | Layer                   | Technology                                                         |
 | ----------------------- | ------------------------------------------------------------------ |
-| **Frontend**            | React 19, TypeScript, Vite, React Router DOM                       |
-| **Styling**             | TailwindCSS, Shadcn/UI components, Sonner (toasts)                 |
+| **Web Frontend**        | React 19, TypeScript, Vite, React Router DOM                       |
+| **Mobile Frontend**     | Expo (React Native), TypeScript, Expo Router                       |
+| **Styling (Web)**       | TailwindCSS, Shadcn/UI components, Sonner (toasts)                 |
 | **Backend**             | Convex (realtime database + serverless functions + scheduled jobs) |
 | **Auth**                | Clerk (JWT-based, verified on every backend call)                  |
 | **LLM**                 | Synapse Cortex API (OpenRouter-compatible, uses Gemini 2.5 Flash)  |
@@ -776,26 +811,32 @@ synapse-ai-chat/
 ## Key Implementation Decisions
 
 1. **Session auto-close timer: 3 hours** — balances conversational coherence with knowledge graph freshness. Shorter timers mean more frequent ingestion.
-2. `**cachedUserKnowledge` is optional** — `undefined` for the first session before any ingestion; handles race conditions where hydration hasn't completed yet.
-3. **Knowledge hydration via `/hydrate**` — scheduled as a background action on session creation. Cheap Cypher query, no AI processing, so it's fast and low-cost.
-4. **Session-scoped message context** — `getRecent` fetches the last 20 messages by `sessionId` for the current session only. Previous sessions are already ingested into Cortex (`cachedUserKnowledge`), so cross-session continuity comes from the knowledge graph rather than raw message history.
-5. **Inline persona selection (no modal)** — content area shows `PersonaSelector` card grid. Selecting one creates the thread and navigates directly.
-6. **Thread deletion cascade** — deletes all sessions + messages for the thread in a single mutation.
-7. **NLP-based memory corrections** — instead of manual entity editing, users submit natural language corrections that Graphiti processes through its entity resolution pipeline.
-8. **Async job queue over fire-and-forget** — Cortex API calls (ingestion: 30-200s, corrections: 30-60s) are too slow and unreliable for synchronous execution. Ingest uses an async API: POST /ingest returns 202 immediately, and `pollIngestStatus` polls GET /ingest/status until completed (5m first, then 10m intervals, up to ~55 min). A persistent `cortex_jobs` table with a recursive processor gives resilience (slow-backoff retry on POST failures), observability (real-time UI), and auditability (job history). The "bouncer" pattern (enqueue + schedule immediately) minimizes latency while decoupling from the caller.
-9. **Routing:** `react-router-dom` with paths `/`, `/t/:threadId`, `/settings/personas`, `/memory`, and `/notion`. Sidebar persists via `AppLayout` with `<Outlet />`.
-10. **React performance patterns:** `content-visibility: auto` for message lists, `useTransition` for form submissions, `React.memo` for thread items, functional setState, passive scroll listeners.
-11. **HTTP streaming for bandwidth optimization** — streaming bypasses the DB entirely during generation; content flows directly from Cortex to the client via HTTP. A single atomic write at the end persists the result. This reduces reactive query re-execution from N writes to 1, lowering Convex bandwidth usage.
-12. **Full-context injection over RAG** — see rationale below.
+2. **Centralized user knowledge** — knowledge is stored once per user in `user_knowledge_cache`, not per session. Eliminates ~30K string duplication. `chat.prepareContext` reads from the cache with a backwards-compat fallback to legacy session fields.
+3. **2-table memory split** — `user_memory` (~200 bytes, stats only) is the only table the frontend subscribes to. `user_knowledge_cache` (~30K, knowledge blob) is internal-only. This minimizes Convex reactive query bandwidth since Convex charges per full document read regardless of field projection.
+4. **Early return on unchanged stats** — `userMemory.upsert` compares all fields before calling `db.patch`. If nothing changed (common during re-hydration), the write is skipped entirely, preventing unnecessary reactive subscription triggers.
+5. **Single Cortex call per ingest** — `graphStats` is included in the `IngestStatusResponse`, so the poll completion path writes both tables directly without a separate hydration call.
+6. **Knowledge hydration via `/hydrate`** — scheduled as a background action on session creation. Compiles knowledge and graph stats in one call, updating both `user_memory` and `user_knowledge_cache`.
+7. **Session-scoped message context** — `getRecent` fetches the last 20 messages by `sessionId` for the current session only. Previous sessions are already ingested into Cortex, so cross-session continuity comes from the knowledge graph (`user_knowledge_cache`) rather than raw message history.
+8. **Inline persona selection (no modal)** — content area shows `PersonaSelector` card grid. Selecting one creates the thread and navigates directly.
+9. **Thread deletion cascade** — deletes all sessions + messages for the thread in a single mutation.
+10. **NLP-based memory corrections** — instead of manual entity editing, users submit natural language corrections that Graphiti processes through its entity resolution pipeline.
+11. **Async job queue over fire-and-forget** — Cortex API calls (ingestion: 30-200s, corrections: 30-60s) are too slow and unreliable for synchronous execution. Ingest uses an async API: POST /ingest returns 202 immediately, and `pollIngestStatus` polls GET /ingest/status until completed (5m first, then 10m intervals, up to ~55 min). A persistent `cortex_jobs` table with a recursive processor gives resilience (slow-backoff retry on POST failures), observability (real-time UI), and auditability (job history). The "bouncer" pattern (enqueue + schedule immediately) minimizes latency while decoupling from the caller.
+12. **Routing:** `react-router-dom` with paths `/`, `/t/:threadId`, `/settings/personas`, `/memory`, and `/notion`. Sidebar persists via `AppLayout` with `<Outlet />`.
+13. **React performance patterns:** `content-visibility: auto` for message lists, `useTransition` for form submissions, `React.memo` for thread items, functional setState, passive scroll listeners.
+14. **HTTP streaming for bandwidth optimization** — streaming bypasses the DB entirely during generation; content flows directly from Cortex to the client via HTTP. A single atomic write at the end persists the result. This reduces reactive query re-execution from N writes to 1, lowering Convex bandwidth usage.
+15. **Hybrid knowledge strategy** — full-context injection by default, with deterministic GraphRAG for large graphs. See details below.
 
-### Why Full-Context Injection Instead of RAG
+### Hybrid Knowledge Strategy: Full-Context + GraphRAG
 
-A common approach for knowledge-augmented LLMs is Retrieval-Augmented Generation (RAG), where the system retrieves relevant chunks per query and injects only those into the prompt. Synapse AI Chat intentionally takes a different approach: **the entire compiled user knowledge is injected into the system prompt on every request**. Here's why:
+Synapse uses a **hybrid approach** to inject user knowledge into the AI's context:
 
-1. **Better connection-building by the LLM.** Although Graphiti supports semantic search over the graph to retrieve context per query, giving the LLM the full knowledge picture produces higher-quality responses. The model doesn't have to "ask" for specific data it can see the full landscape of what it knows about the user and draw connections between seemingly unrelated facts on its own. This leads to more insightful, contextually rich answers.
-2. **Curated, condensed knowledge keeps context small.** Gemini models offer large context windows, but we don't blindly dump everything in. Graphiti's graph maintenance does the heavy lifting: invalidated nodes are pruned, disconnected nodes are ignored, and the compilation is a condensed summary, not raw conversation logs. Combined with scoping message history to the last 20 messages, the full context stays relevant and compact despite containing all user knowledge.
-3. **Reduced agent complexity and faster response times.** RAG requires tool-calling patterns (search → retrieve → inject → generate), adding latency and architectural complexity. By pre-loading knowledge into the session snapshot, the AI generates responses in a single pass with no intermediate retrieval steps. This results in faster time-to-first-token and a simpler, more predictable execution flow.
-4. **Future: hybrid strategy for very large knowledge graphs.** As a user's knowledge graph scales significantly, a hybrid approach can be introduced: raise the relevance threshold for what gets included in the base compilation (system prompt), and add a retrieval fallback for when the model needs specifics about a topic not covered in the base context. This keeps the default path fast while handling edge cases.
+1. **Full-context injection by default.** For small-to-medium knowledge graphs, the entire compiled knowledge is injected into the system prompt. This gives the LLM the full picture — it can draw connections between seemingly unrelated facts without needing to "ask" for specific data. Graphiti's graph maintenance keeps the compilation condensed: invalidated nodes are pruned, disconnected nodes are ignored, and the output is a structured summary (not raw conversation logs).
+
+2. **Deterministic GraphRAG for large graphs.** When the knowledge graph exceeds the compilation budget (~30K chars), Cortex's v2 hydration activates **prioritized compilation**: entities and relationships are ranked by relevance, and only the most important ones are included in the base context. The `isPartial` flag is set to `true`, and GraphRAG activates to retrieve long-tail memories on demand. The UI surfaces this via the **Memory Status** indicator ("Dynamic recall active") and **RAG Recall Badge** ("X memories recalled") on assistant messages.
+
+3. **Reduced agent complexity.** The base compilation is pre-loaded into the `user_knowledge_cache` — no per-request retrieval needed for the common case. GraphRAG only activates when the graph is large enough to warrant it, keeping the default path fast (single-pass generation, no intermediate retrieval steps).
+
+4. **Memory awareness.** The `user_memory` table exposes graph stats (`entityCount`, `relationshipCount`, `isPartial`, `totalTokens`) to the frontend via a lightweight reactive subscription (~200 bytes). Users see their memory growing in real time, know when RAG is active, and see per-message recall counts.
 
 ---
 

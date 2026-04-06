@@ -147,28 +147,26 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
                 {thread.title}
               </h1>
             )}
-            {thread.persona.description && (
-              <p className="truncate text-xs text-muted-foreground">
-                {thread.persona.description}
-              </p>
-            )}
+            <MemoryStatusSubtitle />
           </div>
         </div>
 
         {/* Consolidate Memory button */}
-        <button
-          onClick={handleConsolidate}
-          disabled={consolidating}
-          className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
-          title={t("chatView.consolidateMemory")}
-        >
-          {consolidating ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Brain className="h-3.5 w-3.5" />
-          )}
-          <span className="hidden sm:inline">{t("chatView.consolidate")}</span>
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            onClick={handleConsolidate}
+            disabled={consolidating}
+            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+            title={t("chatView.consolidateMemory")}
+          >
+            {consolidating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Brain className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">{t("chatView.consolidate")}</span>
+          </button>
+        </div>
       </header>
 
       <ChatProvider threadId={threadId}>
@@ -186,5 +184,29 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
         </div>
       </ChatProvider>
     </div>
+  );
+}
+
+// =============================================================================
+// MemoryStatusSubtitle — inline memory indicator below thread title
+// =============================================================================
+
+function MemoryStatusSubtitle() {
+  const stats = useQuery(api.userMemory.get);
+  const { t } = useTranslation("chat");
+
+  if (!stats || (stats.entityCount === 0 && stats.relationshipCount === 0)) {
+    return null;
+  }
+
+  const totalMemories = stats.entityCount + stats.relationshipCount;
+
+  return (
+    <p className="flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
+      <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/70" />
+      <span className="truncate">
+        {t("memoryStatus.memories", { count: totalMemories.toLocaleString() })}
+      </span>
+    </p>
   );
 }

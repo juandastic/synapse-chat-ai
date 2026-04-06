@@ -62,6 +62,19 @@
     "cancel": "Cancel",
     "attachedImage": "Attached image"
   },
+  "memoryPulse": {
+    "label": "Your memory",
+    "memories": "memories",
+    "description": "Every conversation uses your {{count}} memories to give you the most personalized response.",
+    "building": "Your memory will grow with each conversation",
+    "loading": "Loading memory..."
+  },
+  "memoryStatus": {
+    "memories": "{{count}} memories"
+  },
+  "ragBadge": {
+    "memoriesRecalled": "{{count}} memories recalled"
+  },
   "messageList": {
     "loadingConversation": "Loading conversation...",
     "startConversationWith": "Start your conversation with {{name}}",

@@ -49,6 +49,19 @@
     "delete": "Eliminar",
     "attachedImage": "Imagen adjunta"
   },
+  "memoryPulse": {
+    "label": "Tu memoria",
+    "memories": "recuerdos",
+    "description": "Cada conversación usa tus {{count}} recuerdos para darte la respuesta más personalizada.",
+    "building": "Tu memoria se irá construyendo con cada conversación",
+    "loading": "Cargando memoria..."
+  },
+  "memoryStatus": {
+    "memories": "{{count}} recuerdos"
+  },
+  "ragBadge": {
+    "memoriesRecalled": "{{count}} recuerdos consultados"
+  },
   "messageList": {
     "loadingConversation": "Cargando conversación...",
     "startConversationWith": "Inicia tu conversación con {{name}}",

@@ -213,25 +213,28 @@ function ChatHeader({
 
       <View style={s.headerCenter}>
         <PersonaIcon icon={personaIcon} size="sm" />
-        {isEditing ? (
-          <TextInput
-            style={s.titleInput}
-            value={editValue}
-            onChangeText={setEditValue}
-            onBlur={handleTitleSave}
-            onSubmitEditing={handleTitleSave}
-            autoFocus
-            selectTextOnFocus
-            returnKeyType="done"
-            maxLength={200}
-          />
-        ) : (
-          <Pressable onPress={() => { setEditValue(title); setIsEditing(true); }}>
-            <Text style={s.headerTitle} numberOfLines={1}>
-              {title}
-            </Text>
-          </Pressable>
-        )}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          {isEditing ? (
+            <TextInput
+              style={s.titleInput}
+              value={editValue}
+              onChangeText={setEditValue}
+              onBlur={handleTitleSave}
+              onSubmitEditing={handleTitleSave}
+              autoFocus
+              selectTextOnFocus
+              returnKeyType="done"
+              maxLength={200}
+            />
+          ) : (
+            <Pressable onPress={() => { setEditValue(title); setIsEditing(true); }}>
+              <Text style={s.headerTitle} numberOfLines={1}>
+                {title}
+              </Text>
+            </Pressable>
+          )}
+          <MobileMemorySubtitle colors={colors} />
+        </View>
       </View>
 
       <Pressable
@@ -246,6 +249,41 @@ function ChatHeader({
           <Brain size={20} color={colors.accent} />
         )}
       </Pressable>
+    </View>
+  );
+}
+
+// =============================================================================
+// MobileMemorySubtitle — inline memory indicator below thread title
+// =============================================================================
+
+function MobileMemorySubtitle({
+  colors,
+}: {
+  colors: any;
+}) {
+  const stats = useQuery(api.userMemory.get);
+  const { t } = useTranslation("chat");
+
+  if (!stats || (stats.entityCount === 0 && stats.relationshipCount === 0)) {
+    return null;
+  }
+
+  const totalMemories = stats.entityCount + stats.relationshipCount;
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 }}>
+      <View
+        style={{
+          width: 5,
+          height: 5,
+          borderRadius: 2.5,
+          backgroundColor: "rgba(16, 185, 129, 0.7)",
+        }}
+      />
+      <Text style={{ fontSize: 11, color: colors.inkMuted }} numberOfLines={1}>
+        {t("memoryStatus.memories", { count: totalMemories.toLocaleString() })}
+      </Text>
     </View>
   );
 }

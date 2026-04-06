@@ -32,10 +32,17 @@ function extractErrorMessage(error: unknown): string {
 // Types
 // =============================================================================
 
+interface GraphStats {
+  entity_count: number;
+  relationship_count: number;
+  total_chars: number;
+}
+
 interface HydrateResponse {
   success: boolean;
   userKnowledgeCompilation?: string;
   compilationMetadata?: CompilationMetadata | null;
+  graphStats?: GraphStats | null;
   error?: string;
   code?: string;
 }
@@ -110,15 +117,34 @@ export const hydrate = internalAction({
         return;
       }
 
-      await ctx.runMutation(internal.sessions.patchKnowledge, {
-        sessionId: args.sessionId,
-        knowledge: data.userKnowledgeCompilation,
+      // Derive included counts from compilationMetadata
+      const meta = data.compilationMetadata as
+        | { included_node_ids?: string[]; included_edge_ids?: string[]; is_partial?: boolean }
+        | undefined;
+
+      // Write stats to user_memory (lightweight, powers reactive UI)
+      await ctx.runMutation(internal.userMemory.upsert, {
+        userId: args.userId,
+        entityCount: data.graphStats?.entity_count,
+        relationshipCount: data.graphStats?.relationship_count,
+        totalChars: data.graphStats?.total_chars,
+        includedEntityCount: meta?.included_node_ids?.length,
+        includedRelationshipCount: meta?.included_edge_ids?.length,
+        isPartial: meta?.is_partial,
+      });
+
+      // Write knowledge string to cache (heavy, internal only)
+      await ctx.runMutation(internal.userKnowledgeCache.upsert, {
+        userId: args.userId,
+        cachedUserKnowledge: data.userKnowledgeCompilation,
         compilationMetadata: data.compilationMetadata ?? undefined,
       });
 
       console.log("[cortex.hydrate] Success", {
         latencyMs: Date.now() - startTime,
         knowledgeLength: data.userKnowledgeCompilation.length,
+        entityCount: data.graphStats?.entity_count,
+        relationshipCount: data.graphStats?.relationship_count,
       });
     } catch (error) {
       console.warn("[cortex.hydrate] Failed", {

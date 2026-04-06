@@ -7,6 +7,7 @@ import { Id } from "@synapse/backend/dataModel";
 import { cn } from "@/lib/utils";
 import { Logo } from "../ui/logo";
 import { PersonaIcon } from "@/components/ui/PersonaIcon";
+import { MemoryPulse } from "./MemoryPulse";
 
 /**
  * System templates shown based on UI language.
@@ -80,6 +81,7 @@ export function PersonaSelector() {
           <p className="mt-2 text-sm text-muted-foreground text-balance">
             {t("personaSelector.subtitle")}
           </p>
+          <MemoryPulse className="mt-4" />
         </div>
 
         {/* Loading state */}

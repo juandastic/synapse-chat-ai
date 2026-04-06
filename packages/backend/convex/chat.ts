@@ -71,10 +71,19 @@ export const prepareContext = internalAction({
       timeZoneName: "short",
     });
 
+    // Read compiled knowledge from user_knowledge_cache (single source of truth),
+    // falling back to session for users who haven't hydrated since the migration.
+    const knowledgeCache = await ctx.runQuery(
+      internal.userKnowledgeCache.getByUserId,
+      { userId: session.userId }
+    );
+    const userKnowledge =
+      knowledgeCache?.cachedUserKnowledge ?? session.cachedUserKnowledge;
+
     let systemContent = session.cachedSystemPrompt;
     systemContent += `\n\nCurrent date and time: ${currentDateTime}`;
-    if (session.cachedUserKnowledge) {
-      systemContent += `\n\n${session.cachedUserKnowledge}`;
+    if (userKnowledge) {
+      systemContent += `\n\n${userKnowledge}`;
     }
 
     const filteredHistory = history.filter(
@@ -112,11 +121,15 @@ export const prepareContext = internalAction({
 
     const requestId = `gen-${args.sessionId.slice(-6)}-${Date.now().toString(36)}`;
 
+    const compilationMetadata =
+      knowledgeCache?.compilationMetadata ?? session.compilationMetadata;
+
     console.log("[chat.prepareContext] Context ready", {
       requestId,
       sessionId: args.sessionId,
       historyCount: filteredHistory.length,
-      hasUserKnowledge: !!session.cachedUserKnowledge,
+      hasUserKnowledge: !!userKnowledge,
+      knowledgeSource: knowledgeCache?.cachedUserKnowledge ? "user_knowledge_cache" : "session",
       systemPromptLength: systemContent.length,
       messagesWithImages: filteredHistory.filter(
         (m) => m.imageKeys && m.imageKeys.length > 0
@@ -127,7 +140,7 @@ export const prepareContext = internalAction({
       apiMessages,
       userId: session.userId,
       requestId,
-      compilationMetadata: session.compilationMetadata,
+      compilationMetadata,
     };
   },
 });

@@ -28,6 +28,8 @@ import type * as sessions from "../sessions.js";
 import type * as threads from "../threads.js";
 import type * as usage from "../usage.js";
 import type * as usageLimits from "../usageLimits.js";
+import type * as userKnowledgeCache from "../userKnowledgeCache.js";
+import type * as userMemory from "../userMemory.js";
 import type * as users from "../users.js";
 
 import type {
@@ -57,6 +59,8 @@ declare const fullApi: ApiFromModules<{
   threads: typeof threads;
   usage: typeof usage;
   usageLimits: typeof usageLimits;
+  userKnowledgeCache: typeof userKnowledgeCache;
+  userMemory: typeof userMemory;
   users: typeof users;
 }>;
 

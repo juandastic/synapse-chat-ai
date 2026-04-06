@@ -21,6 +21,7 @@ import { captureError } from "../../src/lib/analytics";
 
 import { useColors } from "../../src/contexts/ThemeContext";
 import { PersonaIcon } from "../../src/components/PersonaIcon";
+import { MemoryPulse } from "../../src/components/MemoryPulse";
 
 const TEMPLATES_EN = [
   { key: "therapist-en", icon: "compass", nameKey: "personaTemplates.therapist.name", descKey: "personaTemplates.therapist.description" },
@@ -242,6 +243,7 @@ export default function PersonaSelectorScreen() {
           </View>
           <Text style={s.title}>{t("personaSelector.title")}</Text>
           <Text style={s.subtitle}>{t("personaSelector.subtitle")}</Text>
+          <MemoryPulse />
         </View>
 
         {/* Loading skeleton */}

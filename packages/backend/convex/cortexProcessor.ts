@@ -92,11 +92,18 @@ interface IngestAcceptedResponse {
   compilationMetadata?: CompilationMetadata | null;
 }
 
+interface GraphStats {
+  entity_count: number;
+  relationship_count: number;
+  total_chars: number;
+}
+
 interface IngestStatusResponse {
   jobId: string;
   status: "processing" | "completed" | "failed";
   userKnowledgeCompilation?: string; // only when "completed"
   compilationMetadata?: CompilationMetadata | null;
+  graphStats?: GraphStats | null; // only when "completed"
   metadata?: IngestResponseMetadata; // only when "completed"
   error?: string; // only when "failed"
   code?: string; // only when "failed"
@@ -313,12 +320,32 @@ export const pollIngestStatus = internalAction({
 
       if (data.status === "completed") {
         const knowledge = data.userKnowledgeCompilation ?? null;
-        await createDraft(
-          ctx,
-          payload,
-          knowledge,
-          data.compilationMetadata ?? undefined
-        );
+        await createDraft(ctx, payload);
+
+        // Write knowledge to cache (heavy blob, internal only)
+        if (knowledge) {
+          await ctx.runMutation(internal.userKnowledgeCache.upsert, {
+            userId: payload.userId,
+            cachedUserKnowledge: knowledge,
+            compilationMetadata: data.compilationMetadata ?? undefined,
+          });
+        }
+
+        // Write stats to user_memory (lightweight, powers reactive UI)
+        if (data.graphStats) {
+          const meta = data.compilationMetadata as
+            | { included_node_ids?: string[]; included_edge_ids?: string[]; is_partial?: boolean }
+            | undefined;
+          await ctx.runMutation(internal.userMemory.upsert, {
+            userId: payload.userId,
+            entityCount: data.graphStats.entity_count,
+            relationshipCount: data.graphStats.relationship_count,
+            totalChars: data.graphStats.total_chars,
+            includedEntityCount: meta?.included_node_ids?.length,
+            includedRelationshipCount: meta?.included_edge_ids?.length,
+            isPartial: meta?.is_partial,
+          });
+        }
 
         if (payload.totalChars !== undefined) {
           try {
@@ -473,24 +500,16 @@ async function processIngest(
 
   if (!session) {
     // Session was deleted — create empty draft so thread isn't orphaned
-    await createDraft(ctx, payload, null);
+    await createDraft(ctx, payload);
     return "completed";
   }
-
-  const fallbackKnowledge = session.cachedUserKnowledge ?? null;
-  const fallbackCompilationMetadata = session.compilationMetadata;
 
   const messages = await ctx.runQuery(internal.messages.getBySession, {
     sessionId: payload.closedSessionId,
   });
 
   if (messages.length === 0) {
-    await createDraft(
-      ctx,
-      payload,
-      fallbackKnowledge,
-      fallbackCompilationMetadata
-    );
+    await createDraft(ctx, payload);
     return "completed";
   }
 
@@ -540,13 +559,8 @@ async function processIngest(
   const data: IngestAcceptedResponse = await response.json();
 
   if (data.status === "skipped") {
-    // Skipped ingest does not return compilation payloads; preserve prior cache.
-    await createDraft(
-      ctx,
-      payload,
-      fallbackKnowledge,
-      fallbackCompilationMetadata
-    );
+    // Skipped ingest — create draft without knowledge (user_memory is source of truth)
+    await createDraft(ctx, payload);
     // Track usage for skipped (best-effort)
     if (payload.totalChars !== undefined) {
       try {
@@ -642,39 +656,28 @@ async function processCorrection(
 // Helpers
 // =============================================================================
 
-/** Shorthand: create a draft session with the given knowledge. */
+/** Shorthand: create a draft session (no longer passes knowledge — user_memory is source of truth). */
 async function createDraft(
   ctx: ProcessorCtx,
-  payload: IngestPayload,
-  knowledge: string | null,
-  compilationMetadata?: CompilationMetadata | null
+  payload: IngestPayload
 ): Promise<void> {
   await ctx.runMutation(internal.sessions.createDraftSession, {
     userId: payload.userId,
     threadId: payload.threadId,
-    knowledge,
-    compilationMetadata: compilationMetadata ?? undefined,
   });
 }
 
 /**
- * Best-effort fallback: create a draft inheriting old knowledge
- * after permanent job failure so the thread stays usable.
+ * Best-effort fallback: create a draft session after permanent job failure
+ * so the thread stays usable. No longer passes knowledge — user_memory
+ * already has the latest.
  */
 async function createFallbackDraft(
   ctx: ProcessorCtx,
   payload: IngestPayload
 ): Promise<void> {
   try {
-    const session = await ctx.runQuery(internal.sessions.get, {
-      id: payload.closedSessionId,
-    });
-    await createDraft(
-      ctx,
-      payload,
-      session?.cachedUserKnowledge ?? null,
-      session?.compilationMetadata
-    );
+    await createDraft(ctx, payload);
   } catch (error) {
     console.error("[cortexProcessor] Fallback draft failed", {
       error: error instanceof Error ? error.message : String(error),

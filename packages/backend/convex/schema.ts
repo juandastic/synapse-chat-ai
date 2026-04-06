@@ -146,6 +146,55 @@ export default defineSchema({
     .index("by_session", ["sessionId"]),
 
   // ===========================================================================
+  // User Memory
+  // ===========================================================================
+  /**
+   * Single source of truth for compiled knowledge + graph statistics per user.
+   * Updated on every hydration. Replaces per-session cachedUserKnowledge
+   * duplication (sessions retain the field for backwards compat but new code
+   * reads/writes here instead).
+   */
+  /**
+   * Lightweight stats for the frontend (reactive subscriptions).
+   * ~200 bytes per doc — safe for frequent reactive reads.
+   */
+  user_memory: defineTable({
+    userId: v.id("users"),
+
+    // Graph totals (all entities/relationships in Neo4j for this user)
+    entityCount: v.number(),
+    relationshipCount: v.number(),
+
+    // Included in compilation (prioritized for context window)
+    includedEntityCount: v.number(),
+    includedRelationshipCount: v.number(),
+
+    // Total graph content size (sum of all entity summaries + relationship facts)
+    // Grows with actual memory, not capped by compilation budget
+    totalChars: v.number(),
+    totalTokens: v.number(),
+
+    // true = compilation budget exceeded, RAG active for long-tail memories
+    isPartial: v.boolean(),
+
+    lastUpdatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  /**
+   * Heavy knowledge cache — internal only, never sent to frontend.
+   * Contains the ~30K compiled knowledge string + compilation metadata.
+   * Read by chat.prepareContext (internal query, non-reactive).
+   */
+  user_knowledge_cache: defineTable({
+    userId: v.id("users"),
+    /** Cortex-compiled user knowledge — the string injected into AI context */
+    cachedUserKnowledge: v.string(),
+    /** Opaque Cortex metadata (included_node_ids, included_edge_ids, etc.) */
+    compilationMetadata: v.optional(v.any()),
+    lastUpdatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  // ===========================================================================
   // Usage Tracking
   // ===========================================================================
   /**

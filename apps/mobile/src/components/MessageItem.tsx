@@ -72,12 +72,14 @@ const StreamingText = memo(function StreamingText({
 interface MessageItemProps {
   message: Doc<"messages">;
   isStreaming?: boolean;
+  isLast?: boolean;
   onLongPress?: (message: Doc<"messages">) => void;
 }
 
 export const MessageItem = memo(function MessageItem({
   message,
   isStreaming = false,
+  isLast = false,
   onLongPress,
 }: MessageItemProps) {
   const colors = useColors();
@@ -276,6 +278,14 @@ export const MessageItem = memo(function MessageItem({
         )}
       </View>
 
+      {/* RAG recall badge — only on last assistant message */}
+      {isLast && !isUser && message.metadata?.ragEnabled && (
+        <RagBadge
+          count={(message.metadata.ragNodes ?? 0) + (message.metadata.ragEdges ?? 0)}
+          colors={colors}
+        />
+      )}
+
       {/* Timestamp */}
       {(!isEmpty || hasImages) && (
         <Text
@@ -290,6 +300,19 @@ export const MessageItem = memo(function MessageItem({
     </Pressable>
   );
 });
+
+function RagBadge({ count, colors }: { count: number; colors: any }) {
+  const { t } = useTranslation("chat");
+  if (count === 0) return null;
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingHorizontal: 4 }}>
+      <Text style={{ fontSize: 11, color: colors.inkMuted, opacity: 0.5 }}>
+        ✦ {t("ragBadge.memoriesRecalled", { count })}
+      </Text>
+    </View>
+  );
+}
 
 function PulsingDot({ delay, dotStyle }: { delay: number; dotStyle: object }) {
   const opacity = useRef(new Animated.Value(0.3)).current;

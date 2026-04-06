@@ -132,13 +132,15 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
               message.role === "assistant" &&
               message.completedAt === undefined;
 
+            const isLast = index === messages.length - 1;
+
             return (
               <Fragment key={message._id}>
                 {showSessionDivider && (
                   <SessionDivider timestamp={message._creationTime} />
                 )}
                 <div className="message-item">
-                  <MessageItem message={message} isStreaming={isStreaming} />
+                  <MessageItem message={message} isStreaming={isStreaming} isLast={isLast} />
                 </div>
               </Fragment>
             );

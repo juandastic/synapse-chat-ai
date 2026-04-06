@@ -301,6 +301,8 @@ export function ChatInput({ threadId }: ChatInputProps) {
             }
             placeholderTextColor={colors.inkMuted}
             multiline
+            // @ts-expect-error -- bounces is not in RN types but passed through to UIScrollView on iOS
+            bounces={false}
             maxLength={10000}
             editable={!isDisabled}
             returnKeyType="default"

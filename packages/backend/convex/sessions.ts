@@ -8,7 +8,6 @@ import {
 import { internal } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
 import { getOrCreateUser } from "./users";
-import { CompilationMetadata } from "./cortexConfig";
 
 // =============================================================================
 // Configuration
@@ -144,23 +143,13 @@ export async function getOrCreateActiveSession(
     user?.customInstructions
   );
 
-  // Inherit knowledge from the most recent closed session in this thread
-  // (or undefined if this is the first session)
-  let cachedUserKnowledge: string | undefined;
-  if (existingSession?.cachedUserKnowledge) {
-    cachedUserKnowledge = existingSession.cachedUserKnowledge;
-  }
-  const compilationMetadata: CompilationMetadata | undefined =
-    existingSession?.compilationMetadata;
-
   // Create new session with snapshot
+  // Knowledge is now read from user_memory table — no longer stored per session
   const sessionId = await ctx.db.insert("sessions", {
     userId,
     threadId,
     status: "active",
     cachedSystemPrompt,
-    cachedUserKnowledge,
-    compilationMetadata,
     startedAt: now,
     lastMessageAt: now,
   });
@@ -182,8 +171,6 @@ export async function getOrCreateActiveSession(
     threadId,
     userId,
     hadPreviousSession: !!existingSession,
-    hasInheritedKnowledge: !!cachedUserKnowledge,
-    hasInheritedCompilationMetadata: compilationMetadata !== undefined,
   });
 
   return newSession;
@@ -281,19 +268,18 @@ export const autoClose = internalMutation({
 });
 
 /**
- * Create a draft session pre-loaded with user knowledge from Cortex.
+ * Create a draft session for a thread after ingest completes.
  * Called by cortexProcessor after a successful (or fallback) ingest.
  *
+ * Knowledge is now read from user_memory table — sessions no longer store it.
+ *
  * Race condition handling: if the user already started a new session
- * while Cortex was processing, we patch its knowledge instead of
- * creating a duplicate.
+ * while Cortex was processing, we skip (no-op).
  */
 export const createDraftSession = internalMutation({
   args: {
     userId: v.id("users"),
     threadId: v.id("threads"),
-    knowledge: v.union(v.string(), v.null()),
-    compilationMetadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     // Check for race condition: user may have started chatting already
@@ -305,38 +291,14 @@ export const createDraftSession = internalMutation({
       .first();
 
     if (existingSession) {
-      // Update existing session with any new draft memory payload.
-      const patch: {
-        cachedUserKnowledge?: string;
-        compilationMetadata?: unknown;
-      } = {};
-      if (args.knowledge) {
-        patch.cachedUserKnowledge = args.knowledge;
-      }
-      if (args.compilationMetadata !== undefined) {
-        patch.compilationMetadata = args.compilationMetadata;
-      }
-
-      if (Object.keys(patch).length > 0) {
-        await ctx.db.patch(existingSession._id, patch);
-        console.log("[sessions.createDraftSession] Updated existing session", {
+      console.log(
+        "[sessions.createDraftSession] Session already exists, skipping",
+        {
           sessionId: existingSession._id,
           threadId: args.threadId,
           userId: args.userId,
-          hasKnowledge: !!args.knowledge,
-          hasCompilationMetadata: args.compilationMetadata !== undefined,
-          knowledgeLength: args.knowledge?.length ?? 0,
-        });
-      } else {
-        console.log(
-          "[sessions.createDraftSession] Session exists, no knowledge update",
-          {
-            sessionId: existingSession._id,
-            threadId: args.threadId,
-            userId: args.userId,
-          }
-        );
-      }
+        }
+      );
       return existingSession._id;
     }
 
@@ -364,15 +326,13 @@ export const createDraftSession = internalMutation({
       user?.customInstructions
     );
 
-    // Create new draft session
+    // Create new draft session — knowledge is read from user_memory at query time
     const now = Date.now();
     const sessionId = await ctx.db.insert("sessions", {
       userId: args.userId,
       threadId: args.threadId,
       status: "active",
       cachedSystemPrompt,
-      cachedUserKnowledge: args.knowledge ?? undefined,
-      compilationMetadata: args.compilationMetadata,
       startedAt: now,
       lastMessageAt: now,
     });
@@ -381,9 +341,6 @@ export const createDraftSession = internalMutation({
       sessionId,
       threadId: args.threadId,
       userId: args.userId,
-      hasKnowledge: !!args.knowledge,
-      hasCompilationMetadata: args.compilationMetadata !== undefined,
-      knowledgeLength: args.knowledge?.length ?? 0,
     });
 
     return sessionId;
@@ -445,42 +402,6 @@ export const updateStatus = internalMutation({
       sessionId: args.sessionId,
       from: previousStatus,
       to: args.status,
-    });
-  },
-});
-
-/**
- * Patch a session's cachedUserKnowledge.
- * Called by cortex.hydrate after fetching knowledge from Cortex /hydrate endpoint.
- */
-export const patchKnowledge = internalMutation({
-  args: {
-    sessionId: v.id("sessions"),
-    knowledge: v.string(),
-    compilationMetadata: v.optional(v.any()),
-  },
-  handler: async (ctx, args) => {
-    const session = await ctx.db.get(args.sessionId);
-    if (!session) {
-      console.warn("[sessions.patchKnowledge] Session not found", {
-        sessionId: args.sessionId,
-      });
-      return;
-    }
-
-    const patch: { cachedUserKnowledge: string; compilationMetadata?: unknown } =
-      {
-        cachedUserKnowledge: args.knowledge,
-      };
-    if (args.compilationMetadata !== undefined) {
-      patch.compilationMetadata = args.compilationMetadata;
-    }
-    await ctx.db.patch(args.sessionId, patch);
-
-    console.log("[sessions.patchKnowledge] Patched knowledge", {
-      sessionId: args.sessionId,
-      knowledgeLength: args.knowledge.length,
-      hasCompilationMetadata: args.compilationMetadata !== undefined,
     });
   },
 });
