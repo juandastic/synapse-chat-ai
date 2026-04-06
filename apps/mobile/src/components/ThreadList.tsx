@@ -23,8 +23,21 @@ import { useColors, useTheme } from "../contexts/ThemeContext";
 import { ThreadListItem } from "./ThreadListItem";
 
 export function ThreadList({ navigation }: DrawerContentComponentProps) {
-  const threads = useQuery(api.threads.list);
+  const rawThreads = useQuery(api.threads.list);
+  const personas = useQuery(api.personas.list);
   const removeThread = useMutation(api.threads.remove);
+
+  // Frontend persona join — personas.list is shared with the home screen
+  const threads = useMemo(() => {
+    if (!rawThreads) return rawThreads; // preserve undefined for loading state
+    const personaMap = new Map(
+      (personas ?? []).map((p) => [p._id, { name: p.name, icon: p.icon }])
+    );
+    return rawThreads.map((thread) => ({
+      ...thread,
+      persona: personaMap.get(thread.personaId) ?? { name: "Unknown", icon: "❓" },
+    }));
+  }, [rawThreads, personas]);
   const router = useRouter();
   const { signOut } = useAuth();
   const { user } = useUser();

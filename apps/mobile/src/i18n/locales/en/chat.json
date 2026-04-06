@@ -1,7 +1,13 @@
 {
   "personaSelector": {
-    "title": "Start a new conversation",
-    "subtitle": "Choose a companion to begin. Each brings evidence-based expertise and grows with your story.",
+    "greetingWithName": "Welcome back, {{name}}",
+    "greetingReturning": "Welcome back",
+    "greetingNew": "Welcome to Synapse",
+    "subtitleReturning": "Pick up where you left off, or start something new.",
+    "subtitleNew": "Choose a companion to begin. Each one grows with your story.",
+    "recentThreads": "Recent conversations",
+    "newConversation": "Start a new conversation",
+    "viewAll": "View all conversations",
     "templates": "Templates",
     "creating": "Creating your conversation..."
   },
@@ -70,7 +76,7 @@
     "loading": "Loading memory..."
   },
   "memoryStatus": {
-    "memories": "{{count}} memories"
+    "memories": "Using {{count}} memories"
   },
   "ragBadge": {
     "memoriesRecalled": "{{count}} memories recalled"

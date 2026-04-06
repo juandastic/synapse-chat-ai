@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
@@ -22,8 +22,14 @@ export function ChatView() {
   // Validate threadId param
   if (!threadId) {
     return (
-      <div className="flex h-full items-center justify-center text-muted-foreground">
+      <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
         <p className="text-sm">{t("chatView.threadNotFound")}</p>
+        <Link
+          to="/"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          {t("personaSelector.title")}
+        </Link>
       </div>
     );
   }
@@ -113,8 +119,14 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
   // Thread not found or unauthorized
   if (thread === null) {
     return (
-      <div className="flex h-full items-center justify-center text-muted-foreground">
+      <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
         <p className="text-sm">{t("chatView.threadAccessDenied")}</p>
+        <Link
+          to="/"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          {t("personaSelector.title")}
+        </Link>
       </div>
     );
   }

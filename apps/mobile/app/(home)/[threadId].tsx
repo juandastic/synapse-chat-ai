@@ -10,14 +10,14 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { useQuery, useMutation } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
-import { Menu, Brain } from "lucide-react-native";
+import { Menu, Brain, Trash2 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { captureError } from "../../src/lib/analytics";
 
@@ -34,6 +34,8 @@ export default function ChatScreen() {
   const { t } = useTranslation("chat");
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const navigation = useNavigation();
+  const router = useRouter();
 
   const s = useMemo(() => StyleSheet.create({
     root: {
@@ -47,6 +49,20 @@ export default function ChatScreen() {
       justifyContent: "center",
       gap: 12,
     },
+    fallbackHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 12,
+      paddingBottom: 10,
+      backgroundColor: colors.paper,
+    },
+    fallbackMenuButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     loadingText: {
       fontSize: 14,
       color: colors.inkMuted,
@@ -54,6 +70,18 @@ export default function ChatScreen() {
     errorText: {
       fontSize: 15,
       color: colors.error,
+    },
+    goHomeButton: {
+      marginTop: 8,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 12,
+      backgroundColor: colors.accent,
+    },
+    goHomeText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#fff",
     },
     header: {
       flexDirection: "row",
@@ -101,17 +129,45 @@ export default function ChatScreen() {
 
   if (thread === undefined) {
     return (
-      <View style={[s.centered, { paddingTop: insets.top }]}>
-        <ActivityIndicator color={colors.accent} />
-        <Text style={s.loadingText}>{t("chatView.loadingThread")}</Text>
+      <View style={[s.root, { paddingTop: insets.top }]}>
+        <View style={s.fallbackHeader}>
+          <Pressable
+            style={s.fallbackMenuButton}
+            onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+            accessibilityLabel="Open menu"
+          >
+            <Menu size={22} color={colors.ink} />
+          </Pressable>
+        </View>
+        <View style={s.centered}>
+          <ActivityIndicator color={colors.accent} />
+          <Text style={s.loadingText}>{t("chatView.loadingThread")}</Text>
+        </View>
       </View>
     );
   }
 
   if (thread === null) {
     return (
-      <View style={[s.centered, { paddingTop: insets.top }]}>
-        <Text style={s.errorText}>{t("chatView.threadAccessDenied")}</Text>
+      <View style={[s.root, { paddingTop: insets.top }]}>
+        <View style={s.fallbackHeader}>
+          <Pressable
+            style={s.fallbackMenuButton}
+            onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+            accessibilityLabel="Open menu"
+          >
+            <Menu size={22} color={colors.ink} />
+          </Pressable>
+        </View>
+        <View style={s.centered}>
+          <Text style={s.errorText}>{t("chatView.threadAccessDenied")}</Text>
+          <Pressable
+            style={s.goHomeButton}
+            onPress={() => router.replace("/(home)" as never)}
+          >
+            <Text style={s.goHomeText}>{t("personaSelector.title")}</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -156,11 +212,14 @@ function ChatHeader({
   colors: any;
 }) {
   const { t } = useTranslation("chat");
+  const { t: ts } = useTranslation("sidebar");
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const router = useRouter();
   const posthog = usePostHog();
   const updateTitle = useMutation(api.threads.updateTitle);
   const forceClose = useMutation(api.sessions.forceClose);
+  const removeThread = useMutation(api.threads.remove);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -200,6 +259,29 @@ function ChatHeader({
       setIsConsolidating(false);
     }
   }, [forceClose, threadId, t, posthog]);
+
+  const handleDelete = useCallback(() => {
+    Alert.alert(
+      ts("deleteThreadTitle", { title }),
+      ts("deleteThreadDescription"),
+      [
+        { text: ts("cancel"), style: "cancel" },
+        {
+          text: ts("deleteThread"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await removeThread({ threadId });
+              posthog?.capture("thread_deleted_from_chat", { thread_id: threadId });
+              router.replace("/(home)" as never);
+            } catch (err) {
+              captureError(err, { source: "chat_header", action: "delete_thread" });
+            }
+          },
+        },
+      ]
+    );
+  }, [removeThread, threadId, title, ts, posthog, router]);
 
   return (
     <View style={[s.header, { paddingTop: insets.top + 8 }]}>
@@ -248,6 +330,14 @@ function ChatHeader({
         ) : (
           <Brain size={20} color={colors.accent} />
         )}
+      </Pressable>
+
+      <Pressable
+        style={s.headerButton}
+        onPress={handleDelete}
+        accessibilityLabel={ts("deleteThread")}
+      >
+        <Trash2 size={18} color={colors.inkMuted} />
       </Pressable>
     </View>
   );

@@ -37,6 +37,13 @@ export function AppLayout() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [sidebarOpen, closeSidebar]);
 
+  // Allow child components (e.g. PersonaSelector "View all") to open sidebar
+  useEffect(() => {
+    const handleToggle = () => setSidebarOpen(true);
+    window.addEventListener("toggle-sidebar", handleToggle);
+    return () => window.removeEventListener("toggle-sidebar", handleToggle);
+  }, []);
+
   const { theme, toggleTheme } = useTheme();
   const { t: tc } = useTranslation("common");
   const { t: ts } = useTranslation("sidebar");

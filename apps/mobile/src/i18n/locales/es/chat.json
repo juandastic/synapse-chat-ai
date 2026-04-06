@@ -1,7 +1,13 @@
 {
   "personaSelector": {
-    "title": "Iniciar una nueva conversación",
-    "subtitle": "Elige un compañero para comenzar. Cada uno aporta experiencia basada en evidencia y crece con tu historia.",
+    "greetingWithName": "Hola de nuevo, {{name}}",
+    "greetingReturning": "Hola de nuevo",
+    "greetingNew": "Bienvenido a Synapse",
+    "subtitleReturning": "Retoma donde lo dejaste o comienza algo nuevo.",
+    "subtitleNew": "Elige un compañero para comenzar. Cada uno crece con tu historia.",
+    "recentThreads": "Conversaciones recientes",
+    "newConversation": "Iniciar una nueva conversación",
+    "viewAll": "Ver todas las conversaciones",
     "templates": "Plantillas",
     "creating": "Creando tu conversación..."
   },
@@ -70,7 +76,7 @@
     "loading": "Cargando memoria..."
   },
   "memoryStatus": {
-    "memories": "{{count}} recuerdos"
+    "memories": "Usando {{count}} recuerdos"
   },
   "ragBadge": {
     "memoriesRecalled": "{{count}} recuerdos consultados"

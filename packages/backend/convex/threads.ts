@@ -17,7 +17,10 @@ const MAX_TITLE_LENGTH = 200;
 
 /**
  * List all threads for the authenticated user, sorted by lastMessageAt desc.
- * Joins with personas table to include icon and name for sidebar display.
+ *
+ * Returns raw thread documents — no persona join. The frontend performs the
+ * join in-memory using personas.list (already subscribed), saving N persona
+ * reads per query evaluation.
  */
 export const list = query({
   args: {},
@@ -30,39 +33,32 @@ export const list = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    // Batch-join with personas for sidebar display (deduplicate persona IDs)
-    const uniquePersonaIds = [
-      ...new Set(threads.map((t) => t.personaId)),
-    ];
-    const personaMap = new Map(
-      await Promise.all(
-        uniquePersonaIds.map(async (id) => {
-          const persona = await ctx.db.get(id);
-          return [id, persona] as const;
-        })
-      )
-    );
-
-    const threadsWithPersona = threads.map((thread) => {
-      const persona = personaMap.get(thread.personaId);
-      if (!persona) {
-        console.warn("[threads.list] Persona missing for thread", {
-          threadId: thread._id,
-          personaId: thread.personaId,
-        });
-      }
-      return {
-        ...thread,
-        persona: persona
-          ? { name: persona.name, icon: persona.icon }
-          : { name: "Unknown", icon: "❓" },
-      };
-    });
-
     // Sort by most recent activity
-    return [...threadsWithPersona].sort(
+    return [...threads].sort(
       (a, b) => b.lastMessageAt - a.lastMessageAt
     );
+  },
+});
+
+/**
+ * Return the 3 most recent threads (raw, no persona join).
+ * Currently unused — frontend derives from threads.list instead.
+ * Kept as a lightweight alternative if needed in the future.
+ */
+export const listRecent = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    const threads = await ctx.db
+      .query("threads")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    return [...threads]
+      .sort((a, b) => b.lastMessageAt - a.lastMessageAt)
+      .slice(0, 3);
   },
 });
 

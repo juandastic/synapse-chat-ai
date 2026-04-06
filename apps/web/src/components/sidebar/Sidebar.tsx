@@ -1,4 +1,4 @@
-import { useState, useCallback, useTransition } from "react";
+import { useState, useCallback, useTransition, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UserButton } from "@clerk/clerk-react";
@@ -21,10 +21,24 @@ type DeleteDialogState =
   | { type: "confirm"; threadId: Id<"threads">; threadTitle: string };
 
 export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
-  const threads = useQuery(api.threads.list);
+  const rawThreads = useQuery(api.threads.list);
+  const personas = useQuery(api.personas.list);
   const removeThread = useMutation(api.threads.remove);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Frontend persona join — avoids N persona reads in the backend query.
+  // personas.list is already subscribed by PersonaSelector (Convex deduplicates).
+  const threads = useMemo(() => {
+    if (!rawThreads) return rawThreads; // preserve undefined for loading state
+    const personaMap = new Map(
+      (personas ?? []).map((p) => [p._id, { name: p.name, icon: p.icon }])
+    );
+    return rawThreads.map((thread) => ({
+      ...thread,
+      persona: personaMap.get(thread.personaId) ?? { name: "Unknown", icon: "❓" },
+    }));
+  }, [rawThreads, personas]);
 
   const { theme, toggleTheme } = useTheme();
   const { t, i18n } = useTranslation("sidebar");

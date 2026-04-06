@@ -1,10 +1,12 @@
-import { useTransition, useCallback } from "react";
+import { useTransition, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
+import { useUser } from "@clerk/clerk-react";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
 import { cn } from "@/lib/utils";
+import { ChevronRight } from "lucide-react";
 import { Logo } from "../ui/logo";
 import { PersonaIcon } from "@/components/ui/PersonaIcon";
 import { MemoryPulse } from "./MemoryPulse";
@@ -27,21 +29,67 @@ const TEMPLATES_ES = [
 
 /**
  * Inline persona selector view rendered in the content area when route is "/".
- * Replaces the "New Chat Modal" for a smoother UX.
  *
- * - Shows user's custom personas first
- * - Shows system templates under a divider
- * - On click: creates persona (if template), creates thread, navigates to chat
+ * Shows a unified grid mixing custom personas and un-adopted system templates.
+ * On click: creates persona (if template), creates thread, navigates to chat.
  */
 export function PersonaSelector() {
   const navigate = useNavigate();
+  const { user } = useUser();
   const personas = useQuery(api.personas.list);
+  // Reuse threads.list (already subscribed by Sidebar) — no extra query cost.
+  // Derive top 3 in JS with frontend persona join.
+  const rawThreads = useQuery(api.threads.list);
+  const recentThreads = useMemo(() => {
+    if (!rawThreads || rawThreads.length === 0) return null;
+    const personaMap = new Map(
+      (personas ?? []).map((p) => [p._id, { name: p.name, icon: p.icon }])
+    );
+    return rawThreads.slice(0, 3).map((thread) => ({
+      ...thread,
+      persona: personaMap.get(thread.personaId) ?? { name: "Unknown", icon: "❓" },
+    }));
+  }, [rawThreads, personas]);
   const createFromTemplate = useMutation(api.personas.createFromTemplate);
   const createThread = useMutation(api.threads.create);
   const [isPending, startTransition] = useTransition();
   const { t } = useTranslation("chat");
   const { t: tl, i18n } = useTranslation("landing");
-  const systemTemplates = i18n.language === "es" ? TEMPLATES_ES : TEMPLATES_EN;
+  const allTemplates = i18n.language === "es" ? TEMPLATES_ES : TEMPLATES_EN;
+
+  // Build a unified list: custom personas + un-adopted templates (same visual)
+  type GridItem =
+    | { kind: "persona"; id: string; icon: string; name: string; description?: string }
+    | { kind: "template"; key: string; icon: string; name: string; description: string };
+
+  const gridItems = useMemo<GridItem[]>(() => {
+    if (!personas) return [];
+
+    const items: GridItem[] = personas.map((p) => ({
+      kind: "persona" as const,
+      id: p._id,
+      icon: p.icon,
+      name: p.name,
+      description: p.description,
+    }));
+
+    // Append un-adopted templates (suppress those whose name matches an existing persona)
+    const personaNames = new Set(personas.map((p) => p.name.toLowerCase()));
+    for (const tmpl of allTemplates) {
+      const name = tl(tmpl.nameKey);
+      if (!personaNames.has(name.toLowerCase())) {
+        items.push({
+          kind: "template" as const,
+          key: tmpl.key,
+          icon: tmpl.icon,
+          name,
+          description: tl(tmpl.descKey),
+        });
+      }
+    }
+
+    return items;
+  }, [personas, allTemplates, tl]);
 
   const handleSelectPersona = useCallback(
     (personaId: Id<"personas">) => {
@@ -64,7 +112,18 @@ export function PersonaSelector() {
     [createFromTemplate, createThread, navigate]
   );
 
-  const hasCustomPersonas = personas && personas.length > 0;
+  const hasRecentThreads = recentThreads && recentThreads.length > 0;
+
+  // Context-aware greeting and subtitle
+  const greeting = hasRecentThreads
+    ? (user?.firstName
+        ? t("personaSelector.greetingWithName", { name: user.firstName })
+        : t("personaSelector.greetingReturning"))
+    : t("personaSelector.greetingNew");
+
+  const subtitle = hasRecentThreads
+    ? t("personaSelector.subtitleReturning")
+    : t("personaSelector.subtitleNew");
 
   return (
     <div className="h-full overflow-y-auto">
@@ -76,13 +135,28 @@ export function PersonaSelector() {
             <Logo />
           </div>
           <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-            {t("personaSelector.title")}
+            {greeting}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground text-balance">
-            {t("personaSelector.subtitle")}
+            {subtitle}
           </p>
-          <MemoryPulse className="mt-4" />
         </div>
+
+        {/* Recent conversations */}
+        {hasRecentThreads && (
+          <RecentThreads
+            threads={recentThreads}
+            t={t}
+            onNavigate={(threadId) => navigate(`/t/${threadId}`)}
+          />
+        )}
+
+        {/* Section label for persona grid (returning users only) */}
+        {hasRecentThreads && gridItems.length > 0 && (
+          <h2 className="mb-4 text-sm font-semibold text-foreground">
+            {t("personaSelector.newConversation")}
+          </h2>
+        )}
 
         {/* Loading state */}
         {personas === undefined && (
@@ -96,45 +170,21 @@ export function PersonaSelector() {
           </div>
         )}
 
-        {/* Custom personas */}
-        {hasCustomPersonas && (
-          <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {personas.map((persona) => (
-                <PersonaCard
-                  key={persona._id}
-                  icon={persona.icon}
-                  name={persona.name}
-                  description={persona.description}
-                  disabled={isPending}
-                  onClick={() => handleSelectPersona(persona._id)}
-                />
-              ))}
-            </div>
-
-            {/* Templates divider */}
-            <div className="my-8 flex items-center gap-3">
-              <div className="h-px flex-1 bg-border/50" />
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground/50">
-                {t("personaSelector.templates")}
-              </span>
-              <div className="h-px flex-1 bg-border/50" />
-            </div>
-          </>
-        )}
-
-        {/* System templates */}
-        {personas !== undefined && (
+        {/* Unified personas grid (custom + un-adopted templates) */}
+        {gridItems.length > 0 && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {systemTemplates.map((template) => (
+            {gridItems.map((item) => (
               <PersonaCard
-                key={template.key}
-                icon={template.icon}
-                name={tl(template.nameKey)}
-                description={tl(template.descKey)}
+                key={item.kind === "persona" ? item.id : item.key}
+                icon={item.icon}
+                name={item.name}
+                description={item.description}
                 disabled={isPending}
-                onClick={() => handleSelectTemplate(template.key)}
-                isTemplate
+                onClick={
+                  item.kind === "persona"
+                    ? () => handleSelectPersona(item.id as Id<"personas">)
+                    : () => handleSelectTemplate(item.key)
+                }
               />
             ))}
           </div>
@@ -147,10 +197,105 @@ export function PersonaSelector() {
             <span>{t("personaSelector.creating")}</span>
           </div>
         )}
+
+        {/* Memory pulse — quiet footer */}
+        <MemoryPulse className="mt-10" />
       </div>
       </div>
     </div>
   );
+}
+
+// =============================================================================
+// RecentThreads — "Continue where you left off"
+// =============================================================================
+
+interface RecentThread {
+  _id: string;
+  title: string;
+  lastMessageAt: number;
+  persona: { name: string; icon: string };
+}
+
+function RecentThreads({
+  threads,
+  t,
+  onNavigate,
+}: {
+  threads: RecentThread[];
+  t: (key: string) => string;
+  onNavigate: (threadId: string) => void;
+}) {
+  const { t: ts } = useTranslation("sidebar");
+
+  return (
+    <div className="mb-10">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-foreground">
+          {t("personaSelector.recentThreads")}
+        </h2>
+        <button
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("toggle-sidebar"));
+          }}
+          className="flex items-center gap-0.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {t("personaSelector.viewAll")}
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {threads.map((thread) => (
+          <button
+            key={thread._id}
+            onClick={() => onNavigate(thread._id)}
+            className={cn(
+              "flex items-center gap-3 rounded-xl border border-border/50 bg-card px-4 py-3 text-left shadow-sm transition-all",
+              "hover:border-primary/20 hover:shadow-md hover:scale-[1.01]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "active:scale-[0.98]"
+            )}
+          >
+            <PersonaIcon
+              icon={thread.persona.icon}
+              size="sm"
+              className="shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">
+                {thread.title}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+                {getRelativeTime(thread.lastMessageAt, ts)}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Simple relative time formatter (mirrors sidebar/ThreadItem).
+ */
+function getRelativeTime(
+  timestamp: number,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string {
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  const diffSec = Math.floor(diffMs / 1000);
+
+  if (diffSec < 60) return t("time.justNow");
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return t("time.minutesAgo", { count: diffMin });
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return t("time.hoursAgo", { count: diffHour });
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 30) return t("time.daysAgo", { count: diffDay });
+  const diffMonth = Math.floor(diffDay / 30);
+  return t("time.monthsAgo", { count: diffMonth });
 }
 
 // =============================================================================
@@ -163,7 +308,6 @@ interface PersonaCardProps {
   description?: string;
   disabled: boolean;
   onClick: () => void;
-  isTemplate?: boolean;
 }
 
 function PersonaCard({
@@ -172,7 +316,6 @@ function PersonaCard({
   description,
   disabled,
   onClick,
-  isTemplate,
 }: PersonaCardProps) {
   return (
     <button
@@ -183,8 +326,7 @@ function PersonaCard({
         "hover:border-primary/20 hover:shadow-md hover:scale-[1.02]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "active:scale-[0.98]",
-        "disabled:pointer-events-none disabled:opacity-50",
-        isTemplate && "border-dashed"
+        "disabled:pointer-events-none disabled:opacity-50"
       )}
     >
       <div className="mb-3 transition-transform group-hover:scale-110">
