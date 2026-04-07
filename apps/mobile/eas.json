@@ -9,14 +9,6 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
-      },
-      "env": {
-        "EXPO_PUBLIC_CONVEX_URL": "${EXPO_PUBLIC_CONVEX_URL}",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "${EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY}",
-        "EXPO_PUBLIC_POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY}",
-        "EXPO_PUBLIC_POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}",
-        "EXPO_PUBLIC_DEMO_EMAIL": "${EXPO_PUBLIC_DEMO_EMAIL}",
-        "EXPO_PUBLIC_DEMO_PASSWORD": "${EXPO_PUBLIC_DEMO_PASSWORD}"
       }
     },
     "development-simulator": {
@@ -24,33 +16,13 @@
       "distribution": "internal",
       "ios": {
         "simulator": true
-      },
-      "env": {
-        "EXPO_PUBLIC_CONVEX_URL": "${EXPO_PUBLIC_CONVEX_URL}",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "${EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY}",
-        "EXPO_PUBLIC_POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY}",
-        "EXPO_PUBLIC_POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}",
-        "EXPO_PUBLIC_DEMO_EMAIL": "${EXPO_PUBLIC_DEMO_EMAIL}",
-        "EXPO_PUBLIC_DEMO_PASSWORD": "${EXPO_PUBLIC_DEMO_PASSWORD}"
       }
     },
     "preview": {
-      "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_CONVEX_URL": "${EXPO_PUBLIC_CONVEX_URL}",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "${EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY}",
-        "EXPO_PUBLIC_POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY}",
-        "EXPO_PUBLIC_POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}"
-      }
+      "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "env": {
-        "EXPO_PUBLIC_CONVEX_URL": "${EXPO_PUBLIC_CONVEX_URL}",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "${EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY}",
-        "EXPO_PUBLIC_POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY}",
-        "EXPO_PUBLIC_POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
