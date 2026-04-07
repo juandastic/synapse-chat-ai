@@ -11,6 +11,7 @@ import { Copy, RotateCcw, Trash2 } from "lucide-react-native";
 import { useColors } from "../contexts/ThemeContext";
 import { useChatContext } from "../contexts/useChatContext";
 import { useStreamResponse } from "../hooks/useStreamResponse";
+import { captureError } from "../lib/analytics";
 
 interface MessageActionsProps {
   message: Doc<"messages">;
@@ -44,6 +45,7 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
       void streamResponse(result.assistantMessageId, result.sessionId);
     } catch (err) {
       console.error("[MessageActions] Failed to retry:", err);
+      captureError(err, { source: "message_retry" });
     } finally {
       setIsRetrying(false);
     }
@@ -65,6 +67,7 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
               await deleteMessage({ messageId: message._id });
             } catch (err) {
               console.error("[MessageActions] Failed to delete:", err);
+              captureError(err, { source: "message_delete" });
             }
           },
         },

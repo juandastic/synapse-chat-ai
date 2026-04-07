@@ -19,9 +19,14 @@ export function captureError(
   const type =
     error instanceof Error ? error.name : "UnknownError";
 
-  posthogInstance?.capture("$exception", {
-    $exception_message: message,
-    $exception_type: type,
+  if (!posthogInstance) {
+    console.warn("[captureError] PostHog not initialized yet, error not sent:", message);
+    return;
+  }
+
+  const errorObj = error instanceof Error ? error : new Error(message);
+  console.log("[captureError] Sending to PostHog:", { type, message, source: context.source });
+  posthogInstance.captureException(errorObj, {
     $exception_source: context.source,
     platform: "mobile",
     ...context,

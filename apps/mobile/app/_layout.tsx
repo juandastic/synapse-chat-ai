@@ -16,8 +16,9 @@
  * the two groups. Individual screens don't need to check auth state.
  */
 import "../src/i18n";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Slot, useRouter, useSegments, usePathname } from "expo-router";
+import { View, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/expo";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
@@ -25,7 +26,39 @@ import { ConvexReactClient } from "convex/react";
 import { PostHogProvider, usePostHog } from "posthog-react-native";
 import * as SecureStore from "expo-secure-store";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
+import { captureError } from "../src/lib/analytics";
 import { ThemeProvider, useTheme } from "../src/contexts/ThemeContext";
+
+/** Watches Clerk loading state — if it doesn't load within timeout, reports error and shows fallback. */
+function ClerkLoadingWatchdog({ children }: { children: ReactNode }) {
+  const { isLoaded } = useAuth();
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (isLoaded) return;
+    const timer = setTimeout(() => {
+      console.error("[ClerkWatchdog] Clerk failed to load within 10s");
+      captureError(new Error("Clerk failed to load within 10s — possible native_api_disabled or network error"), {
+        source: "clerk_watchdog",
+      });
+      setTimedOut(true);
+    }, 10_000);
+    return () => clearTimeout(timer);
+  }, [isLoaded]);
+
+  if (timedOut && !isLoaded) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32, backgroundColor: "#fff" }}>
+        <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 8 }}>Connection Error</Text>
+        <Text style={{ fontSize: 14, textAlign: "center", color: "#666", lineHeight: 20 }}>
+          Unable to connect to authentication service. Please check your internet connection and try again.
+        </Text>
+      </View>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 /** StatusBar that adapts to the current theme. */
 function ThemedStatusBar() {
@@ -160,39 +193,41 @@ function ScreenTracker() {
 
 export default function RootLayout() {
   return (
-    <ClerkProvider
-      publishableKey={clerkPublishableKey!}
-      tokenCache={tokenCache}
+    <PostHogProvider
+      apiKey={posthogApiKey!}
+      options={{
+        host: posthogHost,
+        errorTracking: {
+          autocapture: {
+            uncaughtExceptions: true,
+            unhandledRejections: true,
+          },
+        },
+      }}
+      autocapture={{
+        captureScreens: false,
+        captureTouches: false,
+      }}
     >
-      <ClerkLoaded>
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-          <PostHogProvider
-            apiKey={posthogApiKey!}
-            options={{
-              host: posthogHost,
-              errorTracking: {
-                autocapture: {
-                  uncaughtExceptions: true,
-                  unhandledRejections: true,
-                },
-              },
-            }}
-            autocapture={{
-              captureScreens: false,
-              captureTouches: false,
-            }}
-          >
-            <PostHogInit />
-            <ScreenTracker />
-            <ThemeProvider>
+      <PostHogInit />
+      <ThemeProvider>
+        <ClerkProvider
+          publishableKey={clerkPublishableKey!}
+          tokenCache={tokenCache}
+        >
+          <ClerkLoadingWatchdog>
+            <ClerkLoaded>
               <ErrorBoundary>
-                <AuthGate />
+                <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+                  <ScreenTracker />
+                  <AuthGate />
+                </ConvexProviderWithClerk>
               </ErrorBoundary>
-              <ThemedStatusBar />
-            </ThemeProvider>
-          </PostHogProvider>
-        </ConvexProviderWithClerk>
-      </ClerkLoaded>
-    </ClerkProvider>
+            </ClerkLoaded>
+          </ClerkLoadingWatchdog>
+        </ClerkProvider>
+        <ThemedStatusBar />
+      </ThemeProvider>
+    </PostHogProvider>
   );
 }

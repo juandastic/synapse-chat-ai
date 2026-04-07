@@ -20,7 +20,11 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Synapse needs access to your photos to attach images to messages.",
         "NSLocalNetworkUsageDescription": "Synapse uses the local network to connect to the development server.",
-        "NSBonjourServices": ["_expo-cdc._tcp"]
+        "NSBonjourServices": [
+          "_expo-cdc._tcp",
+          "_expo-cdc._tcp"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

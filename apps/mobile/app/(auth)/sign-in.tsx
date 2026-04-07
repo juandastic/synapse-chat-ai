@@ -28,6 +28,7 @@ import * as WebBrowser from "expo-web-browser";
 import { Mail, ArrowLeft } from "lucide-react-native";
 
 import { useColors } from "../../src/contexts/ThemeContext";
+import { captureError } from "../../src/lib/analytics";
 
 // Let expo-web-browser finish any pending OAuth redirect when the app reopens
 WebBrowser.maybeCompleteAuthSession();
@@ -182,6 +183,7 @@ export default function SignInScreen() {
       }
     } catch (err) {
       console.error("[SignIn] Google sign-in failed:", err);
+      captureError(err, { source: "sign_in_google" });
       setError(t("signIn.errorGoogle"));
     } finally {
       setLoading(null);
@@ -216,6 +218,7 @@ export default function SignInScreen() {
       console.log("[SignIn] Email sign-in successful");
     } catch (err) {
       console.error("[SignIn] Email sign-in failed:", err);
+      captureError(err, { source: "sign_in_email" });
       setError(t("signIn.errorCredentials"));
       setLoading(null);
     }
@@ -236,6 +239,7 @@ export default function SignInScreen() {
       console.log("[SignIn] Demo sign-in successful");
     } catch (err) {
       console.error("[SignIn] Demo sign-in failed:", err);
+      captureError(err, { source: "sign_in_demo" });
       setError(t("signIn.errorDemo"));
       setLoading(null);
     }

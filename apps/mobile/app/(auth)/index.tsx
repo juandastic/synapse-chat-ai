@@ -36,6 +36,7 @@ import {
   Sparkles,
 } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
+import { captureError } from "../../src/lib/analytics";
 
 import { useColors } from "../../src/contexts/ThemeContext";
 import { IconBadge, Tag, UseCase, ChatBubble } from "../../src/components";
@@ -466,6 +467,7 @@ export default function OnboardingScreen() {
       posthog?.capture("onboarding_completed", { method: "demo" });
     } catch (error) {
       console.error("[Onboarding] Demo sign-in failed:", error);
+      captureError(error, { source: "onboarding_demo_sign_in" });
       setDemoLoading(false);
     }
   };
