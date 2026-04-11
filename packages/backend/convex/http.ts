@@ -193,6 +193,7 @@ http.route({
             messages: apiMessages,
             stream: true,
             user_id: userId,
+            session_id: sessionId,
             ...(compilationMetadata !== undefined && { compilationMetadata }),
           }),
         });
