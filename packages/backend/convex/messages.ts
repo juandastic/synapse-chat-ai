@@ -292,6 +292,14 @@ export const reportStreamFailure = mutation({
       throw new Error("Can only report failure for assistant messages");
     }
 
+    // Don't overwrite a message the server already finalized
+    if (message.completedAt !== undefined) {
+      console.log("[messages.reportStreamFailure] Skipped — already finalized", {
+        messageId: args.messageId,
+      });
+      return;
+    }
+
     const errorContent =
       args.errorMessage ??
       "I'm having trouble responding right now. Please try again.";
@@ -398,6 +406,23 @@ export const resend = mutation({
 // =============================================================================
 
 /**
+ * Persist partial content during generation.
+ * Called as a safety checkpoint when the client disconnects mid-stream,
+ * so progress is not lost if the runtime is terminated.
+ */
+export const updateStreamingContent = internalMutation({
+  args: {
+    id: v.id("messages"),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const message = await ctx.db.get(args.id);
+    if (!message || message.completedAt !== undefined) return;
+    await ctx.db.patch(args.id, { content: args.content });
+  },
+});
+
+/**
  * Persist final content + metadata in a single atomic write.
  * Called by the HTTP streaming endpoint when generation completes (or on tab close).
  */
@@ -434,6 +459,7 @@ export const finalizeGeneration = internalMutation({
     }
 
     await ctx.db.patch(args.id, {
+      type: "text",
       content: args.content,
       metadata: args.metadata,
       completedAt: args.completedAt,

@@ -178,6 +178,7 @@ http.route({
       let finishReason = "stop";
       let modelUsed = DEFAULT_MODEL;
       let usedFallback = false;
+      let clientDisconnected = false;
 
       // Performs the fetch + SSE streaming for a given model.
       // Writes content chunks to the stream and returns the final usage stats.
@@ -247,7 +248,19 @@ http.route({
                 const delta = chunk.choices?.[0]?.delta;
                 if (delta?.content) {
                   content += delta.content;
-                  await writer.write(encoder.encode(delta.content));
+
+                  // Stream to client — non-fatal if client disconnected
+                  if (!clientDisconnected) {
+                    try {
+                      await writer.write(encoder.encode(delta.content));
+                    } catch {
+                      clientDisconnected = true;
+                      console.warn("[http /chat] Client disconnected, continuing generation server-side", {
+                        requestId,
+                        contentLengthSoFar: content.length,
+                      });
+                    }
+                  }
                 }
 
                 if (chunk.choices?.[0]?.finish_reason) {
@@ -351,6 +364,7 @@ http.route({
           requestId,
           model: modelUsed,
           usedFallback,
+          clientDisconnected,
           latencyMs: totalLatencyMs,
           contentLength: content.length,
           tokens: usage?.total_tokens,
@@ -387,6 +401,7 @@ http.route({
         console.error("[http /chat] Stream failed", {
           requestId,
           error: message,
+          clientDisconnected,
           latencyMs,
           contentLength: content.length,
         });
