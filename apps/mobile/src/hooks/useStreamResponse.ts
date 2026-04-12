@@ -93,19 +93,24 @@ export function useStreamResponse() {
           err instanceof Error ? err.message : "Stream failed. Please try again.";
         console.error("[useStreamResponse] Stream failed:", err);
         captureError(err, { source: "stream_response", thread_id: threadId });
+
         stopStreaming();
-        Alert.alert("Error", message);
-        try {
-          await reportStreamFailure({
-            messageId: assistantMessageId,
-            errorMessage:
-              "I'm having trouble responding right now. Please try again.",
-          });
-        } catch (reportErr) {
-          console.error(
-            "[useStreamResponse] Failed to report stream failure:",
-            reportErr
-          );
+
+        const isNetworkError = message === "Network error" || message === "Request timed out";
+        if (!isNetworkError) {
+          Alert.alert("Error", message);
+          try {
+            await reportStreamFailure({
+              messageId: assistantMessageId,
+              errorMessage:
+                "I'm having trouble responding right now. Please try again.",
+            });
+          } catch (reportErr) {
+            console.error(
+              "[useStreamResponse] Failed to report stream failure:",
+              reportErr
+            );
+          }
         }
       }
     },

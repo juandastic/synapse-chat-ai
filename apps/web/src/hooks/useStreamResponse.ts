@@ -68,19 +68,24 @@ export function useStreamResponse() {
         const message =
           err instanceof Error ? err.message : "Stream failed. Please try again.";
         console.error("[useStreamResponse] Stream failed:", err);
+
         stopStreaming();
-        toast.error(message);
-        try {
-          await reportStreamFailure({
-            messageId: assistantMessageId,
-            errorMessage:
-              "I'm having trouble responding right now. Please try again.",
-          });
-        } catch (reportErr) {
-          console.error(
-            "[useStreamResponse] Failed to report stream failure:",
-            reportErr
-          );
+
+        const isNetworkError = message === "Failed to fetch" || message === "Load failed";
+        if (!isNetworkError) {
+          toast.error(message);
+          try {
+            await reportStreamFailure({
+              messageId: assistantMessageId,
+              errorMessage:
+                "I'm having trouble responding right now. Please try again.",
+            });
+          } catch (reportErr) {
+            console.error(
+              "[useStreamResponse] Failed to report stream failure:",
+              reportErr
+            );
+          }
         }
       }
     },

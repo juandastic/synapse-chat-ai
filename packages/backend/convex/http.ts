@@ -249,7 +249,6 @@ http.route({
                 if (delta?.content) {
                   content += delta.content;
 
-                  // Stream to client — non-fatal if client disconnected
                   if (!clientDisconnected) {
                     try {
                       await writer.write(encoder.encode(delta.content));
