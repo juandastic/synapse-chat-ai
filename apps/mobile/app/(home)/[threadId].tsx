@@ -176,7 +176,7 @@ export default function ChatScreen() {
     <ChatProvider threadId={threadId}>
       <KeyboardAvoidingView
         style={s.root}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         keyboardVerticalOffset={0}
       >
         <ChatHeader
