@@ -191,6 +191,14 @@ export default defineSchema({
     cachedUserKnowledge: v.string(),
     /** Opaque Cortex metadata (included_node_ids, included_edge_ids, etc.) */
     compilationMetadata: v.optional(v.any()),
+    /**
+     * Gemini CachedContent resource name (e.g. "cachedContents/abc123") for
+     * the compilation. When present, the chat request forwards it to Cortex
+     * so Gemini serves the compilation as a cached prefix (~75% cheaper on
+     * repeated tokens). Undefined when the compilation was too small to
+     * cache or the upstream cache creation failed.
+     */
+    cacheName: v.optional(v.string()),
     lastUpdatedAt: v.number(),
   }).index("by_user", ["userId"]),
 

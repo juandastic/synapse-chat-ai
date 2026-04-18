@@ -37,6 +37,9 @@ interface StreamChunk {
     rag_edges?: number | null;
     rag_search_ms?: number | null;
     rag_context_chars?: number | null;
+    cache_enabled?: boolean | null;
+    cache_hit?: boolean | null;
+    cache_fallback_triggered?: boolean | null;
   };
 }
 
@@ -109,6 +112,9 @@ http.route({
         role: string;
         content: string | Array<Record<string, unknown>>;
       }>;
+      systemInstruction: string;
+      compilation?: string;
+      cacheName?: string;
       userId: string;
       requestId: string;
       compilationMetadata?: CompilationMetadata;
@@ -145,7 +151,15 @@ http.route({
       });
     }
 
-    const { apiMessages, userId, requestId, compilationMetadata } = context;
+    const {
+      apiMessages,
+      systemInstruction,
+      compilation,
+      cacheName,
+      userId,
+      requestId,
+      compilationMetadata,
+    } = context;
 
     // ── Validate API secret ──────────────────────────────────────────────
     const apiSecret = process.env.SYNAPSE_CORTEX_API_SECRET;
@@ -191,6 +205,18 @@ http.route({
           },
           body: JSON.stringify({
             model,
+            // Send system_instruction and compilation as separate fields so
+            // the server can leverage an active Gemini cache for the
+            // compilation (~75% cheaper on repeated tokens) and fall back
+            // transparently when the cache is missing or expired.
+            system_instruction: systemInstruction,
+            ...(compilation !== undefined && { compilation }),
+            // cache_name is the Gemini CachedContent resource stored by the
+            // client when Cortex returned it from /ingest/status or /hydrate.
+            // The server uses it via cached_content on this request; if it
+            // has expired server-side, Cortex falls back to inlining the
+            // compilation from the same body and retries transparently.
+            ...(cacheName !== undefined && { cache_name: cacheName }),
             messages: apiMessages,
             stream: true,
             user_id: userId,
@@ -384,12 +410,36 @@ http.route({
               latency_ms: totalLatencyMs,
               finish_reason: finishReason,
               rag_enabled: usage?.rag_enabled ?? false,
+              cache_enabled: usage?.cache_enabled ?? false,
+              cache_hit: usage?.cache_hit ?? false,
+              cache_fallback_triggered: usage?.cache_fallback_triggered ?? false,
+              cached_tokens: usage?.cached_tokens ?? 0,
               thread_id: threadId,
               session_id: sessionId,
             },
           });
         } catch {
           // Analytics failure must never affect the user experience
+        }
+
+        // Re-hydrate when Cortex fell back because the Gemini cache expired.
+        // Triggers a fresh cache creation so the next message in this session
+        // doesn't also fall back (caches expire by wallclock, not usage).
+        if (usage?.cache_fallback_triggered) {
+          try {
+            await ctx.scheduler.runAfter(0, internal.cortex.hydrate, {
+              userId: userId as never,
+              sessionId: sessionId as never,
+            });
+          } catch (scheduleError) {
+            console.warn("[http /chat] Failed to schedule re-hydrate", {
+              requestId,
+              error:
+                scheduleError instanceof Error
+                  ? scheduleError.message
+                  : String(scheduleError),
+            });
+          }
         }
       } catch (error) {
         const message =

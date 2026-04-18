@@ -34,6 +34,7 @@ export const upsert = internalMutation({
     userId: v.id("users"),
     cachedUserKnowledge: v.string(),
     compilationMetadata: v.optional(v.any()),
+    cacheName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -44,6 +45,7 @@ export const upsert = internalMutation({
     const fields = {
       cachedUserKnowledge: args.cachedUserKnowledge,
       compilationMetadata: args.compilationMetadata,
+      cacheName: args.cacheName,
       lastUpdatedAt: Date.now(),
     };
 

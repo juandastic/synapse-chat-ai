@@ -105,6 +105,7 @@ interface IngestStatusResponse {
   compilationMetadata?: CompilationMetadata | null;
   graphStats?: GraphStats | null; // only when "completed"
   metadata?: IngestResponseMetadata; // only when "completed"
+  cacheName?: string | null; // Gemini CachedContent resource name (only when cache was created)
   error?: string; // only when "failed"
   code?: string; // only when "failed"
 }
@@ -328,6 +329,7 @@ export const pollIngestStatus = internalAction({
             userId: payload.userId,
             cachedUserKnowledge: knowledge,
             compilationMetadata: data.compilationMetadata ?? undefined,
+            cacheName: data.cacheName ?? undefined,
           });
         }
 

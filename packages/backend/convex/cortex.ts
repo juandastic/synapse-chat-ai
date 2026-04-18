@@ -43,6 +43,7 @@ interface HydrateResponse {
   userKnowledgeCompilation?: string;
   compilationMetadata?: CompilationMetadata | null;
   graphStats?: GraphStats | null;
+  cacheName?: string | null;
   error?: string;
   code?: string;
 }
@@ -138,6 +139,7 @@ export const hydrate = internalAction({
         userId: args.userId,
         cachedUserKnowledge: data.userKnowledgeCompilation,
         compilationMetadata: data.compilationMetadata ?? undefined,
+        cacheName: data.cacheName ?? undefined,
       });
 
       console.log("[cortex.hydrate] Success", {

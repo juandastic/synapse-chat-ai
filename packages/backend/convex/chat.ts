@@ -43,6 +43,9 @@ export const prepareContext = internalAction({
   },
   handler: async (ctx, args): Promise<{
     apiMessages: ApiMessage[];
+    systemInstruction: string;
+    compilation?: string;
+    cacheName?: string;
     userId: string;
     requestId: string;
     compilationMetadata?: CompilationMetadata;
@@ -80,19 +83,21 @@ export const prepareContext = internalAction({
     const userKnowledge =
       knowledgeCache?.cachedUserKnowledge ?? session.cachedUserKnowledge;
 
-    let systemContent = session.cachedSystemPrompt;
-    systemContent += `\n\nCurrent date and time: ${currentDateTime}`;
-    if (userKnowledge) {
-      systemContent += `\n\n${userKnowledge}`;
-    }
+    // Keep persona/system instructions and the compiled knowledge as separate
+    // fields. The server decides whether to inline the compilation into the
+    // prompt or leverage a Gemini CachedContent — on its end the compilation
+    // may live in an explicit cache (75% cheaper on repeated tokens), but the
+    // client always sends everything so the server can fall back transparently
+    // if the cache expired or was never created (small users).
+    const systemInstruction =
+      `${session.cachedSystemPrompt}\n\nCurrent date and time: ${currentDateTime}`;
 
     const filteredHistory = history.filter(
       (m) => m._id !== args.assistantMessageId
     );
 
-    const apiMessages: ApiMessage[] = [
-      { role: "system", content: systemContent },
-    ];
+    // Only user/assistant turns — system is passed as its own field.
+    const apiMessages: ApiMessage[] = [];
 
     for (const m of filteredHistory) {
       const hasImages =
@@ -124,13 +129,20 @@ export const prepareContext = internalAction({
     const compilationMetadata =
       knowledgeCache?.compilationMetadata ?? session.compilationMetadata;
 
+    // Gemini explicit cache ID created by Cortex after hydration. When set,
+    // the server will serve the compilation from cache (~75% cheaper on
+    // repeated tokens) instead of re-processing the inline text.
+    const cacheName = knowledgeCache?.cacheName ?? undefined;
+
     console.log("[chat.prepareContext] Context ready", {
       requestId,
       sessionId: args.sessionId,
       historyCount: filteredHistory.length,
       hasUserKnowledge: !!userKnowledge,
       knowledgeSource: knowledgeCache?.cachedUserKnowledge ? "user_knowledge_cache" : "session",
-      systemPromptLength: systemContent.length,
+      systemInstructionLength: systemInstruction.length,
+      compilationLength: userKnowledge?.length ?? 0,
+      hasCacheName: !!cacheName,
       messagesWithImages: filteredHistory.filter(
         (m) => m.imageKeys && m.imageKeys.length > 0
       ).length,
@@ -138,6 +150,9 @@ export const prepareContext = internalAction({
 
     return {
       apiMessages,
+      systemInstruction,
+      compilation: userKnowledge ?? undefined,
+      cacheName,
       userId: session.userId,
       requestId,
       compilationMetadata,
