@@ -29,11 +29,6 @@
   },
   "submit": {
     "production": {
-      "ios": {
-        "appleId": "${APPLE_ID}",
-        "ascAppId": "${ASC_APP_ID}",
-        "appleTeamId": "${APPLE_TEAM_ID}"
-      },
       "android": {
         "serviceAccountKeyPath": "./google-services.json"
       }

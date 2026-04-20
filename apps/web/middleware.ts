@@ -1,4 +1,4 @@
-import { geolocation } from "@vercel/edge";
+import { geolocation, rewrite } from "@vercel/edge";
 
 export const config = {
   // Apply to app routes, skip internal Vercel paths and static assets.
@@ -57,7 +57,7 @@ const BLOCKED_BODY = `<!doctype html>
 </body>
 </html>`;
 
-export default function middleware(request: Request): Response | undefined {
+export default function middleware(request: Request): Response {
   const { country } = geolocation(request);
   if (country && BLOCKED_COUNTRIES.has(country)) {
     return new Response(BLOCKED_BODY, {
@@ -68,4 +68,7 @@ export default function middleware(request: Request): Response | undefined {
       },
     });
   }
+  // SPA fallback: React Router handles the path client-side.
+  // vercel.json rewrites don't run after middleware matches, so do it here.
+  return rewrite(new URL("/index.html", request.url));
 }
