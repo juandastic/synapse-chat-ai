@@ -1,12 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { Outlet, Link, useOutletContext } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/clerk-react";
 import { useTranslation } from "react-i18next";
 import posthog from "posthog-js";
 import { api } from "@synapse/backend/api";
 import { Sidebar } from "../sidebar/Sidebar";
 import { DemoBanner } from "../ui/DemoBanner";
+import { MemoryIntroToast } from "../chat/MemoryIntroToast";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Moon, Sun } from "lucide-react";
 
@@ -51,6 +52,7 @@ export function AppLayout() {
   const { user } = useUser();
   const convexUser = useQuery(api.users.me);
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
+  const confirmTerms = useMutation(api.users.confirmTerms);
 
   useEffect(() => {
     if (convexUser && user) {
@@ -62,9 +64,19 @@ export function AppLayout() {
     }
   }, [convexUser?._id, usageStatus?.plan]);
 
+  // Fire-and-forget on mount. Backend is idempotent (early-returns if the
+  // flag is already set). We deliberately don't subscribe to the user doc for
+  // this one-shot side effect.
+  useEffect(() => {
+    confirmTerms().catch(() => {
+      /* non-critical; will retry on next mount */
+    });
+  }, [confirmTerms]);
+
   return (
     <div className="flex h-full flex-col">
       {isDemoUser && <DemoBanner />}
+      <MemoryIntroToast />
       <div className="flex min-h-0 flex-1">
       {/* Mobile overlay */}
       {sidebarOpen && (

@@ -29,6 +29,7 @@ import { Mail, ArrowLeft } from "lucide-react-native";
 
 import { useColors } from "../../src/contexts/ThemeContext";
 import { captureError } from "../../src/lib/analytics";
+import { LegalAcceptanceText } from "../../src/components/LegalAcceptanceText";
 
 // Let expo-web-browser finish any pending OAuth redirect when the app reopens
 WebBrowser.maybeCompleteAuthSession();
@@ -111,7 +112,7 @@ export default function SignInScreen() {
       borderRadius: 50,
       paddingVertical: 14,
     },
-    googleIcon: { fontSize: 16, fontWeight: "700" },
+    googleIcon: { fontSize: 16, fontWeight: "700", color: colors.ink },
     googleText: { fontSize: 15, fontWeight: "600", color: colors.ink },
 
     /* Divider */
@@ -365,6 +366,8 @@ export default function SignInScreen() {
             <Text style={s.demoNote}>{t("signIn.demoNote")}</Text>
           </>
         )}
+
+        <LegalAcceptanceText />
       </ScrollView>
     </KeyboardAvoidingView>
   );

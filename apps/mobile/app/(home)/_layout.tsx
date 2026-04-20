@@ -4,10 +4,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StyleSheet } from "react-native";
 import { ThreadList } from "../../src/components/ThreadList";
 import { usePostHogIdentify } from "../../src/hooks/usePostHogIdentify";
+import { useTermsSync } from "../../src/hooks/useTermsSync";
 import { useColors } from "../../src/contexts/ThemeContext";
 
 export default function HomeLayout() {
   usePostHogIdentify();
+  useTermsSync();
   const colors = useColors();
 
   const s = useMemo(() => StyleSheet.create({
@@ -35,6 +37,7 @@ export default function HomeLayout() {
         <Drawer.Screen name="memory" options={{ title: "Memory" }} />
         <Drawer.Screen name="notion" options={{ title: "Notion" }} />
         <Drawer.Screen name="plans" options={{ title: "Plans" }} />
+        <Drawer.Screen name="settings" options={{ title: "Account" }} />
       </Drawer>
     </GestureHandlerRootView>
   );

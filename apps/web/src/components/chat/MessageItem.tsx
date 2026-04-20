@@ -1,6 +1,8 @@
 import { memo, useRef, useEffect, useState, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { Streamdown, defaultRehypePlugins } from "streamdown";
+import posthog from "posthog-js";
+import { toast } from "sonner";
 import { cn, formatMessageTime } from "@/lib/utils";
 import { Doc } from "@synapse/backend/dataModel";
 import { api } from "@synapse/backend/api";
@@ -142,6 +144,12 @@ export const MessageItem = memo(function MessageItem({
             )}
             {isUser && (
               <RetryMessageButton userMessageId={message._id} />
+            )}
+            {!isUser && !isError && (
+              <ReportMessageButton
+                messageId={message._id}
+                threadId={message.threadId}
+              />
             )}
             <DeleteMessageButton messageId={message._id} isUserMessage={isUser} />
           </div>
@@ -353,6 +361,64 @@ const DeleteMessageButton = memo(function DeleteMessageButton({
         />
       </svg>
       <span className="text-[10px]">{confirming ? t("messageItem.sure") : t("messageItem.delete")}</span>
+    </button>
+  );
+});
+
+const ReportMessageButton = memo(function ReportMessageButton({
+  messageId,
+  threadId,
+}: {
+  messageId: Doc<"messages">["_id"];
+  threadId: Doc<"messages">["threadId"];
+}) {
+  const { i18n } = useTranslation("chat");
+  const [reported, setReported] = useState(false);
+
+  const handleReport = useCallback(() => {
+    if (reported) return;
+    posthog.capture("message_reported", {
+      thread_id: threadId,
+      message_id: messageId,
+      message_role: "assistant",
+    });
+    setReported(true);
+    toast.success(
+      i18n.language === "es"
+        ? "Reportado. Gracias por el feedback."
+        : "Reported. Thanks for the feedback."
+    );
+  }, [reported, messageId, threadId, i18n.language]);
+
+  const label = i18n.language === "es" ? "Reportar" : "Report";
+  const reportedLabel = i18n.language === "es" ? "Reportado" : "Reported";
+
+  return (
+    <button
+      type="button"
+      onClick={handleReport}
+      disabled={reported}
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded px-1 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-muted-foreground/10",
+        reported && "opacity-50 cursor-default"
+      )}
+      title={reported ? reportedLabel : label}
+      aria-label={reported ? reportedLabel : label}
+    >
+      <svg
+        className="h-3 w-3"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 2H21l-3 6 3 6h-8.5l-1-2H5a2 2 0 00-2 2zm9-13.5V9"
+        />
+      </svg>
+      <span className="text-[10px]">{reported ? reportedLabel : label}</span>
     </button>
   );
 });

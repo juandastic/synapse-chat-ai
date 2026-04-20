@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { SignInButton, useSignIn } from "@clerk/clerk-react";
 import { useTranslation } from "react-i18next";
 import posthog from "posthog-js";
@@ -25,6 +26,7 @@ import { Reveal, Divider, ConnectionLines } from "./Reveal";
 import { PersonaDetailModal, type PersonaItem } from "./PersonaDetailModal";
 import { ContactModal } from "./ContactModal";
 import { PricingCard } from "./PricingCard";
+import { LegalAcceptanceText } from "./LegalAcceptanceText";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                         */
@@ -247,6 +249,8 @@ export default function LandingPage() {
               </button>
             )}
           </div>
+
+          <LegalAcceptanceText />
 
           {demoError && (
             <p className="mt-3 text-xs" style={{ color: color.error }}>
@@ -748,6 +752,50 @@ export default function LandingPage() {
           </p>
         </Reveal>
       </section>
+
+      {/* Legal footer */}
+      <footer
+        className="relative z-[1] border-t"
+        style={{ borderColor: color.rule }}
+      >
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-6 py-8 text-xs">
+          <span style={{ color: color.inkDim }}>
+            © {new Date().getFullYear()} Synapse Chat AI — Juan David Gomez
+          </span>
+          <div className="flex flex-wrap items-center gap-4 ml-auto">
+            <Link
+              to="/privacy"
+              className="underline underline-offset-2 transition-opacity hover:opacity-70"
+              style={{ color: color.inkMuted }}
+            >
+              {i18n.language === "es" ? "Privacidad" : "Privacy"}
+            </Link>
+            <Link
+              to="/terms"
+              className="underline underline-offset-2 transition-opacity hover:opacity-70"
+              style={{ color: color.inkMuted }}
+            >
+              {i18n.language === "es" ? "Términos" : "Terms"}
+            </Link>
+            <Link
+              to="/delete-account"
+              className="underline underline-offset-2 transition-opacity hover:opacity-70"
+              style={{ color: color.inkMuted }}
+            >
+              {i18n.language === "es" ? "Eliminar cuenta" : "Delete account"}
+            </Link>
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 transition-opacity hover:opacity-70"
+              style={{ color: color.inkMuted }}
+            >
+              GitHub
+            </a>
+          </div>
+        </div>
+      </footer>
 
       {/* Persona detail modal — rendered at root level to escape z-index stacking */}
       {selectedPersona !== null && (

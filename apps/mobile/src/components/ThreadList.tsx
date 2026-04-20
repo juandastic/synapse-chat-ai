@@ -7,12 +7,11 @@ import {
   Pressable,
   Image,
   RefreshControl,
-  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { DrawerContentComponentProps } from "@react-navigation/drawer";
 import { useQuery, useMutation } from "convex/react";
-import { useAuth, useUser } from "@clerk/expo";
+import { useUser } from "@clerk/expo";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
@@ -39,7 +38,6 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
     }));
   }, [rawThreads, personas]);
   const router = useRouter();
-  const { signOut } = useAuth();
   const { user } = useUser();
   const { t, i18n } = useTranslation("sidebar");
   const insets = useSafeAreaInsets();
@@ -69,13 +67,6 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
   const toggleLanguage = useCallback(() => {
     i18n.changeLanguage(i18n.language === "es" ? "en" : "es");
   }, [i18n]);
-
-  const handleSignOut = useCallback(() => {
-    Alert.alert(t("signOut"), "", [
-      { text: t("cancel"), style: "cancel" },
-      { text: t("signOut"), style: "destructive", onPress: () => signOut() },
-    ]);
-  }, [signOut, t]);
 
   const initials =
     user?.firstName?.[0]?.toUpperCase() ??
@@ -315,7 +306,11 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
       {/* Footer */}
       <View style={[s.footer, { paddingBottom: insets.bottom + 8 }]}>
         <View style={s.footerLeft}>
-          <Pressable style={s.avatar} onPress={handleSignOut}>
+          <Pressable
+            style={s.avatar}
+            onPress={() => { closeDrawer(); router.push("/(home)/settings" as never); }}
+            accessibilityLabel={i18n.language === "es" ? "Cuenta" : "Account"}
+          >
             {user?.imageUrl ? (
               <Image source={{ uri: user.imageUrl }} style={s.avatarImage} />
             ) : (

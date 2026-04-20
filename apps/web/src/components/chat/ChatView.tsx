@@ -193,6 +193,9 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
         {/* Input area */}
         <div className="shrink-0 border-t border-border/50 bg-background/80 backdrop-blur-sm">
           <ChatInput />
+          <p className="px-4 pb-2 pt-0.5 text-center text-[10px] text-muted-foreground/70">
+            <AIDisclaimer />
+          </p>
         </div>
       </ChatProvider>
     </div>
@@ -202,6 +205,13 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
 // =============================================================================
 // MemoryStatusSubtitle — inline memory indicator below thread title
 // =============================================================================
+
+function AIDisclaimer() {
+  const { i18n } = useTranslation();
+  return i18n.language === "es"
+    ? "Synapse es IA. Puede equivocarse. No es consejo médico, legal ni financiero."
+    : "Synapse is AI. It may be inaccurate. Not medical, legal, or financial advice.";
+}
 
 function MemoryStatusSubtitle() {
   const stats = useQuery(api.userMemory.get);

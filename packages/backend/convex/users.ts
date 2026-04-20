@@ -214,6 +214,36 @@ export const updateProfile = mutation({
   },
 });
 
+/**
+ * Records that the user accepted Terms, Privacy, and the minimum-age attestation
+ * shown at signup. Safe to fire-and-forget on every authenticated mount.
+ */
+export const confirmTerms = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const user = await getOrCreateUser(ctx);
+    if (user.termsConfirmedAt) return user;
+    await ctx.db.patch(user._id, { termsConfirmedAt: Date.now() });
+    return ctx.db.get(user._id);
+  },
+});
+
+/**
+ * Marks the first-time memory intro as seen so it won't re-appear.
+ */
+export const setMemoryIntroSeen = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+    if (user.memoryIntroSeenAt) return user;
+    await ctx.db.patch(user._id, { memoryIntroSeenAt: Date.now() });
+    return ctx.db.get(user._id);
+  },
+});
+
 // =============================================================================
 // Internal Mutations
 // =============================================================================

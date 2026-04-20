@@ -17,6 +17,10 @@ export default defineSchema({
     notionToken: v.optional(v.string()),
     notionPageName: v.optional(v.string()),
     notionLanguage: v.optional(v.string()),
+    /** Timestamp when user accepted Terms, Privacy, and minimum-age attestation at signup */
+    termsConfirmedAt: v.optional(v.number()),
+    /** Timestamp when the user dismissed the first-time memory intro toast */
+    memoryIntroSeenAt: v.optional(v.number()),
   }).index("by_token", ["tokenIdentifier"]),
 
   // ===========================================================================

@@ -43,7 +43,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
   const posthog = usePostHog();
-  const { t } = useTranslation("chat");
+  const { t, i18n } = useTranslation("chat");
   const insets = useSafeAreaInsets();
 
   const { images, pickImages, removeImage, clearImages, restoreImages, maxImages } = useImagePicker();
@@ -242,6 +242,13 @@ export function ChatInput({ threadId }: ChatInputProps) {
           marginTop: 6,
           fontWeight: "500",
         },
+        aiDisclaimer: {
+          fontSize: 10,
+          color: colors.inkMuted,
+          textAlign: "center",
+          marginTop: 4,
+          opacity: 0.7,
+        },
       }),
     [colors]
   );
@@ -343,6 +350,13 @@ export function ChatInput({ threadId }: ChatInputProps) {
           </Text>
         )
       )}
+
+      {/* AI disclaimer (EU AI Act / Apple 5.1.2(i) disclosure) */}
+      <Text style={s.aiDisclaimer}>
+        {i18n.language === "es"
+          ? "Synapse es IA. Puede equivocarse."
+          : "Synapse is AI. It may be inaccurate."}
+      </Text>
     </View>
   );
 }

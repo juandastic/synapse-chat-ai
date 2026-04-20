@@ -2,11 +2,12 @@ import { useCallback, useMemo, useState } from "react";
 import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "convex/react";
+import { usePostHog } from "posthog-react-native";
 import { api } from "@synapse/backend/api";
 import { Doc } from "@synapse/backend/dataModel";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { Copy, RotateCcw, Trash2 } from "lucide-react-native";
+import { Copy, RotateCcw, Trash2, Flag } from "lucide-react-native";
 
 import { useColors } from "../contexts/ThemeContext";
 import { useChatContext } from "../contexts/useChatContext";
@@ -19,14 +20,35 @@ interface MessageActionsProps {
 }
 
 export function MessageActions({ message, onClose }: MessageActionsProps) {
-  const { t } = useTranslation("chat");
+  const { t, i18n } = useTranslation("chat");
   const colors = useColors();
   const isUser = message.role === "user";
   const deleteMessage = useMutation(api.messages.deleteMessage);
   const resendMessage = useMutation(api.messages.resend);
   const { isGenerating, startStreaming } = useChatContext();
   const streamResponse = useStreamResponse();
+  const posthog = usePostHog();
   const [isRetrying, setIsRetrying] = useState(false);
+  const [reported, setReported] = useState(false);
+
+  const handleReport = useCallback(() => {
+    if (reported) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    posthog?.capture("message_reported", {
+      thread_id: message.threadId,
+      message_id: message._id,
+      message_role: message.role,
+      source: "mobile",
+    });
+    setReported(true);
+    Alert.alert(
+      i18n.language === "es" ? "Reportado" : "Reported",
+      i18n.language === "es"
+        ? "Gracias por el feedback."
+        : "Thanks for the feedback."
+    );
+    onClose();
+  }, [reported, posthog, message._id, message.threadId, message.role, i18n.language, onClose]);
 
   const handleCopy = useCallback(async () => {
     await Clipboard.setStringAsync(message.content);
@@ -139,6 +161,17 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
         />
       )}
 
+      {!isUser && (
+        <ActionRow
+          icon={Flag}
+          label={reportLabel(i18n.language, reported)}
+          onPress={handleReport}
+          disabled={reported}
+          colors={colors}
+          s={s}
+        />
+      )}
+
       <View style={s.separator} />
 
       <ActionRow
@@ -151,6 +184,12 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
       />
     </View>
   );
+}
+
+function reportLabel(language: string, reported: boolean): string {
+  const isEs = language === "es";
+  if (reported) return isEs ? "Reportado" : "Reported";
+  return isEs ? "Reportar" : "Report";
 }
 
 function ActionRow({

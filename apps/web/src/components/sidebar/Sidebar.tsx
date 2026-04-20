@@ -7,7 +7,7 @@ import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
 import { ThreadItem } from "./ThreadItem";
 import { ConfirmDialog } from "../ui/confirm-dialog";
-import { Plus, Settings, Brain, Database, CreditCard, Moon, Sun, Globe } from "lucide-react";
+import { Plus, Settings, Brain, Database, CreditCard, Moon, Sun, Globe, Cog } from "lucide-react";
 import { Logo } from "../ui/logo";
 import { useTheme } from "../../contexts/ThemeContext";
 
@@ -75,6 +75,11 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
 
   const handlePlans = () => {
     navigate("/plans");
+    onCloseMobile();
+  };
+
+  const handleAccount = () => {
+    navigate("/settings/account");
     onCloseMobile();
   };
 
@@ -218,7 +223,7 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
         )}
       </div>
 
-      {/* Footer — user avatar + plans + language toggle + theme toggle */}
+      {/* Footer — user avatar + account settings + plans + language toggle + theme toggle */}
       <div className="flex shrink-0 items-center justify-between border-t border-border/50 px-4 py-3">
         <div className="flex items-center gap-1">
           <UserButton
@@ -228,6 +233,18 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
               },
             }}
           />
+          <button
+            onClick={handleAccount}
+            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted ${
+              location.pathname === "/settings/account"
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            aria-label={i18n.language === "es" ? "Cuenta" : "Account"}
+            title={i18n.language === "es" ? "Cuenta" : "Account"}
+          >
+            <Cog className="h-4 w-4" />
+          </button>
         </div>
         <div className="flex items-center gap-1">
           <button

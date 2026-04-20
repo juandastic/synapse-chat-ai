@@ -23,6 +23,7 @@ import { captureError } from "../../src/lib/analytics";
 import { useColors } from "../../src/contexts/ThemeContext";
 import { PersonaIcon } from "../../src/components/PersonaIcon";
 import { MemoryPulse } from "../../src/components/MemoryPulse";
+import { MemoryIntroBanner } from "../../src/components/MemoryIntroBanner";
 
 const TEMPLATES_EN = [
   { key: "therapist-en", icon: "compass", nameKey: "personaTemplates.therapist.name", descKey: "personaTemplates.therapist.description" },
@@ -276,6 +277,8 @@ export default function PersonaSelectorScreen() {
           <Menu size={22} color={colors.ink} />
         </Pressable>
       </View>
+
+      <MemoryIntroBanner />
 
       <ScrollView contentContainerStyle={s.scrollContent}>
         {/* Logo + greeting */}
