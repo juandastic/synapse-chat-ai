@@ -8,8 +8,8 @@ import { CompilationMetadata, CORTEX_API_BASE_URL } from "./cortexConfig";
 // Configuration
 // =============================================================================
 
-const DEFAULT_MODEL = "gemini-3.6-flash";
-const FALLBACK_MODEL = "gemini-3.1-pro-preview";
+const DEFAULT_MODEL = "gemini-3.1-pro-preview";
+const FALLBACK_MODEL = "gemini-3-flash-preview";
 const CORTEX_CHAT_COMPLETIONS_URL = `${CORTEX_API_BASE_URL}/v1/chat/completions`;
 
 // =============================================================================
