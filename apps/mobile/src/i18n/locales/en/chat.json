@@ -49,7 +49,10 @@
     "or": "or",
     "messagesUsage": "{{used}} / {{limit}} messages today",
     "mobileHint": "Tap send to submit.",
-    "fileSizeExceeded": "{{filename}} exceeds 10MB limit"
+    "fileSizeExceeded": "{{filename}} exceeds 10MB limit",
+    "imageReadFailed": "The selected image could not be read. Please select it again.",
+    "imageUploadFailed": "The image could not be uploaded. Check your connection and try again.",
+    "sendFailed": "The message could not be sent. Please try again."
   },
   "messageItem": {
     "error": "Error",

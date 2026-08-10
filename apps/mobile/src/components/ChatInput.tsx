@@ -14,7 +14,6 @@ import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
-import { useUploadFile } from "@convex-dev/r2/react";
 import { Send, ImagePlus, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -24,6 +23,11 @@ import { useColors } from "../contexts/ThemeContext";
 import { useChatContext } from "../contexts/useChatContext";
 import { useStreamResponse } from "../hooks/useStreamResponse";
 import { useImagePicker, PickedImage } from "../hooks/useImagePicker";
+import {
+  getImageUploadErrorTelemetry,
+  ImageUploadError,
+  useImageUpload,
+} from "../hooks/useImageUpload";
 
 interface ChatInputProps {
   threadId: Id<"threads">;
@@ -39,7 +43,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
 
   const { isGenerating, startStreaming } = useChatContext();
   const sendMessage = useMutation(api.messages.send);
-  const uploadFile = useUploadFile(api.r2);
+  const uploadImage = useImageUpload();
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
   const posthog = usePostHog();
@@ -70,16 +74,52 @@ export function ChatInput({ threadId }: ChatInputProps) {
       let imageKeys: string[] | undefined;
       if (hasImages) {
         setIsUploading(true);
-        const uploadPromises = savedImages.map(async (img: PickedImage) => {
-          const response = await fetch(img.uri);
-          const blob = await response.blob();
-          // R2's uploadWithProgress reads .type from the object and sends the body via XHR.
-          // Blob.slice lets us set the correct MIME type. The File constructor may not
-          // exist in Hermes, so we pass the typed blob directly — R2 only needs .type.
-          const typedBlob = blob.type === img.mimeType
-            ? blob
-            : blob.slice(0, blob.size, img.mimeType);
-          return uploadFile(typedBlob as unknown as File);
+        const uploadPromises = savedImages.map(async (img: PickedImage, index) => {
+          const operationId = `${Date.now()}-${index}-${Math.random()
+            .toString(36)
+            .slice(2, 8)}`;
+          const startedAt = Date.now();
+
+          posthog?.capture("image_upload_started_mobile", {
+            operation_id: operationId,
+            thread_id: threadId,
+            image_index: index,
+            image_count: savedImages.length,
+            mime_type: img.mimeType,
+            ...(img.fileSize === undefined
+              ? {}
+              : { file_size_bytes: img.fileSize }),
+            uri_scheme: img.uri.split(":", 1)[0] || "unknown",
+          });
+
+          try {
+            const result = await uploadImage(img);
+            posthog?.capture("image_upload_succeeded_mobile", {
+              operation_id: operationId,
+              thread_id: threadId,
+              image_index: index,
+              image_count: savedImages.length,
+              ...result.telemetry,
+            });
+            return result.key;
+          } catch (uploadError) {
+            const telemetry = getImageUploadErrorTelemetry(uploadError);
+            const failureContext = {
+              operation_id: operationId,
+              thread_id: threadId,
+              image_index: index,
+              image_count: savedImages.length,
+              duration_ms: Date.now() - startedAt,
+              ...(telemetry ?? {}),
+            };
+            posthog?.capture("image_upload_failed_mobile", failureContext);
+            captureError(uploadError, {
+              source: "chat_input",
+              action: "upload_image",
+              ...failureContext,
+            });
+            throw uploadError;
+          }
         });
         imageKeys = await Promise.all(uploadPromises);
         setIsUploading(false);
@@ -103,11 +143,27 @@ export function ChatInput({ threadId }: ChatInputProps) {
       setContent(savedContent);
       restoreImages(savedImages);
       setIsUploading(false);
-      const message =
-        err instanceof Error ? err.message : "Failed to send message";
+      const uploadTelemetry = getImageUploadErrorTelemetry(err);
+      const message = err instanceof ImageUploadError
+        ? err.telemetry.upload_stage === "prepare_file"
+          ? t("chatInput.imageReadFailed")
+          : t("chatInput.imageUploadFailed")
+        : err instanceof Error
+          ? err.message
+          : t("chatInput.sendFailed");
       setError(message);
       console.error("[ChatInput] Failed to send message:", err);
-      captureError(err, { source: "chat_input", action: "send_message" });
+      // Upload failures are captured at the per-image boundary above so the
+      // exception shares an operation_id with its started/failed events.
+      if (!uploadTelemetry) {
+        captureError(err, {
+          source: "chat_input",
+          action: "send_message",
+          thread_id: threadId,
+          has_images: hasImages,
+          image_count: savedImages.length,
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -117,12 +173,14 @@ export function ChatInput({ threadId }: ChatInputProps) {
     isSubmitting,
     isGenerating,
     sendMessage,
-    uploadFile,
+    uploadImage,
     threadId,
     startStreaming,
     streamResponse,
     clearImages,
     restoreImages,
+    posthog,
+    t,
   ]);
 
   // Usage limits
@@ -246,7 +304,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
           fontSize: 10,
           color: colors.inkMuted,
           textAlign: "center",
-          marginTop: 4,
+          marginTop: 0,
           opacity: 0.7,
         },
       }),
@@ -254,7 +312,14 @@ export function ChatInput({ threadId }: ChatInputProps) {
   );
 
   return (
-    <View style={[s.wrapper, { paddingBottom: insets.bottom + 4 }]}>
+    <View
+      style={[
+        s.wrapper,
+        {
+          paddingBottom: Math.max(4, insets.bottom),
+        },
+      ]}
+    >
       <View style={s.container}>
         {/* Image previews */}
         {images.length > 0 && (

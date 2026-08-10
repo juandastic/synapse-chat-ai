@@ -49,7 +49,10 @@
     "or": "o",
     "messagesUsage": "{{used}} / {{limit}} mensajes hoy",
     "mobileHint": "Toca enviar para enviar.",
-    "fileSizeExceeded": "{{filename}} excede el límite de 10MB"
+    "fileSizeExceeded": "{{filename}} excede el límite de 10MB",
+    "imageReadFailed": "No se pudo leer la imagen seleccionada. Selecciónala de nuevo.",
+    "imageUploadFailed": "No se pudo subir la imagen. Revisa tu conexión e inténtalo de nuevo.",
+    "sendFailed": "No se pudo enviar el mensaje. Inténtalo de nuevo."
   },
   "messageItem": {
     "error": "Error",

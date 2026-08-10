@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
   Pressable,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Alert,
@@ -36,6 +37,23 @@ export default function ChatScreen() {
   const colors = useColors();
   const navigation = useNavigation();
   const router = useRouter();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    const showSubscription = Keyboard.addListener("keyboardDidShow", () => {
+      setIsKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => {
+      setIsKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const s = useMemo(() => StyleSheet.create({
     root: {
@@ -176,7 +194,13 @@ export default function ChatScreen() {
     <ChatProvider threadId={threadId}>
       <KeyboardAvoidingView
         style={s.root}
-        behavior="padding"
+        behavior={
+          Platform.OS === "ios"
+            ? "padding"
+            : isKeyboardVisible
+              ? "padding"
+              : undefined
+        }
         keyboardVerticalOffset={0}
       >
         <ChatHeader
