@@ -2,6 +2,7 @@ import { query, internalMutation } from "./_generated/server";
 import { getCurrentUser } from "./users";
 import { Id } from "./_generated/dataModel";
 import { SEED_DATA } from "./seed/seedDemoData";
+import { createPromptSnapshot } from "./prompts";
 
 // =============================================================================
 // Helpers
@@ -137,6 +138,9 @@ export const seedDemoData = internalMutation({
     // 3. Insert personas and build ID map
     // -------------------------------------------------------------------------
     const personaMap = new Map<string, Id<"personas">>();
+    const personaSeedMap = new Map(
+      SEED_DATA.personas.map((persona) => [persona.localId, persona])
+    );
     for (const p of SEED_DATA.personas) {
       const id = await ctx.db.insert("personas", {
         userId,
@@ -161,6 +165,17 @@ export const seedDemoData = internalMutation({
       if (!personaId) {
         throw new Error(`Unknown persona localId: ${t.personaLocalId}`);
       }
+      const personaSeed = personaSeedMap.get(t.personaLocalId);
+      if (!personaSeed) {
+        throw new Error(`Unknown persona seed: ${t.personaLocalId}`);
+      }
+
+      const promptSnapshot = createPromptSnapshot({
+        promptMode: "legacy",
+        legacyPersonaPrompt: personaSeed.systemPrompt,
+        language: personaSeed.language,
+        customInstructions: SEED_DATA.user.customInstructions,
+      });
 
       const threadId = await ctx.db.insert("threads", {
         userId,
@@ -174,7 +189,8 @@ export const seedDemoData = internalMutation({
           userId,
           threadId,
           status: "closed",
-          cachedSystemPrompt: "",
+          promptMode: "legacy",
+          promptSnapshot,
           startedAt: s.startedAt,
           endedAt: s.endedAt,
           lastMessageAt: s.lastMessageAt,

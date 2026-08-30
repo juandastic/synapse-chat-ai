@@ -68,7 +68,7 @@ graph LR
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Persona**         | A configuration template defining AI personality: system prompt, identity, icon, and language preference. Users create custom personas or use templates (Therapist, Coach, Friend).                                                                          |
 | **Thread**          | A conversation channel immutably linked to a specific persona. All messages within a thread share the same AI personality.                                                                                                                                   |
-| **Session**         | An atomic execution unit within a thread. Sessions **snapshot** both the system prompt and user knowledge at creation time, ensuring consistency even if the persona or knowledge changes mid-conversation. Sessions auto-close after 3 hours of inactivity. |
+| **Session**         | An atomic execution unit within a thread. Sessions snapshot the selected prompt versions and dynamic inputs; knowledge is read from the centralized cache. Sessions auto-close after 3 hours of inactivity. |
 | **Knowledge Graph** | A Neo4j-backed graph (via Synapse Cortex / Graphiti) that stores compiled knowledge about the user -- facts, relationships, preferences -- extracted from conversations and refined over time.                                                               |
 
 
@@ -238,14 +238,18 @@ erDiagram
     threads {
         id userId
         id personaId
+        id activeSessionId
         string title
+        string activePromptMode
+        number activePromptModeLockedAt
         number lastMessageAt
     }
     sessions {
         id userId
         id threadId
         string status
-        string cachedSystemPrompt
+        string promptMode
+        object promptSnapshot
         number startedAt
         number endedAt
         number lastMessageAt
@@ -319,7 +323,8 @@ erDiagram
 
 Key points:
 
-- **Sessions** store `cachedSystemPrompt` as a snapshot — decoupling the running conversation from live persona changes.
+- **New sessions** store a compact `promptSnapshot`: version identifiers plus persona, language, and user-instruction inputs. Historical sessions keep their frozen `cachedSystemPrompt` and use it directly, so introducing the versioned format requires no data migration.
+- **Threads** mirror only the active session ID, prompt mode, and lock timestamp. The chat UI reads these small fields through its existing thread subscription instead of subscribing to the full session snapshot. Threads created before the mirror fall back to one session lookup until their next message.
 - **User memory** (`user_memory`) stores lightweight graph stats (~200 bytes) — entity/relationship counts, token estimates, and whether RAG is active (`isPartial`). This is the only table the frontend subscribes to, keeping reactive query bandwidth minimal.
 - **User knowledge cache** (`user_knowledge_cache`) stores the heavy compiled knowledge string (~30K) and `compilationMetadata`. Only read by the backend (`chat.prepareContext`) — never exposed to the frontend.
 - **2-table split rationale**: Convex charges per full document read regardless of field projection. Separating lightweight stats from the heavy knowledge blob means the frontend subscription reads ~200 bytes instead of ~30K on every update.
@@ -348,7 +353,7 @@ sequenceDiagram
     alt No active session
         Sess->>Sess: Fetch persona.systemPrompt
         Sess->>Sess: Fetch user.customInstructions
-        Sess->>Sess: Build cachedSystemPrompt (prompt + instructions + language)
+        Sess->>Sess: Snapshot prompt versions + dynamic inputs
         Sess->>Sess: Create session (status: active)
         Sess-->>Cortex: schedule hydrate(userId, sessionId)
         Note right of Cortex: Async background job
@@ -359,8 +364,7 @@ sequenceDiagram
 
     Msg->>Msg: Insert user message
     Msg->>Msg: Insert placeholder assistant message (empty)
-    Msg->>Sess: touchSession (reset 3h auto-close timer)
-    Msg->>Msg: Update thread.lastMessageAt
+    Msg->>Sess: touchSession (record activity, lock mode, update thread mirror)
     Msg-->>UI: assistantMessageId, sessionId
 
     UI->>Ctx: startStreaming(assistantMessageId)
@@ -398,7 +402,7 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> Created: First message in thread or after session close
-    Created --> Active: Session created with system prompt snapshot
+    Created --> Active: Session created with compact prompt snapshot
 
     Active --> Active: Messages sent (touch resets 3h timer)
     Active --> Active: AI response generation (/chat stream)
@@ -420,9 +424,9 @@ stateDiagram-v2
 
     note right of Created
         Snapshot assembly:
-        1. cachedSystemPrompt = persona.systemPrompt
-           + user.customInstructions
-           + persona.language
+        1. promptSnapshot = version IDs
+           + persona prompt + language
+           + user custom instructions
         2. Schedule cortex.hydrate (background)
            → writes user_memory (stats)
            → writes user_knowledge_cache (knowledge)
@@ -445,7 +449,7 @@ stateDiagram-v2
 
 **Why sessions matter:**
 
-- **Snapshot isolation**: Sessions freeze the system prompt, so changes to the persona don't affect an ongoing conversation mid-flow. Knowledge is read from the centralized `user_knowledge_cache` at generation time.
+- **Snapshot isolation**: Sessions freeze prompt versions and dynamic inputs, then render the full prompt at generation time. Persona changes do not affect an ongoing conversation. Knowledge is read from `user_knowledge_cache` at generation time.
 - **Knowledge evolution**: When a session closes, its messages are ingested into the knowledge graph. Both `user_memory` (stats) and `user_knowledge_cache` (knowledge) are updated, and the next session automatically uses the latest knowledge.
 - **Race condition handling**: If a user sends a message while ingestion is creating a draft session, the system detects the existing active session and updates it instead of creating a duplicate.
 
@@ -597,8 +601,8 @@ flowchart LR
 
 - **Multi-Thread Conversations**: Create multiple threads, each with a dedicated persona and independent history.
 - **Real-time Streaming**: HTTP streaming directly to the client with zero intermediate DB writes; single atomic write at the end. ChatContext overlays streamed content locally for smooth, character-by-character rendering.
-- **Session-Scoped Context**: The AI sees the last 20 messages from the current `sessionId`; cross-session continuity comes from `user_knowledge_cache`.
-- **Session Snapshotting**: System prompt snapshot ensures consistency within a session. Knowledge is read from the centralized `user_knowledge_cache` at generation time.
+- **Session-Scoped Context**: The AI sees all messages from the current `sessionId`; cross-session continuity comes from `user_knowledge_cache`.
+- **Session Snapshotting**: Version IDs and dynamic prompt inputs ensure consistency without storing the rendered system prompt per session.
 - **Smart Auto-scroll**: Auto-scrolls to bottom on new messages, with scroll-to-bottom button when scrolled up.
 - **Markdown Rendering**: Rich markdown support with streaming animation via Streamdown.
 - **Error Categorization**: Structured error types (CONFIG_ERROR, API_ERROR, PROVIDER_ERROR) with user-friendly messages and technical details in metadata.
@@ -663,7 +667,7 @@ flowchart LR
 | ------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Realtime**              | Convex reactive queries auto-update UI when DB changes -- no polling, no WebSocket management           |
 | **Streaming**             | HTTP streaming to client; local state overlay during generation; single DB write at end; frontend derives `isGenerating` from message state |
-| **Session snapshot**      | System prompt snapshot decouples conversation from persona changes; knowledge read from centralized cache |
+| **Session snapshot**      | Compact version and input snapshot decouples conversations from persona changes without duplicating shared prompt text |
 | **Memory awareness**      | 2-table split: `user_memory` (stats, ~200B, frontend) + `user_knowledge_cache` (knowledge, ~30K, backend only). Early return skips writes when unchanged. |
 | **Knowledge pipeline**    | Hydrate on create → conversation → enqueue ingest on close → POST /ingest (202) → poll status → update user_memory + user_knowledge_cache → draft |
 | **Async job queue**       | Persistent `cortex_jobs` table; ingest: POST returns 202, poll GET /ingest/status (5m, 10m×5); retry on POST failure (5 attempts); real-time UI |

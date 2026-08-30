@@ -83,11 +83,48 @@ export const get = query({
       });
     }
 
+    let promptMode =
+      thread.activePromptMode ?? user.preferredPromptMode ?? ("legacy" as const);
+    let canChangePromptMode =
+      thread.activePromptModeLockedAt === undefined;
+
+    // Compatibility for threads created before the lightweight mirror existed.
+    // New and touched sessions use the fields on the thread and skip this read.
+    if (thread.activeSessionId === undefined) {
+      const activeSession = await ctx.db
+        .query("sessions")
+        .withIndex("by_thread_status", (q) =>
+          q.eq("threadId", thread._id).eq("status", "active")
+        )
+        .first();
+
+      if (activeSession) {
+        promptMode = activeSession.promptSnapshot
+          ? activeSession.promptMode ?? "legacy"
+          : "legacy";
+        canChangePromptMode = activeSession.promptModeLockedAt === undefined;
+
+        if (canChangePromptMode) {
+          const firstMessage = await ctx.db
+            .query("messages")
+            .withIndex("by_session", (q) =>
+              q.eq("sessionId", activeSession._id)
+            )
+            .first();
+          canChangePromptMode = firstMessage === null;
+        }
+      }
+    }
+
     return {
       ...thread,
       persona: persona
         ? { name: persona.name, icon: persona.icon, description: persona.description }
         : { name: "Unknown", icon: "❓", description: undefined },
+      promptState: {
+        promptMode,
+        canChangePromptMode,
+      },
     };
   },
 });

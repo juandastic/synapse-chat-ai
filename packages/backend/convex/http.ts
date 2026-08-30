@@ -3,6 +3,7 @@ import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 import { CompilationMetadata, CORTEX_API_BASE_URL } from "./cortexConfig";
+import { PromptMode } from "./prompts";
 
 // =============================================================================
 // Configuration
@@ -118,6 +119,11 @@ http.route({
       userId: string;
       requestId: string;
       compilationMetadata?: CompilationMetadata;
+      promptMode: PromptMode;
+      promptFormatVersion?: string;
+      productContractVersion?: string;
+      voicePromptVersion?: string;
+      personaPromptSource?: string;
     };
 
     try {
@@ -159,6 +165,11 @@ http.route({
       userId,
       requestId,
       compilationMetadata,
+      promptMode,
+      promptFormatVersion,
+      productContractVersion,
+      voicePromptVersion,
+      personaPromptSource,
     } = context;
 
     // ── Validate API secret ──────────────────────────────────────────────
@@ -394,6 +405,7 @@ http.route({
           contentLength: content.length,
           tokens: usage?.total_tokens,
           finishReason,
+          promptMode,
         });
 
         // PostHog: track successful message generation
@@ -416,6 +428,11 @@ http.route({
               cached_tokens: usage?.cached_tokens ?? 0,
               thread_id: threadId,
               session_id: sessionId,
+              prompt_mode: promptMode,
+              prompt_format_version: promptFormatVersion,
+              product_contract_version: productContractVersion,
+              voice_prompt_version: voicePromptVersion,
+              persona_prompt_source: personaPromptSource,
             },
           });
         } catch {

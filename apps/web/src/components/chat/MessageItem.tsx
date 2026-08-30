@@ -253,7 +253,13 @@ const RetryMessageButton = memo(function RetryMessageButton({
     } finally {
       setIsRetrying(false);
     }
-  }, [isDisabled, resendMessage, userMessageId, startStreaming, streamResponse]);
+  }, [
+    isDisabled,
+    resendMessage,
+    userMessageId,
+    startStreaming,
+    streamResponse,
+  ]);
 
   return (
     <button

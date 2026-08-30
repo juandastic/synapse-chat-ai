@@ -1,9 +1,18 @@
-import { memo, useCallback, useRef, useMemo, useEffect } from "react";
+import {
+  memo,
+  useCallback,
+  useRef,
+  useMemo,
+  useEffect,
+  type ReactNode,
+} from "react";
 import { View, Text, StyleSheet, Pressable, Animated } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import type { Doc } from "@synapse/backend/dataModel";
 import Markdown from "react-native-markdown-display";
+import type { ASTNode, RenderRules } from "react-native-markdown-display";
+import { MoreHorizontal } from "lucide-react-native";
 
 import { useColors } from "../contexts/ThemeContext";
 import { formatMessageTime } from "../lib/format";
@@ -36,7 +45,7 @@ const StreamingText = memo(function StreamingText({
           duration: 400,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
     blink.start();
     return () => blink.stop();
@@ -56,7 +65,7 @@ const StreamingText = memo(function StreamingText({
           fontWeight: "300",
         },
       }),
-    [colors]
+    [colors],
   );
 
   return (
@@ -73,14 +82,14 @@ interface MessageItemProps {
   message: Doc<"messages">;
   isStreaming?: boolean;
   isLast?: boolean;
-  onLongPress?: (message: Doc<"messages">) => void;
+  onActionsPress?: (message: Doc<"messages">) => void;
 }
 
 export const MessageItem = memo(function MessageItem({
   message,
   isStreaming = false,
   isLast = false,
-  onLongPress,
+  onActionsPress,
 }: MessageItemProps) {
   const colors = useColors();
   const isUser = message.role === "user";
@@ -88,12 +97,12 @@ export const MessageItem = memo(function MessageItem({
   const isEmpty = message.content === "";
   const hasImages =
     isUser && message.imageKeys !== undefined && message.imageKeys.length > 0;
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation("chat");
 
-  const handleLongPress = useCallback(() => {
+  const handleActionsPress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onLongPress?.(message);
-  }, [message, onLongPress]);
+    onActionsPress?.(message);
+  }, [message, onActionsPress]);
 
   const markdownStyles = useMemo(
     () => ({
@@ -102,9 +111,24 @@ export const MessageItem = memo(function MessageItem({
         lineHeight: 22,
         color: colors.ink,
       },
-      heading1: { fontSize: 20, fontWeight: "700" as const, color: colors.ink, marginBottom: 8 },
-      heading2: { fontSize: 18, fontWeight: "600" as const, color: colors.ink, marginBottom: 6 },
-      heading3: { fontSize: 16, fontWeight: "600" as const, color: colors.ink, marginBottom: 4 },
+      heading1: {
+        fontSize: 20,
+        fontWeight: "700" as const,
+        color: colors.ink,
+        marginBottom: 8,
+      },
+      heading2: {
+        fontSize: 18,
+        fontWeight: "600" as const,
+        color: colors.ink,
+        marginBottom: 6,
+      },
+      heading3: {
+        fontSize: 16,
+        fontWeight: "600" as const,
+        color: colors.ink,
+        marginBottom: 4,
+      },
       paragraph: { marginBottom: 8 },
       link: { color: colors.primary },
       code_inline: {
@@ -138,7 +162,30 @@ export const MessageItem = memo(function MessageItem({
       list_item: { marginBottom: 4 },
       strong: { fontWeight: "600" as const },
     }),
-    [colors]
+    [colors],
+  );
+
+  const markdownRules = useMemo<RenderRules>(
+    () => ({
+      textgroup: (
+        node: ASTNode,
+        children: ReactNode[],
+        _parentNodes: ASTNode[],
+        styles: any,
+      ) => (
+        <Text
+          key={node.key}
+          style={styles.textgroup}
+          selectable
+          selectionColor={colors.accent}
+        >
+          {children}
+        </Text>
+      ),
+      code_block: renderSelectableCodeBlock,
+      fence: renderSelectableCodeBlock,
+    }),
+    [colors.accent],
   );
 
   const s = useMemo(
@@ -188,8 +235,6 @@ export const MessageItem = memo(function MessageItem({
         },
         timestamp: {
           fontSize: 11,
-          marginTop: 4,
-          paddingHorizontal: 4,
         },
         timestampUser: {
           color: colors.inkMuted,
@@ -198,6 +243,30 @@ export const MessageItem = memo(function MessageItem({
         timestampAssistant: {
           color: colors.inkMuted,
           textAlign: "left",
+        },
+        metaRow: {
+          minHeight: 28,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 2,
+          marginTop: 2,
+          paddingHorizontal: 4,
+        },
+        metaRowUser: {
+          alignSelf: "flex-end",
+        },
+        metaRowAssistant: {
+          alignSelf: "flex-start",
+        },
+        actionsButton: {
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        actionsButtonPressed: {
+          backgroundColor: colors.accentLight,
         },
         imageGrid: {
           marginBottom: 6,
@@ -220,93 +289,142 @@ export const MessageItem = memo(function MessageItem({
           backgroundColor: colors.inkMuted,
         },
       }),
-    [colors]
+    [colors],
+  );
+
+  const bubbleContent = (
+    <>
+      {/* Images */}
+      {hasImages && (
+        <View
+          style={[
+            s.imageGrid,
+            message.imageKeys!.length === 1
+              ? s.imageGridSingle
+              : s.imageGridDouble,
+          ]}
+        >
+          {message.imageKeys!.map((key) => (
+            <MessageImage key={key} imageKey={key} />
+          ))}
+        </View>
+      )}
+
+      {/* Content */}
+      {isEmpty && isStreaming ? (
+        <View style={s.dotsRow}>
+          <PulsingDot delay={0} dotStyle={s.dot} />
+          <PulsingDot delay={200} dotStyle={s.dot} />
+          <PulsingDot delay={400} dotStyle={s.dot} />
+        </View>
+      ) : isEmpty && hasImages ? null : isUser ? (
+        <Text style={s.userText}>{message.content}</Text>
+      ) : isStreaming ? (
+        <StreamingText content={message.content || ""} />
+      ) : (
+        <Markdown style={markdownStyles} rules={markdownRules}>
+          {message.content || ""}
+        </Markdown>
+      )}
+
+      {/* Error indicator */}
+      {isError && <Text style={s.errorHint}>Error</Text>}
+    </>
   );
 
   return (
-    <Pressable
-      onLongPress={handleLongPress}
-      delayLongPress={300}
-      style={[s.row, isUser ? s.rowUser : s.rowAssistant]}
-    >
-      <View
-        style={[
-          s.bubble,
-          isUser
-            ? s.bubbleUser
-            : isError
-              ? s.bubbleError
-              : s.bubbleAssistant,
-        ]}
-      >
-        {/* Images */}
-        {hasImages && (
-          <View
-            style={[
-              s.imageGrid,
-              message.imageKeys!.length === 1
-                ? s.imageGridSingle
-                : s.imageGridDouble,
-            ]}
-          >
-            {message.imageKeys!.map((key) => (
-              <MessageImage key={key} imageKey={key} />
-            ))}
-          </View>
-        )}
-
-        {/* Content */}
-        {isEmpty && isStreaming ? (
-          <View style={s.dotsRow}>
-            <PulsingDot delay={0} dotStyle={s.dot} />
-            <PulsingDot delay={200} dotStyle={s.dot} />
-            <PulsingDot delay={400} dotStyle={s.dot} />
-          </View>
-        ) : isEmpty && hasImages ? null : isUser ? (
-          <Text style={s.userText}>{message.content}</Text>
-        ) : isStreaming ? (
-          <StreamingText content={message.content || ""} />
-        ) : (
-          <Markdown style={markdownStyles}>
-            {message.content || ""}
-          </Markdown>
-        )}
-
-        {/* Error indicator */}
-        {isError && (
-          <Text style={s.errorHint}>Error</Text>
-        )}
-      </View>
+    <View style={[s.row, isUser ? s.rowUser : s.rowAssistant]}>
+      {isUser ? (
+        <Pressable
+          onLongPress={handleActionsPress}
+          delayLongPress={300}
+          style={[s.bubble, s.bubbleUser]}
+        >
+          {bubbleContent}
+        </Pressable>
+      ) : (
+        <View style={[s.bubble, isError ? s.bubbleError : s.bubbleAssistant]}>
+          {bubbleContent}
+        </View>
+      )}
 
       {/* RAG recall badge — only on last assistant message */}
       {isLast && !isUser && message.metadata?.ragEnabled && (
         <RagBadge
-          count={(message.metadata.ragNodes ?? 0) + (message.metadata.ragEdges ?? 0)}
+          count={
+            (message.metadata.ragNodes ?? 0) + (message.metadata.ragEdges ?? 0)
+          }
           colors={colors}
         />
       )}
 
       {/* Timestamp */}
       {(!isEmpty || hasImages) && (
-        <Text
-          style={[
-            s.timestamp,
-            isUser ? s.timestampUser : s.timestampAssistant,
-          ]}
-        >
-          {formatMessageTime(message._creationTime, i18n.language)}
-        </Text>
+        <View style={[s.metaRow, isUser ? s.metaRowUser : s.metaRowAssistant]}>
+          <Text
+            style={[
+              s.timestamp,
+              isUser ? s.timestampUser : s.timestampAssistant,
+            ]}
+          >
+            {formatMessageTime(message._creationTime, i18n.language)}
+          </Text>
+          {!isUser && !isStreaming && onActionsPress && (
+            <Pressable
+              onPress={handleActionsPress}
+              hitSlop={8}
+              style={({ pressed }) => [
+                s.actionsButton,
+                pressed && s.actionsButtonPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t("messageItem.moreActions")}
+            >
+              <MoreHorizontal size={16} color={colors.inkMuted} />
+            </Pressable>
+          )}
+        </View>
       )}
-    </Pressable>
+    </View>
   );
 });
+
+function renderSelectableCodeBlock(
+  node: ASTNode,
+  _children: ReactNode[],
+  _parentNodes: ASTNode[],
+  styles: any,
+  inheritedStyles: any = {},
+) {
+  const content = node.content.endsWith("\n")
+    ? node.content.slice(0, -1)
+    : node.content;
+
+  return (
+    <Text
+      key={node.key}
+      style={[inheritedStyles, styles[node.type]]}
+      selectable
+    >
+      {content}
+    </Text>
+  );
+}
 
 function RagBadge({ count, colors }: { count: number; colors: any }) {
   const { t } = useTranslation("chat");
   if (count === 0) return null;
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingHorizontal: 4 }}>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        marginTop: 4,
+        paddingHorizontal: 4,
+      }}
+    >
       <Text style={{ fontSize: 11, color: colors.inkMuted, opacity: 0.5 }}>
         ✦ {t("ragBadge.memoriesRecalled", { count })}
       </Text>
@@ -331,7 +449,7 @@ function PulsingDot({ delay, dotStyle }: { delay: number; dotStyle: object }) {
           duration: 500,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
     animation.start();
     return () => animation.stop();

@@ -10,6 +10,7 @@ import { Brain, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { PersonaIcon } from "@/components/ui/PersonaIcon";
+import { useChatContext } from "@/contexts/useChatContext";
 
 /**
  * Thread chat view rendered at /t/:threadId.
@@ -55,7 +56,11 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
     try {
       const result = await forceClose({ threadId });
       if (result.success) {
-        toast.success(t("chatView.consolidationStarted"));
+        toast.success(
+          result.ingestEnqueued
+            ? t("chatView.consolidationStarted")
+            : t("chatView.sessionClosed"),
+        );
       } else {
         toast.info(result.message);
       }
@@ -64,7 +69,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
     } finally {
       setConsolidating(false);
     }
-  }, [forceClose, threadId, consolidating]);
+  }, [forceClose, threadId, consolidating, t]);
 
   const handleTitleClick = useCallback(() => {
     if (thread) {
@@ -83,7 +88,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
       }
     }
     setIsEditingTitle(false);
-  }, [editTitle, thread?.title, updateTitle, threadId]);
+  }, [editTitle, thread?.title, updateTitle, threadId, t]);
 
   const handleTitleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -94,7 +99,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
         setIsEditingTitle(false);
       }
     },
-    [handleTitleSave]
+    [handleTitleSave],
   );
 
   useEffect(() => {
@@ -132,56 +137,50 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/50 px-4">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <PersonaIcon icon={thread.persona.icon} size="md" className="shrink-0" />
-          <div className="min-w-0 flex-1">
-            {isEditingTitle ? (
-              <input
-                ref={titleInputRef}
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                onBlur={handleTitleSave}
-                onKeyDown={handleTitleKeyDown}
-                className="w-full bg-transparent font-display text-sm font-semibold tracking-tight text-foreground outline-none border-b border-primary/30 focus:border-primary"
-                maxLength={100}
-              />
-            ) : (
-              <h1
-                onClick={handleTitleClick}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleTitleClick()}
-                tabIndex={0}
-                className="truncate font-display text-sm font-semibold tracking-tight text-foreground cursor-pointer hover:text-primary/80 transition-colors"
-                title={t("chatView.editTitleHint")}
-              >
-                {thread.title}
-              </h1>
-            )}
-            <MemoryStatusSubtitle />
+    <ChatProvider threadId={threadId}>
+      <div className="flex h-full flex-col">
+        {/* Header */}
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/50 px-4">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <PersonaIcon
+              icon={thread.persona.icon}
+              size="md"
+              className="shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              {isEditingTitle ? (
+                <input
+                  ref={titleInputRef}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  onBlur={handleTitleSave}
+                  onKeyDown={handleTitleKeyDown}
+                  className="w-full bg-transparent font-display text-sm font-semibold tracking-tight text-foreground outline-none border-b border-primary/30 focus:border-primary"
+                  maxLength={100}
+                />
+              ) : (
+                <h1
+                  onClick={handleTitleClick}
+                  onKeyDown={(e) =>
+                    (e.key === "Enter" || e.key === " ") && handleTitleClick()
+                  }
+                  tabIndex={0}
+                  className="truncate font-display text-sm font-semibold tracking-tight text-foreground cursor-pointer hover:text-primary/80 transition-colors"
+                  title={t("chatView.editTitleHint")}
+                >
+                  {thread.title}
+                </h1>
+              )}
+              <MemoryStatusSubtitle />
+            </div>
           </div>
-        </div>
 
-        {/* Consolidate Memory button */}
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            onClick={handleConsolidate}
-            disabled={consolidating}
-            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
-            title={t("chatView.consolidateMemory")}
-          >
-            {consolidating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Brain className="h-3.5 w-3.5" />
-            )}
-            <span className="hidden sm:inline">{t("chatView.consolidate")}</span>
-          </button>
-        </div>
-      </header>
+          <ConsolidateButton
+            consolidating={consolidating}
+            onConsolidate={handleConsolidate}
+          />
+        </header>
 
-      <ChatProvider threadId={threadId}>
         {/* Messages area */}
         <div className="flex-1 overflow-hidden">
           <MessageList
@@ -192,12 +191,46 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
 
         {/* Input area */}
         <div className="shrink-0 border-t border-border/50 bg-background/80 backdrop-blur-sm">
-          <ChatInput />
+          <ChatInput promptState={thread.promptState} />
           <p className="px-4 pb-2 pt-0.5 text-center text-[10px] text-muted-foreground/70">
             <AIDisclaimer />
           </p>
         </div>
-      </ChatProvider>
+      </div>
+    </ChatProvider>
+  );
+}
+
+function ConsolidateButton({
+  consolidating,
+  onConsolidate,
+}: {
+  consolidating: boolean;
+  onConsolidate: () => void;
+}) {
+  const { isGenerating } = useChatContext();
+  const { t } = useTranslation("chat");
+  const disabled = consolidating || isGenerating;
+
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <button
+        onClick={onConsolidate}
+        disabled={disabled}
+        className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+        title={t(
+          isGenerating
+            ? "chatView.waitForResponseBeforeConsolidating"
+            : "chatView.consolidateMemory",
+        )}
+      >
+        {consolidating ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Brain className="h-3.5 w-3.5" />
+        )}
+        <span className="hidden sm:inline">{t("chatView.consolidate")}</span>
+      </button>
     </div>
   );
 }

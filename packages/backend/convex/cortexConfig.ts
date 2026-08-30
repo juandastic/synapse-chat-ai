@@ -1,8 +1,8 @@
-/**
- * Central Cortex API configuration.
- * Change the base URL here to point to a different Cortex deployment.
- */
-export const CORTEX_API_BASE_URL = "https://synapse-cortex.juandago.dev";
+/** Central Cortex API configuration. Dev deployments can target a tunnel. */
+const DEFAULT_CORTEX_API_BASE_URL = "https://synapse-cortex.juandago.dev";
+export const CORTEX_API_BASE_URL = (
+  process.env.SYNAPSE_CORTEX_API_BASE_URL ?? DEFAULT_CORTEX_API_BASE_URL
+).replace(/\/$/, "");
 
 /** Shared Cortex hydration strategy toggle for all memory endpoints. */
 export type HydrationVersion = "v1" | "v2";

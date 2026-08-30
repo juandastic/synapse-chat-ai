@@ -22,6 +22,7 @@ import type * as notion from "../notion.js";
 import type * as notionConfig from "../notionConfig.js";
 import type * as personas from "../personas.js";
 import type * as plans from "../plans.js";
+import type * as prompts from "../prompts.js";
 import type * as r2 from "../r2.js";
 import type * as seed_seedDemoData from "../seed/seedDemoData.js";
 import type * as sessions from "../sessions.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   notionConfig: typeof notionConfig;
   personas: typeof personas;
   plans: typeof plans;
+  prompts: typeof prompts;
   r2: typeof r2;
   "seed/seedDemoData": typeof seed_seedDemoData;
   sessions: typeof sessions;

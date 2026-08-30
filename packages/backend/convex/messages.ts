@@ -143,11 +143,8 @@ export const send = mutation({
       throw new Error("Thread not found");
     }
 
-    const session = await getOrCreateActiveSession(
-      ctx,
-      args.threadId,
-      user._id
-    );
+    const session = await getOrCreateActiveSession(ctx, thread, user);
+    const promptMode = session.promptMode ?? "legacy";
 
     const userMessageId = await ctx.db.insert("messages", {
       threadId: args.threadId,
@@ -167,11 +164,7 @@ export const send = mutation({
       type: "text",
     });
 
-    await touchSession(ctx, session._id);
-
-    await ctx.db.patch(args.threadId, {
-      lastMessageAt: Date.now(),
-    });
+    await touchSession(ctx, session);
 
     console.log("[messages.send] Message created — awaiting HTTP stream", {
       userId: user._id,
@@ -181,6 +174,7 @@ export const send = mutation({
       assistantMessageId,
       contentLength: content.length,
       imageCount: args.imageKeys?.length ?? 0,
+      promptMode,
     });
 
     return {
@@ -216,42 +210,35 @@ export const deleteMessage = mutation({
 
     // If deleting a user message, also remove the paired assistant response
     if (message.role === "user") {
-      const nextMessages = await ctx.db
+      const nextMessage = await ctx.db
         .query("messages")
-        .withIndex("by_thread", (q) => q.eq("threadId", message.threadId))
+        .withIndex("by_thread", (q) =>
+          q
+            .eq("threadId", message.threadId)
+            .gt("_creationTime", message._creationTime)
+        )
         .order("asc")
-        .collect();
+        .first();
 
-      const messageIndex = nextMessages.findIndex(
-        (m) => m._id === args.messageId
-      );
-
-      if (
-        messageIndex !== -1 &&
-        messageIndex + 1 < nextMessages.length &&
-        nextMessages[messageIndex + 1].role === "assistant"
-      ) {
-        await ctx.db.delete(nextMessages[messageIndex + 1]._id);
+      if (nextMessage?.role === "assistant") {
+        await ctx.db.delete(nextMessage._id);
       }
     }
 
     // If deleting an assistant message, also remove the paired user message before it
     if (message.role === "assistant") {
-      const allMessages = await ctx.db
+      const previousMessage = await ctx.db
         .query("messages")
-        .withIndex("by_thread", (q) => q.eq("threadId", message.threadId))
-        .order("asc")
-        .collect();
+        .withIndex("by_thread", (q) =>
+          q
+            .eq("threadId", message.threadId)
+            .lt("_creationTime", message._creationTime)
+        )
+        .order("desc")
+        .first();
 
-      const messageIndex = allMessages.findIndex(
-        (m) => m._id === args.messageId
-      );
-
-      if (
-        messageIndex > 0 &&
-        allMessages[messageIndex - 1].role === "user"
-      ) {
-        await ctx.db.delete(allMessages[messageIndex - 1]._id);
+      if (previousMessage?.role === "user") {
+        await ctx.db.delete(previousMessage._id);
       }
     }
 
@@ -360,14 +347,25 @@ export const resend = mutation({
       throw new Error("Not authorized");
     }
 
-    const allMessages = await ctx.db
-      .query("messages")
-      .withIndex("by_thread", (q) => q.eq("threadId", userMessage.threadId))
-      .order("asc")
-      .collect();
+    const session = await ctx.db.get(userMessage.sessionId);
+    if (!session) {
+      throw new Error("Session not found");
+    }
+    if (!session.promptSnapshot && session.cachedSystemPrompt === undefined) {
+      throw new Error("Session prompt configuration is missing");
+    }
 
-    const idx = allMessages.findIndex((m) => m._id === args.userMessageId);
-    const nextMessage = idx !== -1 ? allMessages[idx + 1] : undefined;
+    const promptMode = session.promptMode ?? "legacy";
+
+    const nextMessage = await ctx.db
+      .query("messages")
+      .withIndex("by_thread", (q) =>
+        q
+          .eq("threadId", userMessage.threadId)
+          .gt("_creationTime", userMessage._creationTime)
+      )
+      .order("asc")
+      .first();
 
     if (nextMessage && nextMessage.role === "assistant") {
       if (nextMessage.completedAt === undefined) {
@@ -384,14 +382,18 @@ export const resend = mutation({
       type: "text",
     });
 
-    await touchSession(ctx, userMessage.sessionId);
-    await ctx.db.patch(userMessage.threadId, { lastMessageAt: Date.now() });
+    if (session.status === "closed") {
+      await ctx.db.patch(userMessage.threadId, { lastMessageAt: Date.now() });
+    } else {
+      await touchSession(ctx, session);
+    }
 
     console.log("[messages.resend] Re-generating response", {
       userMessageId: args.userMessageId,
       deletedPreviousId: nextMessage?.role === "assistant" ? nextMessage._id : null,
       assistantMessageId,
       threadId: userMessage.threadId,
+      promptMode,
     });
 
     return {
@@ -452,7 +454,7 @@ export const finalizeGeneration = internalMutation({
   handler: async (ctx, args) => {
     const message = await ctx.db.get(args.id);
     if (!message) {
-      console.error("[messages.finalizeGeneration] Message not found", {
+      console.log("[messages.finalizeGeneration] Message was deleted", {
         messageId: args.id,
       });
       return;

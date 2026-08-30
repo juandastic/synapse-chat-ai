@@ -283,6 +283,7 @@ export const create = mutation({
     description: v.optional(v.string()),
     language: v.string(),
     systemPrompt: v.string(),
+    structuredRolePrompt: v.optional(v.string()),
     icon: v.string(),
   },
   handler: async (ctx, args) => {
@@ -297,6 +298,16 @@ export const create = mutation({
     const systemPrompt = args.systemPrompt.trim();
     if (systemPrompt.length === 0) {
       throw new Error("System prompt cannot be empty");
+    }
+
+    const structuredRolePrompt = args.structuredRolePrompt?.trim();
+    if (
+      structuredRolePrompt &&
+      structuredRolePrompt.length > MAX_SYSTEM_PROMPT_LENGTH
+    ) {
+      throw new Error(
+        `Structured role prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`
+      );
     }
     if (systemPrompt.length > MAX_SYSTEM_PROMPT_LENGTH) {
       throw new Error(`System prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`);
@@ -323,6 +334,7 @@ export const create = mutation({
       description,
       language: args.language.trim() || "English",
       systemPrompt,
+      ...(structuredRolePrompt ? { structuredRolePrompt } : {}),
       icon,
       isDefault,
     });
@@ -359,6 +371,7 @@ export const update = mutation({
     description: v.optional(v.string()),
     language: v.optional(v.string()),
     systemPrompt: v.optional(v.string()),
+    structuredRolePrompt: v.optional(v.string()),
     icon: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -396,6 +409,16 @@ export const update = mutation({
         throw new Error(`System prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`);
       }
       updates.systemPrompt = systemPrompt;
+    }
+
+    if (args.structuredRolePrompt !== undefined) {
+      const structuredRolePrompt = args.structuredRolePrompt.trim();
+      if (structuredRolePrompt.length > MAX_SYSTEM_PROMPT_LENGTH) {
+        throw new Error(
+          `Structured role prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`
+        );
+      }
+      updates.structuredRolePrompt = structuredRolePrompt;
     }
 
     if (args.icon !== undefined) {

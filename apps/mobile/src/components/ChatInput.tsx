@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -14,12 +14,12 @@ import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
-import { Send, ImagePlus, X } from "lucide-react-native";
+import { Send, ImagePlus, X, Sparkles } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { captureError } from "../lib/analytics";
 
-import { useColors } from "../contexts/ThemeContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { useChatContext } from "../contexts/useChatContext";
 import { useStreamResponse } from "../hooks/useStreamResponse";
 import { useImagePicker, PickedImage } from "../hooks/useImagePicker";
@@ -29,20 +29,33 @@ import {
   useImageUpload,
 } from "../hooks/useImageUpload";
 
+type PromptMode = "legacy" | "structured";
+
 interface ChatInputProps {
   threadId: Id<"threads">;
+  promptState?: {
+    promptMode: PromptMode;
+    canChangePromptMode: boolean;
+  };
 }
 
-export function ChatInput({ threadId }: ChatInputProps) {
+export function ChatInput({ threadId, promptState }: ChatInputProps) {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSwitchingPromptMode, setIsSwitchingPromptMode] = useState(false);
+  const [localPromptMode, setLocalPromptMode] = useState<PromptMode | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const textInputRef = useRef<TextInput>(null);
-  const colors = useColors();
+  const { colors, theme } = useTheme();
 
   const { isGenerating, startStreaming } = useChatContext();
   const sendMessage = useMutation(api.messages.send);
+  const setPromptModeForEmptySession = useMutation(
+    api.sessions.setPromptModeForEmptySession,
+  );
   const uploadImage = useImageUpload();
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
@@ -50,14 +63,28 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const { t, i18n } = useTranslation("chat");
   const insets = useSafeAreaInsets();
 
-  const { images, pickImages, removeImage, clearImages, restoreImages, maxImages } = useImagePicker();
+  const promptMode: PromptMode =
+    localPromptMode ?? promptState?.promptMode ?? "legacy";
+
+  const {
+    images,
+    pickImages,
+    removeImage,
+    clearImages,
+    restoreImages,
+    maxImages,
+  } = useImagePicker();
+
+  useEffect(() => {
+    setLocalPromptMode(null);
+  }, [threadId]);
 
   const handleSubmit = useCallback(async () => {
     const trimmedContent = content.trim();
     const hasImages = images.length > 0;
 
     if (!trimmedContent && !hasImages) return;
-    if (isSubmitting || isGenerating) return;
+    if (isSubmitting || isGenerating || isSwitchingPromptMode) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -74,53 +101,55 @@ export function ChatInput({ threadId }: ChatInputProps) {
       let imageKeys: string[] | undefined;
       if (hasImages) {
         setIsUploading(true);
-        const uploadPromises = savedImages.map(async (img: PickedImage, index) => {
-          const operationId = `${Date.now()}-${index}-${Math.random()
-            .toString(36)
-            .slice(2, 8)}`;
-          const startedAt = Date.now();
+        const uploadPromises = savedImages.map(
+          async (img: PickedImage, index) => {
+            const operationId = `${Date.now()}-${index}-${Math.random()
+              .toString(36)
+              .slice(2, 8)}`;
+            const startedAt = Date.now();
 
-          posthog?.capture("image_upload_started_mobile", {
-            operation_id: operationId,
-            thread_id: threadId,
-            image_index: index,
-            image_count: savedImages.length,
-            mime_type: img.mimeType,
-            ...(img.fileSize === undefined
-              ? {}
-              : { file_size_bytes: img.fileSize }),
-            uri_scheme: img.uri.split(":", 1)[0] || "unknown",
-          });
-
-          try {
-            const result = await uploadImage(img);
-            posthog?.capture("image_upload_succeeded_mobile", {
+            posthog?.capture("image_upload_started_mobile", {
               operation_id: operationId,
               thread_id: threadId,
               image_index: index,
               image_count: savedImages.length,
-              ...result.telemetry,
+              mime_type: img.mimeType,
+              ...(img.fileSize === undefined
+                ? {}
+                : { file_size_bytes: img.fileSize }),
+              uri_scheme: img.uri.split(":", 1)[0] || "unknown",
             });
-            return result.key;
-          } catch (uploadError) {
-            const telemetry = getImageUploadErrorTelemetry(uploadError);
-            const failureContext = {
-              operation_id: operationId,
-              thread_id: threadId,
-              image_index: index,
-              image_count: savedImages.length,
-              duration_ms: Date.now() - startedAt,
-              ...(telemetry ?? {}),
-            };
-            posthog?.capture("image_upload_failed_mobile", failureContext);
-            captureError(uploadError, {
-              source: "chat_input",
-              action: "upload_image",
-              ...failureContext,
-            });
-            throw uploadError;
-          }
-        });
+
+            try {
+              const result = await uploadImage(img);
+              posthog?.capture("image_upload_succeeded_mobile", {
+                operation_id: operationId,
+                thread_id: threadId,
+                image_index: index,
+                image_count: savedImages.length,
+                ...result.telemetry,
+              });
+              return result.key;
+            } catch (uploadError) {
+              const telemetry = getImageUploadErrorTelemetry(uploadError);
+              const failureContext = {
+                operation_id: operationId,
+                thread_id: threadId,
+                image_index: index,
+                image_count: savedImages.length,
+                duration_ms: Date.now() - startedAt,
+                ...(telemetry ?? {}),
+              };
+              posthog?.capture("image_upload_failed_mobile", failureContext);
+              captureError(uploadError, {
+                source: "chat_input",
+                action: "upload_image",
+                ...failureContext,
+              });
+              throw uploadError;
+            }
+          },
+        );
         imageKeys = await Promise.all(uploadPromises);
         setIsUploading(false);
       }
@@ -144,13 +173,14 @@ export function ChatInput({ threadId }: ChatInputProps) {
       restoreImages(savedImages);
       setIsUploading(false);
       const uploadTelemetry = getImageUploadErrorTelemetry(err);
-      const message = err instanceof ImageUploadError
-        ? err.telemetry.upload_stage === "prepare_file"
-          ? t("chatInput.imageReadFailed")
-          : t("chatInput.imageUploadFailed")
-        : err instanceof Error
-          ? err.message
-          : t("chatInput.sendFailed");
+      const message =
+        err instanceof ImageUploadError
+          ? err.telemetry.upload_stage === "prepare_file"
+            ? t("chatInput.imageReadFailed")
+            : t("chatInput.imageUploadFailed")
+          : err instanceof Error
+            ? err.message
+            : t("chatInput.sendFailed");
       setError(message);
       console.error("[ChatInput] Failed to send message:", err);
       // Upload failures are captured at the per-image boundary above so the
@@ -172,6 +202,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
     images,
     isSubmitting,
     isGenerating,
+    isSwitchingPromptMode,
     sendMessage,
     uploadImage,
     threadId,
@@ -183,6 +214,51 @@ export function ChatInput({ threadId }: ChatInputProps) {
     t,
   ]);
 
+  const handlePromptModeToggle = useCallback(async () => {
+    if (
+      !promptState?.canChangePromptMode ||
+      isSubmitting ||
+      isGenerating ||
+      isSwitchingPromptMode
+    ) {
+      return;
+    }
+
+    const previousMode = promptMode;
+    const nextMode: PromptMode =
+      previousMode === "structured" ? "legacy" : "structured";
+
+    setLocalPromptMode(nextMode);
+    setIsSwitchingPromptMode(true);
+    setError(null);
+    void Haptics.selectionAsync();
+
+    try {
+      await setPromptModeForEmptySession({ threadId, promptMode: nextMode });
+      setLocalPromptMode(null);
+    } catch (err) {
+      setLocalPromptMode(null);
+      setError(t("chatInput.promptModeUpdateFailed"));
+      captureError(err, {
+        source: "chat_input",
+        action: "set_prompt_mode",
+        thread_id: threadId,
+        prompt_mode: nextMode,
+      });
+    } finally {
+      setIsSwitchingPromptMode(false);
+    }
+  }, [
+    promptState?.canChangePromptMode,
+    isSubmitting,
+    isGenerating,
+    isSwitchingPromptMode,
+    promptMode,
+    setPromptModeForEmptySession,
+    threadId,
+    t,
+  ]);
+
   // Usage limits
   const msgLimit = usageStatus?.dailyMessages;
   const isUnlimited = msgLimit?.limit === -1;
@@ -191,10 +267,16 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const usagePercent =
     !isUnlimited && msgLimit ? msgLimit.used / msgLimit.limit : 0;
 
-  const isDisabled = isSubmitting || isGenerating || isAtLimit;
+  const isDisabled =
+    isSubmitting || isGenerating || isSwitchingPromptMode || isAtLimit;
   const canSubmit =
     (content.trim().length > 0 || images.length > 0) && !isDisabled;
   const canAttach = images.length < maxImages && !isDisabled;
+  const canChangePromptMode =
+    promptState?.canChangePromptMode === true &&
+    !isSubmitting &&
+    !isGenerating &&
+    !isSwitchingPromptMode;
 
   const s = useMemo(
     () =>
@@ -245,6 +327,58 @@ export function ChatInput({ threadId }: ChatInputProps) {
           alignItems: "flex-end",
           paddingHorizontal: 4,
           paddingVertical: 4,
+        },
+        promptModeRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 8,
+          paddingBottom: 8,
+        },
+        promptModeButton: {
+          minHeight: 34,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          borderWidth: 1,
+          borderRadius: 10,
+          paddingHorizontal: 10,
+          paddingVertical: 7,
+        },
+        promptModeButtonActive: {
+          borderColor:
+            theme === "dark"
+              ? "rgba(196, 181, 253, 0.4)"
+              : "rgba(124, 58, 237, 0.35)",
+          backgroundColor:
+            theme === "dark"
+              ? "rgba(139, 92, 246, 0.14)"
+              : "rgba(139, 92, 246, 0.1)",
+        },
+        promptModeButtonInactive: {
+          borderColor: colors.rule,
+          backgroundColor: "transparent",
+        },
+        promptModeButtonDisabled: {
+          opacity: 0.5,
+        },
+        promptModeText: {
+          fontSize: 12,
+          fontWeight: "600",
+          color: colors.inkMuted,
+        },
+        promptModeTextActive: {
+          color: theme === "dark" ? "#c4b5fd" : "#7c3aed",
+        },
+        promptModeDot: {
+          width: 6,
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: colors.inkMuted,
+          opacity: 0.45,
+        },
+        promptModeDotActive: {
+          backgroundColor: theme === "dark" ? "#a78bfa" : "#7c3aed",
+          opacity: 1,
         },
         attachButton: {
           width: 36,
@@ -308,7 +442,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
           opacity: 0.7,
         },
       }),
-    [colors]
+    [colors, theme],
   );
 
   return (
@@ -381,13 +515,19 @@ export function ChatInput({ threadId }: ChatInputProps) {
           />
 
           <Pressable
-            style={[s.sendButton, canSubmit ? s.sendButtonActive : s.sendButtonDisabled]}
+            style={[
+              s.sendButton,
+              canSubmit ? s.sendButtonActive : s.sendButtonDisabled,
+            ]}
             onPress={handleSubmit}
             disabled={!canSubmit}
             accessibilityLabel={t("chatInput.sendMessage")}
           >
             {isUploading || isSubmitting || isGenerating ? (
-              <ActivityIndicator size="small" color={canSubmit ? colors.primaryForeground : colors.inkMuted} />
+              <ActivityIndicator
+                size="small"
+                color={canSubmit ? colors.primaryForeground : colors.inkMuted}
+              />
             ) : (
               <Send
                 size={18}
@@ -396,25 +536,88 @@ export function ChatInput({ threadId }: ChatInputProps) {
             )}
           </Pressable>
         </View>
+
+        {promptState && (
+          <View style={s.promptModeRow}>
+            <Pressable
+              style={[
+                s.promptModeButton,
+                promptMode === "structured"
+                  ? s.promptModeButtonActive
+                  : s.promptModeButtonInactive,
+                !canChangePromptMode && s.promptModeButtonDisabled,
+              ]}
+              onPress={handlePromptModeToggle}
+              disabled={!canChangePromptMode}
+              accessibilityRole="switch"
+              accessibilityLabel={t("chatInput.structuredVoiceBeta")}
+              accessibilityHint={
+                !promptState.canChangePromptMode
+                  ? t("chatInput.promptModeLockedDescription")
+                  : promptMode === "structured"
+                    ? t("chatInput.structuredVoiceOnDescription")
+                    : t("chatInput.structuredVoiceOffDescription")
+              }
+              accessibilityState={{
+                checked: promptMode === "structured",
+                disabled: !canChangePromptMode,
+                busy: isSwitchingPromptMode,
+              }}
+            >
+              {isSwitchingPromptMode ? (
+                <ActivityIndicator
+                  size="small"
+                  color={theme === "dark" ? "#c4b5fd" : "#7c3aed"}
+                />
+              ) : (
+                <Sparkles
+                  size={15}
+                  color={
+                    promptMode === "structured"
+                      ? theme === "dark"
+                        ? "#c4b5fd"
+                        : "#7c3aed"
+                      : colors.inkMuted
+                  }
+                />
+              )}
+              <Text
+                style={[
+                  s.promptModeText,
+                  promptMode === "structured" && s.promptModeTextActive,
+                ]}
+              >
+                {t("chatInput.structuredVoiceBeta")}
+              </Text>
+              <View
+                style={[
+                  s.promptModeDot,
+                  promptMode === "structured" && s.promptModeDotActive,
+                ]}
+              />
+            </Pressable>
+          </View>
+        )}
       </View>
 
       {/* Error */}
-      {error && (
-        <Text style={s.errorText}>{error}</Text>
-      )}
+      {error && <Text style={s.errorText}>{error}</Text>}
 
       {/* Usage indicator */}
-      {!isUnlimited && msgLimit != null && (
-        isAtLimit ? (
+      {!isUnlimited &&
+        msgLimit != null &&
+        (isAtLimit ? (
           <Text style={s.limitReached}>
             {t("chatInput.dailyLimitReached", { limit: msgLimit.limit })}
           </Text>
         ) : (
           <Text style={[s.usage, usagePercent >= 0.8 && s.usageWarning]}>
-            {t("chatInput.messagesUsage", { used: msgLimit.used, limit: msgLimit.limit })}
+            {t("chatInput.messagesUsage", {
+              used: msgLimit.used,
+              limit: msgLimit.limit,
+            })}
           </Text>
-        )
-      )}
+        ))}
 
       {/* AI disclaimer (EU AI Act / Apple 5.1.2(i) disclosure) */}
       <Text style={s.aiDisclaimer}>

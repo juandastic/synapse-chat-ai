@@ -24,6 +24,7 @@ import { captureError } from "../../src/lib/analytics";
 
 import { useColors } from "../../src/contexts/ThemeContext";
 import { ChatProvider } from "../../src/contexts/ChatContext";
+import { useChatContext } from "../../src/contexts/useChatContext";
 import { PersonaIcon } from "../../src/components/PersonaIcon";
 import { MessageList } from "../../src/components/MessageList";
 import { ChatInput } from "../../src/components/ChatInput";
@@ -55,95 +56,99 @@ export default function ChatScreen() {
     };
   }, []);
 
-  const s = useMemo(() => StyleSheet.create({
-    root: {
-      flex: 1,
-      backgroundColor: colors.paper,
-    },
-    centered: {
-      flex: 1,
-      backgroundColor: colors.paper,
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 12,
-    },
-    fallbackHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 12,
-      paddingBottom: 10,
-      backgroundColor: colors.paper,
-    },
-    fallbackMenuButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    loadingText: {
-      fontSize: 14,
-      color: colors.inkMuted,
-    },
-    errorText: {
-      fontSize: 15,
-      color: colors.error,
-    },
-    goHomeButton: {
-      marginTop: 8,
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-      borderRadius: 12,
-      backgroundColor: colors.accent,
-    },
-    goHomeText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: "#fff",
-    },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 12,
-      paddingBottom: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.rule,
-      backgroundColor: colors.paper,
-    },
-    headerButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    headerButtonDisabled: {
-      opacity: 0.5,
-    },
-    headerCenter: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      marginHorizontal: 4,
-    },
-    headerTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: colors.ink,
-      flexShrink: 1,
-    },
-    titleInput: {
-      flex: 1,
-      fontSize: 16,
-      fontWeight: "600",
-      color: colors.ink,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.accent,
-      paddingVertical: 2,
-      paddingHorizontal: 4,
-    },
-  }), [colors]);
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
+          flex: 1,
+          backgroundColor: colors.paper,
+        },
+        centered: {
+          flex: 1,
+          backgroundColor: colors.paper,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 12,
+        },
+        fallbackHeader: {
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 12,
+          paddingBottom: 10,
+          backgroundColor: colors.paper,
+        },
+        fallbackMenuButton: {
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        loadingText: {
+          fontSize: 14,
+          color: colors.inkMuted,
+        },
+        errorText: {
+          fontSize: 15,
+          color: colors.error,
+        },
+        goHomeButton: {
+          marginTop: 8,
+          paddingHorizontal: 20,
+          paddingVertical: 10,
+          borderRadius: 12,
+          backgroundColor: colors.accent,
+        },
+        goHomeText: {
+          fontSize: 14,
+          fontWeight: "600",
+          color: "#fff",
+        },
+        header: {
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 12,
+          paddingBottom: 10,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.rule,
+          backgroundColor: colors.paper,
+        },
+        headerButton: {
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        headerButtonDisabled: {
+          opacity: 0.5,
+        },
+        headerCenter: {
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          marginHorizontal: 4,
+        },
+        headerTitle: {
+          fontSize: 16,
+          fontWeight: "600",
+          color: colors.ink,
+          flexShrink: 1,
+        },
+        titleInput: {
+          flex: 1,
+          fontSize: 16,
+          fontWeight: "600",
+          color: colors.ink,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.accent,
+          paddingVertical: 2,
+          paddingHorizontal: 4,
+        },
+      }),
+    [colors],
+  );
 
   if (thread === undefined) {
     return (
@@ -215,7 +220,7 @@ export default function ChatScreen() {
           personaIcon={thread.persona.icon}
           personaName={thread.persona.name}
         />
-        <ChatInput threadId={threadId} />
+        <ChatInput threadId={threadId} promptState={thread.promptState} />
       </KeyboardAvoidingView>
     </ChatProvider>
   );
@@ -244,6 +249,7 @@ function ChatHeader({
   const updateTitle = useMutation(api.threads.updateTitle);
   const forceClose = useMutation(api.sessions.forceClose);
   const removeThread = useMutation(api.threads.remove);
+  const { isGenerating } = useChatContext();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -268,21 +274,38 @@ function ChatHeader({
   }, [editValue, title, updateTitle, threadId, t, posthog]);
 
   const handleConsolidate = useCallback(async () => {
-    if (consolidatingRef.current) return;
+    if (consolidatingRef.current || isGenerating) return;
     consolidatingRef.current = true;
     setIsConsolidating(true);
     try {
-      await forceClose({ threadId });
-      posthog?.capture("memory_consolidation_triggered", { thread_id: threadId });
-      Alert.alert("", t("chatView.consolidationStarted"));
+      const result = await forceClose({ threadId });
+      if (!result.success) {
+        Alert.alert("", result.message);
+        return;
+      }
+
+      if (result.ingestEnqueued) {
+        posthog?.capture("memory_consolidation_triggered", {
+          thread_id: threadId,
+        });
+      }
+      Alert.alert(
+        "",
+        result.ingestEnqueued
+          ? t("chatView.consolidationStarted")
+          : t("chatView.sessionClosed"),
+      );
     } catch (err) {
       Alert.alert("Error", t("chatView.consolidationFailed"));
-      captureError(err, { source: "chat_header", action: "consolidate_memory" });
+      captureError(err, {
+        source: "chat_header",
+        action: "consolidate_memory",
+      });
     } finally {
       consolidatingRef.current = false;
       setIsConsolidating(false);
     }
-  }, [forceClose, threadId, t, posthog]);
+  }, [forceClose, threadId, t, posthog, isGenerating]);
 
   const handleDelete = useCallback(() => {
     Alert.alert(
@@ -296,14 +319,19 @@ function ChatHeader({
           onPress: async () => {
             try {
               await removeThread({ threadId });
-              posthog?.capture("thread_deleted_from_chat", { thread_id: threadId });
+              posthog?.capture("thread_deleted_from_chat", {
+                thread_id: threadId,
+              });
               router.replace("/(home)" as never);
             } catch (err) {
-              captureError(err, { source: "chat_header", action: "delete_thread" });
+              captureError(err, {
+                source: "chat_header",
+                action: "delete_thread",
+              });
             }
           },
         },
-      ]
+      ],
     );
   }, [removeThread, threadId, title, ts, posthog, router]);
 
@@ -333,7 +361,12 @@ function ChatHeader({
               maxLength={200}
             />
           ) : (
-            <Pressable onPress={() => { setEditValue(title); setIsEditing(true); }}>
+            <Pressable
+              onPress={() => {
+                setEditValue(title);
+                setIsEditing(true);
+              }}
+            >
               <Text style={s.headerTitle} numberOfLines={1}>
                 {title}
               </Text>
@@ -344,10 +377,22 @@ function ChatHeader({
       </View>
 
       <Pressable
-        style={[s.headerButton, isConsolidating && s.headerButtonDisabled]}
+        style={[
+          s.headerButton,
+          (isConsolidating || isGenerating) && s.headerButtonDisabled,
+        ]}
         onPress={handleConsolidate}
-        disabled={isConsolidating}
+        disabled={isConsolidating || isGenerating}
         accessibilityLabel={t("chatView.consolidateMemory")}
+        accessibilityHint={
+          isGenerating
+            ? t("chatView.waitForResponseBeforeConsolidating")
+            : undefined
+        }
+        accessibilityState={{
+          disabled: isConsolidating || isGenerating,
+          busy: isConsolidating,
+        }}
       >
         {isConsolidating ? (
           <ActivityIndicator size="small" color={colors.accent} />
@@ -371,11 +416,7 @@ function ChatHeader({
 // MobileMemorySubtitle — inline memory indicator below thread title
 // =============================================================================
 
-function MobileMemorySubtitle({
-  colors,
-}: {
-  colors: any;
-}) {
+function MobileMemorySubtitle({ colors }: { colors: any }) {
   const stats = useQuery(api.userMemory.get);
   const { t } = useTranslation("chat");
 
@@ -386,7 +427,14 @@ function MobileMemorySubtitle({
   const totalMemories = stats.entityCount + stats.relationshipCount;
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 }}>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        marginTop: 1,
+      }}
+    >
       <View
         style={{
           width: 5,

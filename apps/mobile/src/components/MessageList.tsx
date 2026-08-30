@@ -27,7 +27,12 @@ interface MessageListProps {
 }
 
 type ListItem =
-  | { type: "message"; data: Doc<"messages">; isStreaming: boolean; isLast: boolean }
+  | {
+      type: "message";
+      data: Doc<"messages">;
+      isStreaming: boolean;
+      isLast: boolean;
+    }
   | { type: "session-divider"; timestamp: number; key: string };
 
 /** Threshold (px) to consider the user "scrolled away" from the bottom */
@@ -40,7 +45,8 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
 
   const flatListRef = useRef<FlatList>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const [selectedMessage, setSelectedMessage] = useState<Doc<"messages"> | null>(null);
+  const [selectedMessage, setSelectedMessage] =
+    useState<Doc<"messages"> | null>(null);
   const snapPoints = useMemo(() => ["35%"], []);
 
   // Scroll-to-bottom button state
@@ -55,7 +61,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
       const isNearBottom = offsetY < SCROLL_THRESHOLD;
       setShowScrollButton(!isNearBottom);
     },
-    []
+    [],
   );
 
   // Animate the scroll button in/out
@@ -123,8 +129,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
       items.push({
         type: "message",
         data: msg,
-        isStreaming:
-          msg.role === "assistant" && msg.completedAt === undefined,
+        isStreaming: msg.role === "assistant" && msg.completedAt === undefined,
         isLast: i === messages.length - 1,
       });
     }
@@ -142,11 +147,11 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
           message={item.data}
           isStreaming={item.isStreaming}
           isLast={item.isLast}
-          onLongPress={handleMessageLongPress}
+          onActionsPress={handleMessageLongPress}
         />
       );
     },
-    [handleMessageLongPress]
+    [handleMessageLongPress],
   );
 
   const keyExtractor = useCallback((item: ListItem) => {
@@ -227,14 +232,16 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
           backgroundColor: colors.rule,
         },
       }),
-    [colors]
+    [colors],
   );
 
   if (isLoading) {
     return (
       <View style={s.centered}>
         <ActivityIndicator color={colors.accent} />
-        <Text style={s.loadingText}>{t("messageList.loadingConversation")}</Text>
+        <Text style={s.loadingText}>
+          {t("messageList.loadingConversation")}
+        </Text>
       </View>
     );
   }
@@ -300,7 +307,10 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
       >
         <BottomSheetView>
           {selectedMessage && (
-            <MessageActions message={selectedMessage} onClose={handleCloseSheet} />
+            <MessageActions
+              message={selectedMessage}
+              onClose={handleCloseSheet}
+            />
           )}
         </BottomSheetView>
       </BottomSheet>

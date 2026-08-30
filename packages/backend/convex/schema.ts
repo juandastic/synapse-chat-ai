@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { promptSnapshotValidator } from "./prompts";
 
 export default defineSchema({
   // ===========================================================================
@@ -13,6 +14,10 @@ export default defineSchema({
     plan: v.optional(v.union(v.literal("unlimited"), v.literal("pro"), v.literal("free"))),
     /** Applied to all personas as extra system prompt context */
     customInstructions: v.optional(v.string()),
+    /** Default mode used when a new session is created */
+    preferredPromptMode: v.optional(
+      v.union(v.literal("legacy"), v.literal("structured"))
+    ),
     /** Notion integration config for knowledge graph export */
     notionToken: v.optional(v.string()),
     notionPageName: v.optional(v.string()),
@@ -33,6 +38,8 @@ export default defineSchema({
     description: v.optional(v.string()),
     language: v.string(),
     systemPrompt: v.string(),
+    /** Role/domain-only prompt used by structured prompting when available */
+    structuredRolePrompt: v.optional(v.string()),
     icon: v.string(), // emoji or URL
     isDefault: v.boolean(),
   }).index("by_user", ["userId"]),
@@ -46,6 +53,12 @@ export default defineSchema({
     personaId: v.id("personas"),
     title: v.string(),
     lastMessageAt: v.number(), // used for sidebar sorting
+    /** Lightweight mirror used by the chat UI without reading the prompt snapshot */
+    activeSessionId: v.optional(v.id("sessions")),
+    activePromptMode: v.optional(
+      v.union(v.literal("legacy"), v.literal("structured"))
+    ),
+    activePromptModeLockedAt: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   // ===========================================================================
@@ -54,8 +67,9 @@ export default defineSchema({
   /**
    * Atomic execution units within a thread.
    *
-   * Snapshot the system prompt and user knowledge at creation time for
-   * consistency. Auto-close after 3h triggers Cortex ingest.
+   * Snapshot prompt versions and dynamic inputs at creation time for
+   * consistency. Knowledge is read from the shared cache. Auto-close after 3h
+   * triggers Cortex ingest.
    */
   sessions: defineTable({
     userId: v.id("users"),
@@ -65,12 +79,20 @@ export default defineSchema({
       v.literal("processing"),
       v.literal("closed")
     ),
+    /** Immutable prompt mode for every generation in this session */
+    promptMode: v.optional(
+      v.union(v.literal("legacy"), v.literal("structured"))
+    ),
+    /** Set by the first send; prompt selection stays locked if messages are deleted */
+    promptModeLockedAt: v.optional(v.number()),
     /** Cortex-compiled user knowledge — undefined before first ingest */
     cachedUserKnowledge: v.optional(v.string()),
     /** Opaque Cortex metadata that describes how knowledge was compiled */
     compilationMetadata: v.optional(v.any()),
-    /** Snapshot of persona + user instructions at session start */
-    cachedSystemPrompt: v.string(),
+    /** Minimal immutable inputs used to render the selected prompt version */
+    promptSnapshot: v.optional(promptSnapshotValidator),
+    /** Frozen prompt for historical sessions created before prompt snapshots. */
+    cachedSystemPrompt: v.optional(v.string()),
     startedAt: v.number(),
     endedAt: v.optional(v.number()),
     lastMessageAt: v.number(), // staleness detection
@@ -123,6 +145,23 @@ export default defineSchema({
     type: v.union(v.literal("text"), v.literal("error")),
     /** undefined while still streaming */
     completedAt: v.optional(v.number()),
+    /** Historical beta metadata. New messages derive prompt versions from their session. */
+    generationConfig: v.optional(
+      v.object({
+        promptMode: v.union(v.literal("legacy"), v.literal("structured")),
+        promptFormatVersion: v.optional(v.string()),
+        productContractVersion: v.optional(v.string()),
+        voicePromptVersion: v.optional(v.string()),
+        personaPromptVersion: v.optional(v.string()),
+        personaPromptSource: v.optional(
+          v.union(
+            v.literal("legacy"),
+            v.literal("structured"),
+            v.literal("legacyFallback")
+          )
+        ),
+      })
+    ),
     /** Assistant-only analytics */
     metadata: v.optional(
       v.object({

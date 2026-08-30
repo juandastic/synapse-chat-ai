@@ -6,8 +6,14 @@ import {
   MutationCtx,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { Doc, Id } from "./_generated/dataModel";
+import { Doc } from "./_generated/dataModel";
 import { getOrCreateUser } from "./users";
+import {
+  createPromptSnapshot,
+  PromptSnapshot,
+  PromptMode,
+  promptModeValidator,
+} from "./prompts";
 
 // =============================================================================
 // Configuration
@@ -38,24 +44,60 @@ export const get = internalQuery({
 // Session Management Helpers
 // =============================================================================
 
-/**
- * Build the combined system prompt from persona, language, and user instructions.
- */
-function buildSystemPrompt(
-  personaSystemPrompt: string,
-  language: string,
-  customInstructions?: string
-): string {
-  let prompt = personaSystemPrompt;
+function buildPromptSnapshotForPersona(
+  persona: Doc<"personas">,
+  promptMode: PromptMode,
+  customInstructions?: string,
+): PromptSnapshot {
+  return createPromptSnapshot({
+    promptMode,
+    legacyPersonaPrompt: persona.systemPrompt,
+    structuredRolePrompt: persona.structuredRolePrompt,
+    language: persona.language,
+    customInstructions,
+  });
+}
 
-  // Inject language instruction
-  prompt += `\n\nIMPORTANT: You MUST respond in ${language}. All your messages should be written in ${language}.`;
+async function createActiveSession(
+  ctx: MutationCtx,
+  thread: Doc<"threads">,
+  user: Doc<"users">,
+  promptMode: PromptMode,
+): Promise<Doc<"sessions">> {
+  const persona = await ctx.db.get(thread.personaId);
+  if (!persona) throw new Error("Persona not found for thread");
 
-  if (customInstructions && customInstructions.trim()) {
-    prompt += `\n\n${customInstructions.trim()}`;
-  }
+  const promptSnapshot = buildPromptSnapshotForPersona(
+    persona,
+    promptMode,
+    user.customInstructions,
+  );
+  const now = Date.now();
 
-  return prompt;
+  const sessionId = await ctx.db.insert("sessions", {
+    userId: user._id,
+    threadId: thread._id,
+    status: "active",
+    promptMode,
+    promptSnapshot,
+    startedAt: now,
+    lastMessageAt: now,
+  });
+
+  await ctx.db.patch(thread._id, {
+    activeSessionId: sessionId,
+    activePromptMode: promptMode,
+    activePromptModeLockedAt: undefined,
+  });
+
+  await ctx.scheduler.runAfter(0, internal.cortex.hydrate, {
+    userId: user._id,
+    sessionId,
+  });
+
+  const session = await ctx.db.get(sessionId);
+  if (!session) throw new Error("Session creation failed unexpectedly");
+  return session;
 }
 
 /**
@@ -69,14 +111,14 @@ function buildSystemPrompt(
  * 5. Schedule background hydrate to fetch latest knowledge from Cortex
  *
  * @param ctx - Mutation context
- * @param threadId - Thread to get/create session for
- * @param userId - User ID (for session ownership)
+ * @param thread - Already-authorized thread document
+ * @param user - Current user document
  * @returns Active session document
  */
 export async function getOrCreateActiveSession(
   ctx: MutationCtx,
-  threadId: Id<"threads">,
-  userId: Id<"users">
+  thread: Doc<"threads">,
+  user: Doc<"users">,
 ): Promise<Doc<"sessions">> {
   const now = Date.now();
 
@@ -84,7 +126,7 @@ export async function getOrCreateActiveSession(
   const existingSession = await ctx.db
     .query("sessions")
     .withIndex("by_thread_status", (q) =>
-      q.eq("threadId", threadId).eq("status", "active")
+      q.eq("threadId", thread._id).eq("status", "active"),
     )
     .first();
 
@@ -93,16 +135,21 @@ export async function getOrCreateActiveSession(
     const isStale = inactiveMs > SESSION_STALE_THRESHOLD_MS;
 
     if (!isStale) {
+      if (
+        !existingSession.promptSnapshot &&
+        existingSession.cachedSystemPrompt === undefined
+      ) {
+        throw new Error("Session prompt configuration is missing");
+      }
       return existingSession;
     }
 
     // Close stale session
-    const inactiveHours =
-      Math.round((inactiveMs / (60 * 60 * 1000)) * 10) / 10;
+    const inactiveHours = Math.round((inactiveMs / (60 * 60 * 1000)) * 10) / 10;
     console.log("[sessions.getOrCreateActiveSession] Closing stale session", {
       sessionId: existingSession._id,
-      threadId,
-      userId,
+      threadId: thread._id,
+      userId: user._id,
       inactiveHours,
       lastMessageAt: new Date(existingSession.lastMessageAt).toISOString(),
     });
@@ -120,56 +167,18 @@ export async function getOrCreateActiveSession(
     // Enqueue Cortex ingest job for the closed session
     await ctx.runMutation(internal.cortexJobs.enqueueIngest, {
       closedSessionId: existingSession._id,
-      userId,
-      threadId,
+      userId: user._id,
+      threadId: thread._id,
     });
   }
 
-  // Build snapshot for new session
-  const thread = await ctx.db.get(threadId);
-  if (!thread) {
-    throw new Error("Thread not found");
-  }
-
-  const persona = await ctx.db.get(thread.personaId);
-  if (!persona) {
-    throw new Error("Persona not found for thread");
-  }
-
-  const user = await ctx.db.get(userId);
-  const cachedSystemPrompt = buildSystemPrompt(
-    persona.systemPrompt,
-    persona.language,
-    user?.customInstructions
-  );
-
-  // Create new session with snapshot
-  // Knowledge is now read from user_memory table — no longer stored per session
-  const sessionId = await ctx.db.insert("sessions", {
-    userId,
-    threadId,
-    status: "active",
-    cachedSystemPrompt,
-    startedAt: now,
-    lastMessageAt: now,
-  });
-
-  // Schedule background hydrate to fetch latest knowledge from Cortex
-  // This is async -- the session is immediately usable
-  await ctx.scheduler.runAfter(0, internal.cortex.hydrate, {
-    userId,
-    sessionId,
-  });
-
-  const newSession = await ctx.db.get(sessionId);
-  if (!newSession) {
-    throw new Error("Session creation failed unexpectedly");
-  }
+  const promptMode = user.preferredPromptMode ?? "legacy";
+  const newSession = await createActiveSession(ctx, thread, user, promptMode);
 
   console.log("[sessions.getOrCreateActiveSession] Created new session", {
-    sessionId,
-    threadId,
-    userId,
+    sessionId: newSession._id,
+    threadId: thread._id,
+    userId: user._id,
     hadPreviousSession: !!existingSession,
   });
 
@@ -177,43 +186,43 @@ export async function getOrCreateActiveSession(
 }
 
 /**
- * Update session activity timestamp and reschedule auto-close.
+ * Update session activity and ensure one auto-close check is scheduled.
  *
- * Implements debounced auto-close: each message resets the 3-hour inactivity
- * timer by canceling the previous scheduled job and creating a new one.
+ * The scheduled mutation checks lastMessageAt before closing. If the session
+ * received another message, it schedules itself for the remaining idle time.
  */
 export async function touchSession(
   ctx: MutationCtx,
-  sessionId: Id<"sessions">
+  session: Doc<"sessions">,
 ): Promise<void> {
-  const session = await ctx.db.get(sessionId);
-  if (!session) {
-    console.warn("[sessions.touchSession] Session not found", { sessionId });
-    return;
-  }
-
-  // Cancel existing auto-close job to prevent premature closure
-  if (session.closerJobId) {
-    await ctx.scheduler.cancel(session.closerJobId);
-  }
-
-  // Schedule new auto-close job
-  const closerJobId = await ctx.scheduler.runAfter(
-    SESSION_STALE_THRESHOLD_MS,
-    internal.sessions.autoClose,
-    { sessionId }
-  );
+  const closerJobId =
+    session.closerJobId ??
+    (await ctx.scheduler.runAfter(
+      SESSION_STALE_THRESHOLD_MS,
+      internal.sessions.autoClose,
+      { sessionId: session._id },
+    ));
 
   const now = Date.now();
-  await ctx.db.patch(sessionId, {
+  await ctx.db.patch(session._id, {
     lastMessageAt: now,
     closerJobId,
+    promptModeLockedAt: session.promptModeLockedAt ?? now,
   });
 
-  console.log("[sessions.touchSession] Rescheduled auto-close", {
-    sessionId,
+  await ctx.db.patch(session.threadId, {
+    lastMessageAt: now,
+    activeSessionId: session._id,
+    activePromptMode: session.promptSnapshot
+      ? (session.promptMode ?? "legacy")
+      : "legacy",
+    activePromptModeLockedAt: session.promptModeLockedAt ?? now,
+  });
+
+  console.log("[sessions.touchSession] Activity recorded", {
+    sessionId: session._id,
     closerJobId,
-    scheduledForMs: SESSION_STALE_THRESHOLD_MS,
+    scheduledNewCloser: session.closerJobId === undefined,
   });
 }
 
@@ -240,7 +249,25 @@ export const autoClose = internalMutation({
       return;
     }
 
-    const sessionDurationMs = Date.now() - session.startedAt;
+    const now = Date.now();
+    const remainingIdleMs =
+      SESSION_STALE_THRESHOLD_MS - (now - session.lastMessageAt);
+
+    if (remainingIdleMs > 0) {
+      const closerJobId = await ctx.scheduler.runAfter(
+        remainingIdleMs,
+        internal.sessions.autoClose,
+        { sessionId: args.sessionId },
+      );
+      await ctx.db.patch(args.sessionId, { closerJobId });
+      console.log("[sessions.autoClose] Session still active, rescheduled", {
+        sessionId: args.sessionId,
+        remainingIdleMs,
+      });
+      return;
+    }
+
+    const sessionDurationMs = now - session.startedAt;
     const sessionDurationHours =
       Math.round((sessionDurationMs / (60 * 60 * 1000)) * 10) / 10;
 
@@ -254,8 +281,13 @@ export const autoClose = internalMutation({
     // Close the session
     await ctx.db.patch(args.sessionId, {
       status: "closed",
-      endedAt: Date.now(),
+      endedAt: now,
       closerJobId: undefined,
+    });
+    await ctx.db.patch(session.threadId, {
+      activeSessionId: undefined,
+      activePromptMode: undefined,
+      activePromptModeLockedAt: undefined,
     });
 
     // Enqueue Cortex ingest job to persist learnings and prepare next session
@@ -286,7 +318,7 @@ export const createDraftSession = internalMutation({
     const existingSession = await ctx.db
       .query("sessions")
       .withIndex("by_thread_status", (q) =>
-        q.eq("threadId", args.threadId).eq("status", "active")
+        q.eq("threadId", args.threadId).eq("status", "active"),
       )
       .first();
 
@@ -297,7 +329,7 @@ export const createDraftSession = internalMutation({
           sessionId: existingSession._id,
           threadId: args.threadId,
           userId: args.userId,
-        }
+        },
       );
       return existingSession._id;
     }
@@ -320,10 +352,11 @@ export const createDraftSession = internalMutation({
     }
 
     const user = await ctx.db.get(args.userId);
-    const cachedSystemPrompt = buildSystemPrompt(
-      persona.systemPrompt,
-      persona.language,
-      user?.customInstructions
+    const promptMode = user?.preferredPromptMode ?? "legacy";
+    const promptSnapshot = buildPromptSnapshotForPersona(
+      persona,
+      promptMode,
+      user?.customInstructions,
     );
 
     // Create new draft session — knowledge is read from user_memory at query time
@@ -332,9 +365,15 @@ export const createDraftSession = internalMutation({
       userId: args.userId,
       threadId: args.threadId,
       status: "active",
-      cachedSystemPrompt,
+      promptMode,
+      promptSnapshot,
       startedAt: now,
       lastMessageAt: now,
+    });
+    await ctx.db.patch(args.threadId, {
+      activeSessionId: sessionId,
+      activePromptMode: promptMode,
+      activePromptModeLockedAt: undefined,
     });
 
     console.log("[sessions.createDraftSession] Created draft session", {
@@ -368,7 +407,7 @@ export const updateStatus = internalMutation({
     status: v.union(
       v.literal("active"),
       v.literal("processing"),
-      v.literal("closed")
+      v.literal("closed"),
     ),
   },
   handler: async (ctx, args) => {
@@ -392,7 +431,7 @@ export const updateStatus = internalMutation({
         allowed: allowedTargets,
       });
       throw new Error(
-        `Invalid session status transition: ${previousStatus} -> ${args.status}`
+        `Invalid session status transition: ${previousStatus} -> ${args.status}`,
       );
     }
 
@@ -409,6 +448,98 @@ export const updateStatus = internalMutation({
 // =============================================================================
 // Public Mutations
 // =============================================================================
+
+/** Select the personality mode for a new, still-empty session. */
+export const setPromptModeForEmptySession = mutation({
+  args: {
+    threadId: v.id("threads"),
+    promptMode: promptModeValidator,
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUser(ctx);
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread || thread.userId !== user._id) {
+      throw new Error("Thread not found");
+    }
+
+    const activeSession = await ctx.db
+      .query("sessions")
+      .withIndex("by_thread_status", (q) =>
+        q.eq("threadId", args.threadId).eq("status", "active"),
+      )
+      .first();
+
+    if (!activeSession) {
+      await ctx.db.patch(user._id, { preferredPromptMode: args.promptMode });
+      const newSession = await createActiveSession(
+        ctx,
+        thread,
+        user,
+        args.promptMode,
+      );
+      return {
+        promptMode: args.promptMode,
+        sessionId: newSession._id,
+      };
+    }
+
+    const currentMode: PromptMode = activeSession.promptSnapshot
+      ? (activeSession.promptMode ?? "legacy")
+      : "legacy";
+    if (currentMode === args.promptMode) {
+      return {
+        promptMode: args.promptMode,
+        sessionId: activeSession._id,
+      };
+    }
+
+    const firstMessage = await ctx.db
+      .query("messages")
+      .withIndex("by_session", (q) => q.eq("sessionId", activeSession._id))
+      .first();
+
+    if (activeSession.promptModeLockedAt !== undefined || firstMessage) {
+      throw new Error(
+        "Personality can only be changed before the first message of a new session",
+      );
+    }
+
+    await ctx.db.patch(user._id, { preferredPromptMode: args.promptMode });
+    const persona = await ctx.db.get(thread.personaId);
+    if (!persona) throw new Error("Persona not found for thread");
+    const promptSnapshot = buildPromptSnapshotForPersona(
+      persona,
+      args.promptMode,
+      user.customInstructions,
+    );
+    await ctx.db.patch(activeSession._id, {
+      promptMode: args.promptMode,
+      promptSnapshot,
+      cachedSystemPrompt: undefined,
+    });
+    await ctx.db.patch(args.threadId, {
+      activeSessionId: activeSession._id,
+      activePromptMode: args.promptMode,
+      activePromptModeLockedAt: undefined,
+    });
+
+    await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+      distinctId: user._id,
+      event: "prompt mode switched",
+      properties: {
+        thread_id: args.threadId,
+        session_id: activeSession._id,
+        previous_prompt_mode: currentMode,
+        prompt_mode: args.promptMode,
+      },
+    });
+
+    return {
+      promptMode: args.promptMode,
+      sessionId: activeSession._id,
+    };
+  },
+});
 
 /**
  * Force-close the active session for a thread and enqueue Cortex ingest.
@@ -434,12 +565,32 @@ export const forceClose = mutation({
     const activeSession = await ctx.db
       .query("sessions")
       .withIndex("by_thread_status", (q) =>
-        q.eq("threadId", args.threadId).eq("status", "active")
+        q.eq("threadId", args.threadId).eq("status", "active"),
       )
       .first();
 
     if (!activeSession) {
       return { success: false, message: "No active session to close" };
+    }
+
+    // The UI disables consolidation while streaming, but keep the mutation
+    // safe against stale clients and direct calls. Reading only the newest
+    // message uses the existing by_session index and avoids collecting the
+    // session history.
+    const latestMessage = await ctx.db
+      .query("messages")
+      .withIndex("by_session", (q) => q.eq("sessionId", activeSession._id))
+      .order("desc")
+      .first();
+
+    if (
+      latestMessage?.role === "assistant" &&
+      latestMessage.completedAt === undefined
+    ) {
+      return {
+        success: false,
+        message: "Wait for the response to finish before consolidating memory",
+      };
     }
 
     // Cancel pending auto-close job
@@ -453,30 +604,47 @@ export const forceClose = mutation({
       endedAt: Date.now(),
       closerJobId: undefined,
     });
-
-    // Enqueue Cortex ingest job
-    await ctx.runMutation(internal.cortexJobs.enqueueIngest, {
-      closedSessionId: activeSession._id,
-      userId: user._id,
-      threadId: args.threadId,
+    await ctx.db.patch(args.threadId, {
+      activeSessionId: undefined,
+      activePromptMode: undefined,
+      activePromptModeLockedAt: undefined,
     });
+
+    const ingestEnqueued = latestMessage !== null;
+
+    if (ingestEnqueued) {
+      await ctx.runMutation(internal.cortexJobs.enqueueIngest, {
+        closedSessionId: activeSession._id,
+        userId: user._id,
+        threadId: args.threadId,
+      });
+    }
 
     console.log("[sessions.forceClose] Session force-closed", {
       sessionId: activeSession._id,
       userId: user._id,
       threadId: args.threadId,
+      ingestEnqueued,
     });
 
-    // PostHog: track manual memory consolidation
-    await ctx.scheduler.runAfter(0, internal.analytics.capture, {
-      distinctId: user._id,
-      event: "memory consolidated",
-      properties: {
-        thread_id: args.threadId,
-        session_id: activeSession._id,
-      },
-    });
+    if (ingestEnqueued) {
+      // PostHog: track manual memory consolidation
+      await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+        distinctId: user._id,
+        event: "memory consolidated",
+        properties: {
+          thread_id: args.threadId,
+          session_id: activeSession._id,
+        },
+      });
+    }
 
-    return { success: true, message: "Memory consolidation started" };
+    return {
+      success: true,
+      message: ingestEnqueued
+        ? "Memory consolidation started"
+        : "Session closed",
+      ingestEnqueued,
+    };
   },
 });

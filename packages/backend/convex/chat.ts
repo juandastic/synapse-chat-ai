@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { r2 } from "./r2";
 import { CompilationMetadata } from "./cortexConfig";
+import { PromptMode, renderSystemPrompt } from "./prompts";
 
 // =============================================================================
 // Configuration
@@ -49,6 +50,11 @@ export const prepareContext = internalAction({
     userId: string;
     requestId: string;
     compilationMetadata?: CompilationMetadata;
+    promptMode: PromptMode;
+    promptFormatVersion?: string;
+    productContractVersion?: string;
+    voicePromptVersion?: string;
+    personaPromptSource?: string;
   }> => {
     const session: Doc<"sessions"> | null = await ctx.runQuery(
       internal.sessions.get,
@@ -64,6 +70,24 @@ export const prepareContext = internalAction({
       { sessionId: args.sessionId }
     );
 
+    const assistantMessage = history.find(
+      (message) => message._id === args.assistantMessageId
+    );
+    if (!assistantMessage || assistantMessage.role !== "assistant") {
+      throw new Error("Assistant message not found in session");
+    }
+
+    const promptMode: PromptMode = session.promptSnapshot
+      ? session.promptMode ?? "legacy"
+      : "legacy";
+    const baseSystemPrompt = session.promptSnapshot
+      ? renderSystemPrompt(promptMode, session.promptSnapshot)
+      : session.cachedSystemPrompt;
+
+    if (baseSystemPrompt === undefined) {
+      throw new Error("Session prompt configuration is missing");
+    }
+
     const currentDateTime = new Date().toLocaleString("en-US", {
       weekday: "long",
       year: "numeric",
@@ -75,7 +99,7 @@ export const prepareContext = internalAction({
     });
 
     // Read compiled knowledge from user_knowledge_cache (single source of truth),
-    // falling back to session for users who haven't hydrated since the migration.
+    // falling back to historical sessions that still contain the old field.
     const knowledgeCache = await ctx.runQuery(
       internal.userKnowledgeCache.getByUserId,
       { userId: session.userId }
@@ -90,7 +114,7 @@ export const prepareContext = internalAction({
     // client always sends everything so the server can fall back transparently
     // if the cache expired or was never created (small users).
     const systemInstruction =
-      `${session.cachedSystemPrompt}\n\nCurrent date and time: ${currentDateTime}`;
+      `${baseSystemPrompt}\n\nCurrent date and time: ${currentDateTime}`;
 
     const filteredHistory = history.filter(
       (m) => m._id !== args.assistantMessageId
@@ -146,6 +170,8 @@ export const prepareContext = internalAction({
       messagesWithImages: filteredHistory.filter(
         (m) => m.imageKeys && m.imageKeys.length > 0
       ).length,
+      promptMode,
+      voicePromptVersion: session.promptSnapshot?.personalityVersion,
     });
 
     return {
@@ -156,6 +182,11 @@ export const prepareContext = internalAction({
       userId: session.userId,
       requestId,
       compilationMetadata,
+      promptMode,
+      promptFormatVersion: session.promptSnapshot?.formatVersion,
+      productContractVersion: session.promptSnapshot?.productContractVersion,
+      voicePromptVersion: session.promptSnapshot?.personalityVersion,
+      personaPromptSource: session.promptSnapshot?.personaSource,
     };
   },
 });
