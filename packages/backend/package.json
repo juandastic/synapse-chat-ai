@@ -15,5 +15,9 @@
     "convex": "^1.32.0",
     "@convex-dev/r2": "^0.9.1",
     "posthog-node": "^5.28.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~6.0.3"
   }
 }

@@ -41,6 +41,9 @@
   "chatInput": {
     "waitingForResponse": "Esperando respuesta...",
     "placeholder": "Comparte lo que tienes en mente...",
+    "editingMessage": "Editando mensaje",
+    "editPlaceholder": "Actualiza tu mensaje...",
+    "cancelEditing": "Cancelar edición",
     "attachmentPreview": "Vista previa del adjunto",
     "removeImage": "Eliminar imagen",
     "attachImages": "Adjuntar imágenes",
@@ -68,6 +71,7 @@
     "moreActions": "Acciones del mensaje",
     "copied": "Copiado",
     "copy": "Copiar",
+    "edit": "Editar",
     "share": "Compartir",
     "retryMessage": "Reintentar mensaje",
     "retrying": "Reintentando...",

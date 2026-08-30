@@ -11,7 +11,7 @@ import {
   NativeScrollEvent,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import type { Doc } from "@synapse/backend/dataModel";
 
 import { useColors } from "../contexts/ThemeContext";
@@ -44,7 +44,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
   const colors = useColors();
 
   const flatListRef = useRef<FlatList>(null);
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [selectedMessage, setSelectedMessage] =
     useState<Doc<"messages"> | null>(null);
   const snapPoints = useMemo(() => ["35%"], []);
@@ -101,11 +101,14 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
 
   const handleMessageLongPress = useCallback((message: Doc<"messages">) => {
     setSelectedMessage(message);
-    bottomSheetRef.current?.expand();
+    bottomSheetRef.current?.present();
   }, []);
 
   const handleCloseSheet = useCallback(() => {
-    bottomSheetRef.current?.close();
+    bottomSheetRef.current?.dismiss();
+  }, []);
+
+  const handleSheetDismiss = useCallback(() => {
     setSelectedMessage(null);
   }, []);
 
@@ -275,6 +278,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           inverted
+          scrollsChildToFocus={false}
           style={s.list}
           contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}
@@ -297,11 +301,11 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
       </View>
 
       {/* Shared action bottom sheet */}
-      <BottomSheet
+      <BottomSheetModal
         ref={bottomSheetRef}
-        index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
+        onDismiss={handleSheetDismiss}
         backgroundStyle={s.sheetBackground}
         handleIndicatorStyle={s.sheetHandle}
       >
@@ -313,7 +317,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
             />
           )}
         </BottomSheetView>
-      </BottomSheet>
+      </BottomSheetModal>
     </>
   );
 }

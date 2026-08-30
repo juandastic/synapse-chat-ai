@@ -412,7 +412,7 @@ export const MessageItem = memo(function MessageItem({
           >
             {formatMessageTime(message._creationTime, i18n.language)}
           </Text>
-          {!isUser && !isStreaming && onActionsPress && (
+          {!isStreaming && onActionsPress && (
             <Pressable
               onPress={handleActionsPress}
               hitSlop={8}

@@ -6,6 +6,9 @@ interface ChatContextValue {
   isGenerating: boolean;
   isLoading: boolean;
   threadId: Id<"threads">;
+  editingMessage: Doc<"messages"> | null;
+  beginEditing: (message: Doc<"messages">) => void;
+  cancelEditing: () => void;
   startStreaming: (messageId: Id<"messages">) => void;
   updateStreamedContent: (content: string) => void;
   stopStreaming: () => void;

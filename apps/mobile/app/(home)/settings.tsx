@@ -9,7 +9,7 @@ import {
   Linking,
   ActivityIndicator,
 } from "react-native";
-import { useNavigation, DrawerActions } from "@react-navigation/native";
+import { useNavigation, DrawerActions } from "expo-router/react-navigation";
 import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
 import { useUser, useClerk } from "@clerk/expo";

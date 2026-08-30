@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@synapse/backend/api";
-import { Id } from "@synapse/backend/dataModel";
+import { Doc, Id } from "@synapse/backend/dataModel";
 import { ChatContext } from "./useChatContext";
 
 interface ChatProviderProps {
@@ -15,6 +15,8 @@ export function ChatProvider({ threadId, children }: ChatProviderProps) {
   const [streamedMessageId, setStreamedMessageId] =
     useState<Id<"messages"> | null>(null);
   const [streamedContent, setStreamedContent] = useState("");
+  const [editingMessage, setEditingMessage] =
+    useState<Doc<"messages"> | null>(null);
 
   const isLoading = messages === undefined;
 
@@ -60,12 +62,28 @@ export function ChatProvider({ threadId, children }: ChatProviderProps) {
     setStreamedContent("");
   }, []);
 
+  const beginEditing = useCallback((message: Doc<"messages">) => {
+    if (message.role !== "user") return;
+    setEditingMessage(message);
+  }, []);
+
+  const cancelEditing = useCallback(() => {
+    setEditingMessage(null);
+  }, []);
+
+  useEffect(() => {
+    setEditingMessage(null);
+  }, [threadId]);
+
   const contextValue = useMemo(
     () => ({
       messages: displayMessages,
       isGenerating,
       isLoading,
       threadId,
+      editingMessage,
+      beginEditing,
+      cancelEditing,
       startStreaming,
       updateStreamedContent,
       stopStreaming,
@@ -75,6 +93,9 @@ export function ChatProvider({ threadId, children }: ChatProviderProps) {
       isGenerating,
       isLoading,
       threadId,
+      editingMessage,
+      beginEditing,
+      cancelEditing,
       startStreaming,
       updateStreamedContent,
       stopStreaming,

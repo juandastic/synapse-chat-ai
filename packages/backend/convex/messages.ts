@@ -186,6 +186,119 @@ export const send = mutation({
 });
 
 /**
+ * Edit the latest completed text message and regenerate its existing response.
+ * Older turns and messages with attachments are intentionally immutable.
+ */
+export const editLastMessageAndResend = mutation({
+  args: {
+    messageId: v.id("messages"),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const content = args.content.trim();
+    const user = await getOrCreateUser(ctx);
+
+    const originalMessage = await ctx.db.get(args.messageId);
+    if (!originalMessage) {
+      throw new Error("Message not found");
+    }
+    if (originalMessage.role !== "user") {
+      throw new Error("Only user messages can be edited");
+    }
+
+    const thread = await ctx.db.get(originalMessage.threadId);
+    if (!thread || thread.userId !== user._id) {
+      throw new Error("Not authorized to edit this message");
+    }
+
+    if (originalMessage.imageKeys && originalMessage.imageKeys.length > 0) {
+      throw new Error("Messages with images cannot be edited");
+    }
+    if (content.length === 0) {
+      throw new Error("Message content cannot be empty");
+    }
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      throw new Error(
+        `Message exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters`,
+      );
+    }
+
+    const usageCheck = await checkDailyUsage(ctx, user);
+    if (!usageCheck.allowed) {
+      await ctx.scheduler.runAfter(0, internal.analytics.capture, {
+        distinctId: user._id,
+        event: "usage limit reached",
+        properties: {
+          plan: user.plan ?? "free",
+          reason: usageCheck.reason,
+          action: "edit_message",
+        },
+      });
+      throw new Error(usageCheck.reason);
+    }
+
+    const followingMessages = await ctx.db
+      .query("messages")
+      .withIndex("by_thread", (q) =>
+        q
+          .eq("threadId", originalMessage.threadId)
+          .gt("_creationTime", originalMessage._creationTime),
+      )
+      .order("asc")
+      .take(2);
+    const pairedAssistant = followingMessages[0];
+    if (
+      followingMessages.length !== 1 ||
+      pairedAssistant?.role !== "assistant"
+    ) {
+      throw new Error("Only the latest user message can be edited");
+    }
+    if (pairedAssistant.completedAt === undefined) {
+      throw new Error("Cannot edit while the response is still generating");
+    }
+    if (pairedAssistant.sessionId !== originalMessage.sessionId) {
+      throw new Error("The message pair belongs to different sessions");
+    }
+
+    const session = await ctx.db.get(originalMessage.sessionId);
+    if (!session || session.status !== "active") {
+      throw new Error("Messages from closed sessions cannot be edited");
+    }
+    if (!session.promptSnapshot && session.cachedSystemPrompt === undefined) {
+      throw new Error("Session prompt configuration is missing");
+    }
+    const promptMode = session.promptMode ?? "legacy";
+
+    await ctx.db.patch(originalMessage._id, {
+      content,
+    });
+    await ctx.db.patch(pairedAssistant._id, {
+      content: "",
+      type: "text",
+      completedAt: undefined,
+      metadata: undefined,
+    });
+    await touchSession(ctx, session);
+
+    console.log("[messages.editLastMessageAndResend] Message edited", {
+      userId: user._id,
+      threadId: originalMessage.threadId,
+      userMessageId: originalMessage._id,
+      assistantMessageId: pairedAssistant._id,
+      sessionId: session._id,
+      contentLength: content.length,
+      promptMode,
+    });
+
+    return {
+      userMessageId: originalMessage._id,
+      assistantMessageId: pairedAssistant._id,
+      sessionId: session._id,
+    };
+  },
+});
+
+/**
  * Delete a message. Only the thread owner can delete messages.
  * If the deleted message is a user message and the next message is an
  * assistant reply (its pair), the assistant message is also deleted.
@@ -267,7 +380,7 @@ export const reportStreamFailure = mutation({
 
     const message = await ctx.db.get(args.messageId);
     if (!message) {
-      throw new Error("Message not found");
+      return;
     }
 
     const thread = await ctx.db.get(message.threadId);

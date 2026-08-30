@@ -9,7 +9,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { DrawerContentComponentProps } from "@react-navigation/drawer";
+import { DrawerContentComponentProps } from "expo-router/drawer";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/expo";
 import { useTranslation } from "react-i18next";

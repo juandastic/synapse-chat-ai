@@ -41,6 +41,9 @@
   "chatInput": {
     "waitingForResponse": "Waiting for response...",
     "placeholder": "Share what's on your mind...",
+    "editingMessage": "Editing message",
+    "editPlaceholder": "Update your message...",
+    "cancelEditing": "Cancel editing",
     "attachmentPreview": "Attachment preview",
     "removeImage": "Remove image",
     "attachImages": "Attach images",
@@ -68,6 +71,7 @@
     "moreActions": "Message actions",
     "copied": "Copied",
     "copy": "Copy",
+    "edit": "Edit",
     "share": "Share",
     "retryMessage": "Retry message",
     "retrying": "Retrying...",

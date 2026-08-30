@@ -7,7 +7,7 @@ import { api } from "@synapse/backend/api";
 import { Doc } from "@synapse/backend/dataModel";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { Copy, RotateCcw, Trash2, Flag } from "lucide-react-native";
+import { Copy, Pencil, RotateCcw, Trash2, Flag } from "lucide-react-native";
 
 import { useColors } from "../contexts/ThemeContext";
 import { useChatContext } from "../contexts/useChatContext";
@@ -25,11 +25,31 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
   const isUser = message.role === "user";
   const deleteMessage = useMutation(api.messages.deleteMessage);
   const resendMessage = useMutation(api.messages.resend);
-  const { isGenerating, startStreaming } = useChatContext();
+  const { messages, isGenerating, startStreaming, beginEditing } =
+    useChatContext();
   const streamResponse = useStreamResponse();
   const posthog = usePostHog();
   const [isRetrying, setIsRetrying] = useState(false);
   const [reported, setReported] = useState(false);
+
+  const editableMessage = useMemo(() => {
+    const messageIndex = messages?.findIndex((item) => item._id === message._id);
+    if (messageIndex === undefined || messageIndex < 0 || !messages) {
+      return null;
+    }
+
+    const candidate = isUser ? message : messages[messageIndex - 1];
+    const lastUserMessage = messages[messages.length - 2];
+    const lastAssistantMessage = messages[messages.length - 1];
+    const isLatestCompletedPair =
+      candidate?.role === "user" &&
+      candidate._id === lastUserMessage?._id &&
+      lastAssistantMessage?.role === "assistant" &&
+      lastAssistantMessage.completedAt !== undefined;
+    const hasImages = (candidate?.imageKeys?.length ?? 0) > 0;
+
+    return isLatestCompletedPair && !hasImages ? candidate : null;
+  }, [isUser, message, messages]);
 
   const handleReport = useCallback(() => {
     if (reported) return;
@@ -55,6 +75,13 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onClose();
   }, [message.content, onClose]);
+
+  const handleEdit = useCallback(() => {
+    if (!editableMessage || isGenerating) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    beginEditing(editableMessage);
+    onClose();
+  }, [beginEditing, editableMessage, isGenerating, onClose]);
 
   const handleRetry = useCallback(async () => {
     if (isRetrying || isGenerating) return;
@@ -148,6 +175,17 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
 
       {message.content.length > 0 && (
         <ActionRow icon={Copy} label={t("messageItem.copy")} onPress={handleCopy} colors={colors} s={s} />
+      )}
+
+      {editableMessage && (
+        <ActionRow
+          icon={Pencil}
+          label={t("messageItem.edit")}
+          onPress={handleEdit}
+          disabled={isGenerating}
+          colors={colors}
+          s={s}
+        />
       )}
 
       {isUser && (

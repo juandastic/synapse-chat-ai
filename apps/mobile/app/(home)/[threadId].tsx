@@ -12,10 +12,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useNavigation, DrawerActions } from "@react-navigation/native";
+import { useNavigation, DrawerActions } from "expo-router/react-navigation";
 import { useQuery, useMutation } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
 import { Menu, Brain, Trash2 } from "lucide-react-native";
@@ -197,31 +198,33 @@ export default function ChatScreen() {
 
   return (
     <ChatProvider threadId={threadId}>
-      <KeyboardAvoidingView
-        style={s.root}
-        behavior={
-          Platform.OS === "ios"
-            ? "padding"
-            : isKeyboardVisible
+      <BottomSheetModalProvider>
+        <KeyboardAvoidingView
+          style={s.root}
+          behavior={
+            Platform.OS === "ios"
               ? "padding"
-              : undefined
-        }
-        keyboardVerticalOffset={0}
-      >
-        <ChatHeader
-          threadId={threadId}
-          title={thread.title}
-          personaIcon={thread.persona.icon}
-          personaName={thread.persona.name}
-          s={s}
-          colors={colors}
-        />
-        <MessageList
-          personaIcon={thread.persona.icon}
-          personaName={thread.persona.name}
-        />
-        <ChatInput threadId={threadId} promptState={thread.promptState} />
-      </KeyboardAvoidingView>
+              : isKeyboardVisible
+                ? "padding"
+                : undefined
+          }
+          keyboardVerticalOffset={0}
+        >
+          <ChatHeader
+            threadId={threadId}
+            title={thread.title}
+            personaIcon={thread.persona.icon}
+            personaName={thread.persona.name}
+            s={s}
+            colors={colors}
+          />
+          <MessageList
+            personaIcon={thread.persona.icon}
+            personaName={thread.persona.name}
+          />
+          <ChatInput threadId={threadId} promptState={thread.promptState} />
+        </KeyboardAvoidingView>
+      </BottomSheetModalProvider>
     </ChatProvider>
   );
 }

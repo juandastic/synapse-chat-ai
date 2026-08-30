@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Linking,
 } from "react-native";
-import { useNavigation, DrawerActions } from "@react-navigation/native";
+import { useNavigation, DrawerActions } from "expo-router/react-navigation";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";

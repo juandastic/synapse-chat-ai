@@ -14,7 +14,7 @@ import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
-import { Send, ImagePlus, X, Sparkles } from "lucide-react-native";
+import { Send, ImagePlus, Pencil, X, Sparkles } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { captureError } from "../lib/analytics";
@@ -51,8 +51,16 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
   const textInputRef = useRef<TextInput>(null);
   const { colors, theme } = useTheme();
 
-  const { isGenerating, startStreaming } = useChatContext();
+  const {
+    isGenerating,
+    startStreaming,
+    editingMessage,
+    cancelEditing,
+  } = useChatContext();
   const sendMessage = useMutation(api.messages.send);
+  const editLastMessageAndResend = useMutation(
+    api.messages.editLastMessageAndResend,
+  );
   const setPromptModeForEmptySession = useMutation(
     api.sessions.setPromptModeForEmptySession,
   );
@@ -74,6 +82,17 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
     restoreImages,
     maxImages,
   } = useImagePicker();
+
+  useEffect(() => {
+    if (!editingMessage) return;
+
+    setContent(editingMessage.content);
+    clearImages();
+    setError(null);
+
+    const focusTimer = setTimeout(() => textInputRef.current?.focus(), 100);
+    return () => clearTimeout(focusTimer);
+  }, [editingMessage, clearImages]);
 
   useEffect(() => {
     setLocalPromptMode(null);
@@ -154,17 +173,27 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
         setIsUploading(false);
       }
 
-      const result = await sendMessage({
-        threadId,
-        content: trimmedContent,
-        ...(imageKeys && imageKeys.length > 0 ? { imageKeys } : {}),
-      });
+      const result = editingMessage
+        ? await editLastMessageAndResend({
+            messageId: editingMessage._id,
+            content: trimmedContent,
+          })
+        : await sendMessage({
+            threadId,
+            content: trimmedContent,
+            ...(imageKeys && imageKeys.length > 0 ? { imageKeys } : {}),
+          });
 
-      posthog?.capture("message_sent_mobile", {
-        thread_id: threadId,
-        has_images: hasImages,
-        image_count: savedImages.length,
-      });
+      posthog?.capture(
+        editingMessage ? "message_edited_mobile" : "message_sent_mobile",
+        {
+          thread_id: threadId,
+          has_images: hasImages,
+          image_count: savedImages.length,
+        },
+      );
+
+      if (editingMessage) cancelEditing();
 
       startStreaming(result.assistantMessageId);
       void streamResponse(result.assistantMessageId, result.sessionId);
@@ -203,16 +232,26 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
     isSubmitting,
     isGenerating,
     isSwitchingPromptMode,
+    editingMessage,
     sendMessage,
+    editLastMessageAndResend,
     uploadImage,
     threadId,
     startStreaming,
     streamResponse,
     clearImages,
     restoreImages,
+    cancelEditing,
     posthog,
     t,
   ]);
+
+  const handleCancelEditing = useCallback(() => {
+    setContent("");
+    clearImages();
+    setError(null);
+    cancelEditing();
+  }, [cancelEditing, clearImages]);
 
   const handlePromptModeToggle = useCallback(async () => {
     if (
@@ -270,8 +309,10 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
   const isDisabled =
     isSubmitting || isGenerating || isSwitchingPromptMode || isAtLimit;
   const canSubmit =
-    (content.trim().length > 0 || images.length > 0) && !isDisabled;
-  const canAttach = images.length < maxImages && !isDisabled;
+    (content.trim().length > 0 || images.length > 0) &&
+    !isDisabled;
+  const canAttach =
+    !editingMessage && images.length < maxImages && !isDisabled;
   const canChangePromptMode =
     promptState?.canChangePromptMode === true &&
     !isSubmitting &&
@@ -295,6 +336,30 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
         },
         imageStrip: {
           maxHeight: 72,
+        },
+        editingBar: {
+          minHeight: 40,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          paddingLeft: 12,
+          paddingRight: 6,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.rule,
+          backgroundColor: colors.accentLight,
+        },
+        editingLabel: {
+          flex: 1,
+          fontSize: 12,
+          fontWeight: "600",
+          color: colors.ink,
+        },
+        cancelEditingButton: {
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          alignItems: "center",
+          justifyContent: "center",
         },
         imageStripContent: {
           gap: 8,
@@ -455,6 +520,20 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
       ]}
     >
       <View style={s.container}>
+        {editingMessage && (
+          <View style={s.editingBar}>
+            <Pencil size={14} color={colors.accent} />
+            <Text style={s.editingLabel}>{t("chatInput.editingMessage")}</Text>
+            <Pressable
+              style={s.cancelEditingButton}
+              onPress={handleCancelEditing}
+              accessibilityLabel={t("chatInput.cancelEditing")}
+            >
+              <X size={17} color={colors.inkMuted} />
+            </Pressable>
+          </View>
+        )}
+
         {/* Image previews */}
         {images.length > 0 && (
           <ScrollView
@@ -503,7 +582,9 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
             placeholder={
               isGenerating
                 ? t("chatInput.waitingForResponse")
-                : t("chatInput.placeholder")
+                : editingMessage
+                  ? t("chatInput.editPlaceholder")
+                  : t("chatInput.placeholder")
             }
             placeholderTextColor={colors.inkMuted}
             multiline
