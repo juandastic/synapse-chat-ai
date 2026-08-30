@@ -75,6 +75,9 @@
   "ragBadge": {
     "memoriesRecalled": "{{count}} recuerdos consultados"
   },
+  "grounding": {
+    "sources": "Fuentes consultadas"
+  },
   "messageList": {
     "loadingConversation": "Cargando conversación...",
     "startConversationWith": "Inicia tu conversación con {{name}}",

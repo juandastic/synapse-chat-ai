@@ -11,12 +11,14 @@ export default defineSchema({
     tokenIdentifier: v.string(),
     name: v.string(),
     /** Plan tier — undefined defaults to "free" */
-    plan: v.optional(v.union(v.literal("unlimited"), v.literal("pro"), v.literal("free"))),
+    plan: v.optional(
+      v.union(v.literal("unlimited"), v.literal("pro"), v.literal("free")),
+    ),
     /** Applied to all personas as extra system prompt context */
     customInstructions: v.optional(v.string()),
     /** Default mode used when a new session is created */
     preferredPromptMode: v.optional(
-      v.union(v.literal("legacy"), v.literal("structured"))
+      v.union(v.literal("legacy"), v.literal("structured")),
     ),
     /** Notion integration config for knowledge graph export */
     notionToken: v.optional(v.string()),
@@ -56,7 +58,7 @@ export default defineSchema({
     /** Lightweight mirror used by the chat UI without reading the prompt snapshot */
     activeSessionId: v.optional(v.id("sessions")),
     activePromptMode: v.optional(
-      v.union(v.literal("legacy"), v.literal("structured"))
+      v.union(v.literal("legacy"), v.literal("structured")),
     ),
     activePromptModeLockedAt: v.optional(v.number()),
   }).index("by_user", ["userId"]),
@@ -77,11 +79,11 @@ export default defineSchema({
     status: v.union(
       v.literal("active"),
       v.literal("processing"),
-      v.literal("closed")
+      v.literal("closed"),
     ),
     /** Immutable prompt mode for every generation in this session */
     promptMode: v.optional(
-      v.union(v.literal("legacy"), v.literal("structured"))
+      v.union(v.literal("legacy"), v.literal("structured")),
     ),
     /** Set by the first send; prompt selection stays locked if messages are deleted */
     promptModeLockedAt: v.optional(v.number()),
@@ -116,7 +118,7 @@ export default defineSchema({
       v.literal("pending"),
       v.literal("processing"),
       v.literal("completed"),
-      v.literal("failed")
+      v.literal("failed"),
     ),
     attempts: v.number(),
     maxAttempts: v.number(),
@@ -157,10 +159,10 @@ export default defineSchema({
           v.union(
             v.literal("legacy"),
             v.literal("structured"),
-            v.literal("legacyFallback")
-          )
+            v.literal("legacyFallback"),
+          ),
         ),
-      })
+      }),
     ),
     /** Assistant-only analytics */
     metadata: v.optional(
@@ -176,13 +178,27 @@ export default defineSchema({
         ragEdges: v.optional(v.number()),
         ragSearchMs: v.optional(v.number()),
         ragContextChars: v.optional(v.number()),
+        groundingEnabled: v.optional(v.boolean()),
+        groundingUsed: v.optional(v.boolean()),
+        groundingQueryCount: v.optional(v.number()),
+        groundingSourceCount: v.optional(v.number()),
+        groundingSupportCount: v.optional(v.number()),
+        groundingSearchEntryPoint: v.optional(v.string()),
+        groundingSources: v.optional(
+          v.array(
+            v.object({
+              title: v.string(),
+              uri: v.string(),
+            }),
+          ),
+        ),
         cost: v.optional(v.number()),
         latencyMs: v.optional(v.number()),
         finishReason: v.optional(v.string()),
         usedFallback: v.optional(v.boolean()),
         error: v.optional(v.string()),
         errorCode: v.optional(v.string()),
-      })
+      }),
     ),
   })
     .index("by_thread", ["threadId"])

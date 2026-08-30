@@ -4,15 +4,25 @@ import {
   useRef,
   useMemo,
   useEffect,
+  useState,
   type ReactNode,
 } from "react";
-import { View, Text, StyleSheet, Pressable, Animated } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Animated,
+  Linking,
+  type LayoutChangeEvent,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import type { Doc } from "@synapse/backend/dataModel";
 import Markdown from "react-native-markdown-display";
 import type { ASTNode, RenderRules } from "react-native-markdown-display";
 import { MoreHorizontal } from "lucide-react-native";
+import { WebView } from "react-native-webview";
 
 import { useColors } from "../contexts/ThemeContext";
 import { formatMessageTime } from "../lib/format";
@@ -98,11 +108,22 @@ export const MessageItem = memo(function MessageItem({
   const hasImages =
     isUser && message.imageKeys !== undefined && message.imageKeys.length > 0;
   const { t, i18n } = useTranslation("chat");
+  const [assistantContentWidth, setAssistantContentWidth] = useState(0);
 
   const handleActionsPress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onActionsPress?.(message);
   }, [message, onActionsPress]);
+
+  const handleAssistantContentLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const measuredWidth = Math.floor(event.nativeEvent.layout.width);
+      setAssistantContentWidth((currentWidth) =>
+        currentWidth === measuredWidth ? currentWidth : measuredWidth,
+      );
+    },
+    [],
+  );
 
   const markdownStyles = useMemo(
     () => ({
@@ -327,6 +348,28 @@ export const MessageItem = memo(function MessageItem({
         </Markdown>
       )}
 
+      {!isUser &&
+        !isStreaming &&
+        !isError &&
+        message.metadata?.groundingSearchEntryPoint && (
+          <GoogleSearchSuggestions
+            renderedContent={message.metadata.groundingSearchEntryPoint}
+            width={assistantContentWidth}
+          />
+        )}
+
+      {!isUser &&
+        !isStreaming &&
+        !isError &&
+        message.metadata?.groundingUsed &&
+        message.metadata.groundingSources &&
+        message.metadata.groundingSources.length > 0 && (
+          <GroundingSources
+            sources={message.metadata.groundingSources}
+            colors={colors}
+          />
+        )}
+
       {/* Error indicator */}
       {isError && <Text style={s.errorHint}>Error</Text>}
     </>
@@ -344,7 +387,7 @@ export const MessageItem = memo(function MessageItem({
         </Pressable>
       ) : (
         <View style={[s.bubble, isError ? s.bubbleError : s.bubbleAssistant]}>
-          {bubbleContent}
+          <View onLayout={handleAssistantContentLayout}>{bubbleContent}</View>
         </View>
       )}
 
@@ -428,6 +471,105 @@ function RagBadge({ count, colors }: { count: number; colors: any }) {
       <Text style={{ fontSize: 11, color: colors.inkMuted, opacity: 0.5 }}>
         ✦ {t("ragBadge.memoriesRecalled", { count })}
       </Text>
+    </View>
+  );
+}
+
+function GroundingSources({
+  sources,
+  colors,
+}: {
+  sources: Array<{ title: string; uri: string }>;
+  colors: any;
+}) {
+  const { t } = useTranslation("chat");
+
+  return (
+    <View
+      style={{
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: colors.rule,
+        gap: 5,
+      }}
+    >
+      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.inkMuted }}>
+        {t("grounding.sources")}
+      </Text>
+      {sources.map((source, index) => (
+        <Pressable
+          key={source.uri}
+          onPress={() => void Linking.openURL(source.uri)}
+          accessibilityRole="link"
+          accessibilityLabel={source.title}
+        >
+          <Text
+            numberOfLines={1}
+            style={{ fontSize: 11, color: colors.primary }}
+          >
+            {index + 1}. {source.title}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+const SEARCH_SUGGESTIONS_HEIGHT_SCRIPT = `
+  (() => {
+    const reportHeight = () => {
+      const height = Math.max(
+        document.documentElement.scrollHeight,
+        document.body ? document.body.scrollHeight : 0
+      );
+      window.ReactNativeWebView.postMessage(String(height));
+    };
+    reportHeight();
+    new ResizeObserver(reportHeight).observe(document.documentElement);
+  })();
+  true;
+`;
+
+function GoogleSearchSuggestions({
+  renderedContent,
+  width,
+}: {
+  renderedContent: string;
+  width: number;
+}) {
+  const [height, setHeight] = useState(56);
+  const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0;padding:0;background:transparent}</style></head><body>${renderedContent}</body></html>`;
+
+  if (width <= 0) return null;
+
+  return (
+    <View style={{ marginTop: 8, width, height }}>
+      <WebView
+        source={{ html }}
+        originWhitelist={["about:blank", "https://*", "http://*"]}
+        injectedJavaScript={SEARCH_SUGGESTIONS_HEIGHT_SCRIPT}
+        onMessage={(event) => {
+          const measuredHeight = Number(event.nativeEvent.data);
+          if (Number.isFinite(measuredHeight) && measuredHeight > 0) {
+            setHeight(Math.ceil(measuredHeight));
+          }
+        }}
+        onShouldStartLoadWithRequest={(request) => {
+          if (request.url.startsWith("about:blank")) return true;
+          if (
+            request.url.startsWith("https://") ||
+            request.url.startsWith("http://")
+          ) {
+            void Linking.openURL(request.url);
+          }
+          return false;
+        }}
+        scrollEnabled={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        style={{ flex: 0, width, height, backgroundColor: "transparent" }}
+      />
     </View>
   );
 }

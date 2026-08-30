@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "npx expo start",
-    "ios": "npx expo run:ios",
-    "android": "npx expo run:android",
+    "dev": "SYNAPSE_APP_VARIANT=development npx expo start --port 8082",
+    "ios": "SYNAPSE_APP_VARIANT=development npx expo run:ios --port 8082",
+    "android": "SYNAPSE_APP_VARIANT=development npx expo run:android --port 8082",
     "build:dev": "eas build --profile development --platform all",
     "build:dev:ios": "eas build --profile development --platform ios",
     "build:dev:android": "eas build --profile development --platform android",
@@ -33,8 +33,8 @@
     "expo-constants": "~55.0.11",
     "expo-crypto": "~55.0.10",
     "expo-dev-client": "~55.0.22",
-    "expo-font": "~55.0.6",
     "expo-file-system": "~55.0.14",
+    "expo-font": "~55.0.6",
     "expo-haptics": "^55.0.11",
     "expo-image-picker": "^55.0.16",
     "expo-linking": "~55.0.11",
@@ -54,7 +54,8 @@
     "react-native-reanimated": "^4.3.0",
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.23.0",
-    "react-native-svg": "^15.15.4"
+    "react-native-svg": "^15.15.4",
+    "react-native-webview": "13.16.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",

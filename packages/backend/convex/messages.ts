@@ -117,7 +117,7 @@ export const send = mutation({
     }
     if (content.length > MAX_MESSAGE_LENGTH) {
       throw new Error(
-        `Message exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters`
+        `Message exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters`,
       );
     }
 
@@ -215,7 +215,7 @@ export const deleteMessage = mutation({
         .withIndex("by_thread", (q) =>
           q
             .eq("threadId", message.threadId)
-            .gt("_creationTime", message._creationTime)
+            .gt("_creationTime", message._creationTime),
         )
         .order("asc")
         .first();
@@ -232,7 +232,7 @@ export const deleteMessage = mutation({
         .withIndex("by_thread", (q) =>
           q
             .eq("threadId", message.threadId)
-            .lt("_creationTime", message._creationTime)
+            .lt("_creationTime", message._creationTime),
         )
         .order("desc")
         .first();
@@ -281,9 +281,12 @@ export const reportStreamFailure = mutation({
 
     // Don't overwrite a message the server already finalized
     if (message.completedAt !== undefined) {
-      console.log("[messages.reportStreamFailure] Skipped — already finalized", {
-        messageId: args.messageId,
-      });
+      console.log(
+        "[messages.reportStreamFailure] Skipped — already finalized",
+        {
+          messageId: args.messageId,
+        },
+      );
       return;
     }
 
@@ -362,7 +365,7 @@ export const resend = mutation({
       .withIndex("by_thread", (q) =>
         q
           .eq("threadId", userMessage.threadId)
-          .gt("_creationTime", userMessage._creationTime)
+          .gt("_creationTime", userMessage._creationTime),
       )
       .order("asc")
       .first();
@@ -390,7 +393,8 @@ export const resend = mutation({
 
     console.log("[messages.resend] Re-generating response", {
       userMessageId: args.userMessageId,
-      deletedPreviousId: nextMessage?.role === "assistant" ? nextMessage._id : null,
+      deletedPreviousId:
+        nextMessage?.role === "assistant" ? nextMessage._id : null,
       assistantMessageId,
       threadId: userMessage.threadId,
       promptMode,
@@ -444,6 +448,20 @@ export const finalizeGeneration = internalMutation({
       ragEdges: v.optional(v.number()),
       ragSearchMs: v.optional(v.number()),
       ragContextChars: v.optional(v.number()),
+      groundingEnabled: v.optional(v.boolean()),
+      groundingUsed: v.optional(v.boolean()),
+      groundingQueryCount: v.optional(v.number()),
+      groundingSourceCount: v.optional(v.number()),
+      groundingSupportCount: v.optional(v.number()),
+      groundingSearchEntryPoint: v.optional(v.string()),
+      groundingSources: v.optional(
+        v.array(
+          v.object({
+            title: v.string(),
+            uri: v.string(),
+          }),
+        ),
+      ),
       cost: v.optional(v.number()),
       latencyMs: v.optional(v.number()),
       finishReason: v.optional(v.string()),
@@ -488,7 +506,7 @@ export const markAsError = internalMutation({
         error: v.optional(v.string()),
         errorCode: v.optional(v.string()),
         latencyMs: v.optional(v.number()),
-      })
+      }),
     ),
     completedAt: v.number(),
   },

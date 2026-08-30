@@ -45,7 +45,7 @@ export const MessageItem = memo(function MessageItem({
     <div
       className={cn(
         "group flex w-full animate-fade-in",
-        isUser ? "justify-end" : "justify-start"
+        isUser ? "justify-end" : "justify-start",
       )}
     >
       <div
@@ -55,16 +55,14 @@ export const MessageItem = memo(function MessageItem({
             ? "bg-primary text-primary-foreground"
             : isError
               ? "bg-destructive/10 text-destructive"
-              : "bg-card text-card-foreground shadow-sm"
+              : "bg-card text-card-foreground shadow-sm",
         )}
       >
         {hasImages && (
           <div
             className={cn(
               "mb-2 grid gap-1.5",
-              message.imageKeys!.length === 1
-                ? "grid-cols-1"
-                : "grid-cols-2"
+              message.imageKeys!.length === 1 ? "grid-cols-1" : "grid-cols-2",
             )}
           >
             {message.imageKeys!.map((key) => (
@@ -103,6 +101,24 @@ export const MessageItem = memo(function MessageItem({
           </div>
         )}
 
+        {!isUser &&
+          !isStreaming &&
+          !isError &&
+          message.metadata?.groundingSearchEntryPoint && (
+            <GoogleSearchSuggestions
+              renderedContent={message.metadata.groundingSearchEntryPoint}
+            />
+          )}
+
+        {!isUser &&
+          !isStreaming &&
+          !isError &&
+          message.metadata?.groundingUsed &&
+          message.metadata.groundingSources &&
+          message.metadata.groundingSources.length > 0 && (
+            <GroundingSources sources={message.metadata.groundingSources} />
+          )}
+
         {isError && (
           <div className="mt-2 flex items-center gap-1.5 text-xs opacity-70">
             <svg
@@ -125,7 +141,10 @@ export const MessageItem = memo(function MessageItem({
         {/* RAG recall badge — only on last assistant message */}
         {isLast && !isUser && message.metadata?.ragEnabled && (
           <RagBadge
-            count={(message.metadata.ragNodes ?? 0) + (message.metadata.ragEdges ?? 0)}
+            count={
+              (message.metadata.ragNodes ?? 0) +
+              (message.metadata.ragEdges ?? 0)
+            }
           />
         )}
 
@@ -133,25 +152,26 @@ export const MessageItem = memo(function MessageItem({
           <div
             className={cn(
               "mt-1.5 flex items-center gap-2 text-[11px] leading-none opacity-0 transition-opacity group-hover:opacity-60",
-              isUser
-                ? "text-primary-foreground/60"
-                : "text-muted-foreground"
+              isUser ? "text-primary-foreground/60" : "text-muted-foreground",
             )}
           >
-            <span>{formatMessageTime(message._creationTime, i18n.language)}</span>
+            <span>
+              {formatMessageTime(message._creationTime, i18n.language)}
+            </span>
             {!isEmpty && (
               <CopyButton content={message.content} isUserMessage={isUser} />
             )}
-            {isUser && (
-              <RetryMessageButton userMessageId={message._id} />
-            )}
+            {isUser && <RetryMessageButton userMessageId={message._id} />}
             {!isUser && !isError && (
               <ReportMessageButton
                 messageId={message._id}
                 threadId={message.threadId}
               />
             )}
-            <DeleteMessageButton messageId={message._id} isUserMessage={isUser} />
+            <DeleteMessageButton
+              messageId={message._id}
+              isUserMessage={isUser}
+            />
           </div>
         )}
       </div>
@@ -184,10 +204,18 @@ const CopyButton = memo(function CopyButton({
         "inline-flex items-center gap-0.5 rounded px-1 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         isUserMessage
           ? "hover:bg-primary-foreground/10"
-          : "hover:bg-muted-foreground/10"
+          : "hover:bg-muted-foreground/10",
       )}
-      title={isUserMessage ? t("messageItem.copyMessage") : t("messageItem.copyAsMarkdown")}
-      aria-label={isUserMessage ? t("messageItem.copyMessage") : t("messageItem.copyAsMarkdown")}
+      title={
+        isUserMessage
+          ? t("messageItem.copyMessage")
+          : t("messageItem.copyAsMarkdown")
+      }
+      aria-label={
+        isUserMessage
+          ? t("messageItem.copyMessage")
+          : t("messageItem.copyAsMarkdown")
+      }
     >
       {copied ? (
         <>
@@ -221,7 +249,9 @@ const CopyButton = memo(function CopyButton({
               d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
             />
           </svg>
-          <span className="text-[10px]">{isUserMessage ? t("messageItem.copy") : t("messageItem.md")}</span>
+          <span className="text-[10px]">
+            {isUserMessage ? t("messageItem.copy") : t("messageItem.md")}
+          </span>
         </>
       )}
     </button>
@@ -268,7 +298,7 @@ const RetryMessageButton = memo(function RetryMessageButton({
       disabled={isDisabled}
       className={cn(
         "inline-flex items-center gap-0.5 rounded px-1 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-primary-foreground/10",
-        isDisabled && "opacity-50 cursor-not-allowed"
+        isDisabled && "opacity-50 cursor-not-allowed",
       )}
       title={t("messageItem.retryMessage")}
       aria-label={t("messageItem.retryMessage")}
@@ -307,7 +337,9 @@ const RetryMessageButton = memo(function RetryMessageButton({
           />
         </svg>
       )}
-      <span className="text-[10px]">{isRetrying ? t("messageItem.retrying") : t("messageItem.retry")}</span>
+      <span className="text-[10px]">
+        {isRetrying ? t("messageItem.retrying") : t("messageItem.retry")}
+      </span>
     </button>
   );
 });
@@ -348,10 +380,18 @@ const DeleteMessageButton = memo(function DeleteMessageButton({
           ? isUserMessage
             ? "bg-primary-foreground/25 text-primary-foreground hover:bg-primary-foreground/35"
             : "bg-destructive/20 text-destructive hover:bg-destructive/30"
-          : "hover:bg-muted-foreground/10"
+          : "hover:bg-muted-foreground/10",
       )}
-      title={confirming ? t("messageItem.confirmDelete") : t("messageItem.deleteMessage")}
-      aria-label={confirming ? t("messageItem.confirmDeleteMessage") : t("messageItem.deleteMessage")}
+      title={
+        confirming
+          ? t("messageItem.confirmDelete")
+          : t("messageItem.deleteMessage")
+      }
+      aria-label={
+        confirming
+          ? t("messageItem.confirmDeleteMessage")
+          : t("messageItem.deleteMessage")
+      }
     >
       <svg
         className="h-3 w-3"
@@ -366,7 +406,9 @@ const DeleteMessageButton = memo(function DeleteMessageButton({
           d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
         />
       </svg>
-      <span className="text-[10px]">{confirming ? t("messageItem.sure") : t("messageItem.delete")}</span>
+      <span className="text-[10px]">
+        {confirming ? t("messageItem.sure") : t("messageItem.delete")}
+      </span>
     </button>
   );
 });
@@ -392,7 +434,7 @@ const ReportMessageButton = memo(function ReportMessageButton({
     toast.success(
       i18n.language === "es"
         ? "Reportado. Gracias por el feedback."
-        : "Reported. Thanks for the feedback."
+        : "Reported. Thanks for the feedback.",
     );
   }, [reported, messageId, threadId, i18n.language]);
 
@@ -406,7 +448,7 @@ const ReportMessageButton = memo(function ReportMessageButton({
       disabled={reported}
       className={cn(
         "inline-flex items-center gap-0.5 rounded px-1 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-muted-foreground/10",
-        reported && "opacity-50 cursor-default"
+        reported && "opacity-50 cursor-default",
       )}
       title={reported ? reportedLabel : label}
       aria-label={reported ? reportedLabel : label}
@@ -435,12 +477,72 @@ function RagBadge({ count }: { count: number }) {
 
   return (
     <div className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground/50">
-      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+      <svg
+        className="h-3 w-3"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"
+        />
       </svg>
       <span>{t("ragBadge.memoriesRecalled", { count })}</span>
     </div>
   );
+}
+
+function GroundingSources({
+  sources,
+}: {
+  sources: Array<{ title: string; uri: string }>;
+}) {
+  const { t } = useTranslation("chat");
+
+  return (
+    <div className="mt-3 border-t border-border/60 pt-2">
+      <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">
+        {t("grounding.sources")}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {sources.map((source, index) => (
+          <a
+            key={source.uri}
+            href={source.uri}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="max-w-full truncate rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title={source.title}
+          >
+            {index + 1}. {source.title}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GoogleSearchSuggestions({
+  renderedContent,
+}: {
+  renderedContent: string;
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    const shadowRoot = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+    // Google requires this HTML/CSS to be displayed without visual changes.
+    // Shadow DOM prevents its generic class names from affecting the app.
+    shadowRoot.innerHTML = renderedContent;
+  }, [renderedContent]);
+
+  return <div ref={hostRef} className="mt-3 w-full" />;
 }
 
 const MessageImage = memo(function MessageImage({

@@ -41,6 +41,13 @@ interface StreamChunk {
     cache_enabled?: boolean | null;
     cache_hit?: boolean | null;
     cache_fallback_triggered?: boolean | null;
+    grounding_enabled?: boolean;
+    grounding_used?: boolean;
+    grounding_query_count?: number;
+    grounding_source_count?: number;
+    grounding_support_count?: number;
+    grounding_search_entry_point?: string | null;
+    grounding_sources?: Array<{ title: string; uri: string }>;
   };
 }
 
@@ -127,16 +134,12 @@ http.route({
     };
 
     try {
-      context = await ctx.runAction(
-        internal.chat.prepareContext,
-        {
-          sessionId: sessionId as never,
-          assistantMessageId: assistantMessageId as never,
-        }
-      );
+      context = await ctx.runAction(internal.chat.prepareContext, {
+        sessionId: sessionId as never,
+        assistantMessageId: assistantMessageId as never,
+      });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
 
       console.error("[http /chat] Context preparation failed", {
         sessionId,
@@ -181,7 +184,10 @@ http.route({
         id: assistantMessageId as never,
         errorMessage:
           "I'm having trouble responding right now. Please try again.",
-        metadata: { error: "SYNAPSE_CORTEX_API_SECRET not set", errorCode: "CONFIG_ERROR" },
+        metadata: {
+          error: "SYNAPSE_CORTEX_API_SECRET not set",
+          errorCode: "CONFIG_ERROR",
+        },
         completedAt: Date.now(),
       });
 
@@ -207,7 +213,9 @@ http.route({
 
       // Performs the fetch + SSE streaming for a given model.
       // Writes content chunks to the stream and returns the final usage stats.
-      const attemptStream = async (model: string): Promise<StreamChunk["usage"]> => {
+      const attemptStream = async (
+        model: string,
+      ): Promise<StreamChunk["usage"]> => {
         const response = await fetch(CORTEX_CHAT_COMPLETIONS_URL, {
           method: "POST",
           headers: {
@@ -241,7 +249,7 @@ http.route({
             .text()
             .catch(() => "Unable to read error body");
           throw new Error(
-            `API error: HTTP ${response.status} — ${errorBody.slice(0, 500)}`
+            `API error: HTTP ${response.status} — ${errorBody.slice(0, 500)}`,
           );
         }
 
@@ -278,7 +286,7 @@ http.route({
 
                 if (chunk.error) {
                   throw new Error(
-                    `Provider error: ${chunk.error.message || `Code ${chunk.error.code}`}`
+                    `Provider error: ${chunk.error.message || `Code ${chunk.error.code}`}`,
                   );
                 }
 
@@ -291,10 +299,13 @@ http.route({
                       await writer.write(encoder.encode(delta.content));
                     } catch {
                       clientDisconnected = true;
-                      console.warn("[http /chat] Client disconnected, continuing generation server-side", {
-                        requestId,
-                        contentLengthSoFar: content.length,
-                      });
+                      console.warn(
+                        "[http /chat] Client disconnected, continuing generation server-side",
+                        {
+                          requestId,
+                          contentLengthSoFar: content.length,
+                        },
+                      );
                     }
                   }
                 }
@@ -338,11 +349,14 @@ http.route({
               ? primaryError.message
               : String(primaryError);
 
-          console.warn("[http /chat] Primary model failed, retrying with fallback", {
-            requestId,
-            primaryError: primaryMessage,
-            fallbackModel: FALLBACK_MODEL,
-          });
+          console.warn(
+            "[http /chat] Primary model failed, retrying with fallback",
+            {
+              requestId,
+              primaryError: primaryMessage,
+              fallbackModel: FALLBACK_MODEL,
+            },
+          );
 
           usage = await attemptStream(FALLBACK_MODEL);
           modelUsed = FALLBACK_MODEL;
@@ -368,6 +382,14 @@ http.route({
             ragEdges: usage?.rag_edges ?? undefined,
             ragSearchMs: usage?.rag_search_ms ?? undefined,
             ragContextChars: usage?.rag_context_chars ?? undefined,
+            groundingEnabled: usage?.grounding_enabled,
+            groundingUsed: usage?.grounding_used,
+            groundingQueryCount: usage?.grounding_query_count,
+            groundingSourceCount: usage?.grounding_source_count,
+            groundingSupportCount: usage?.grounding_support_count,
+            groundingSearchEntryPoint:
+              usage?.grounding_search_entry_point ?? undefined,
+            groundingSources: usage?.grounding_sources,
             latencyMs: totalLatencyMs,
             finishReason,
           },
@@ -404,6 +426,13 @@ http.route({
           latencyMs: totalLatencyMs,
           contentLength: content.length,
           tokens: usage?.total_tokens,
+          groundingEnabled: usage?.grounding_enabled,
+          groundingUsed: usage?.grounding_used,
+          groundingQueryCount: usage?.grounding_query_count,
+          groundingSourceCount: usage?.grounding_source_count,
+          groundingSearchEntryPointPresent: Boolean(
+            usage?.grounding_search_entry_point,
+          ),
           finishReason,
           promptMode,
         });
@@ -424,8 +453,17 @@ http.route({
               rag_enabled: usage?.rag_enabled ?? false,
               cache_enabled: usage?.cache_enabled ?? false,
               cache_hit: usage?.cache_hit ?? false,
-              cache_fallback_triggered: usage?.cache_fallback_triggered ?? false,
+              cache_fallback_triggered:
+                usage?.cache_fallback_triggered ?? false,
               cached_tokens: usage?.cached_tokens ?? 0,
+              grounding_enabled: usage?.grounding_enabled ?? false,
+              grounding_used: usage?.grounding_used ?? false,
+              grounding_query_count: usage?.grounding_query_count ?? 0,
+              grounding_source_count: usage?.grounding_source_count ?? 0,
+              grounding_support_count: usage?.grounding_support_count ?? 0,
+              grounding_search_entry_point_present: Boolean(
+                usage?.grounding_search_entry_point,
+              ),
               thread_id: threadId,
               session_id: sessionId,
               prompt_mode: promptMode,
@@ -459,8 +497,7 @@ http.route({
           }
         }
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
         const isProviderError = message.startsWith("Provider error:");
         const latencyMs = Date.now() - startTime;
 
