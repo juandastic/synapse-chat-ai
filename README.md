@@ -4,13 +4,14 @@ A multi-thread, persona-based conversational interface with **deep memory**. Eac
 
 ---
 
-## The Story Behind Synapse
+## The story behind Synapse
 
 This project was built and evolved over time, and the journey is documented in a series of articles. If you want to understand the motivation, architectural decisions, and how the system grew from an idea into what it is today, start here:
 
-1. **[Beyond RAG: Building an AI Companion with Deep Memory Using Knowledge Graphs](https://dev.to/juandastic/beyond-rag-building-an-ai-companion-with-deep-memory-using-knowledge-graphs-2e6e)** — The origin story: why traditional RAG wasn't enough and how knowledge graphs became the foundation for persistent AI memory.
-2. **[Scaling AI Memory: How I Tamed a 120K Token Prompt with Deterministic GraphRAG](https://dev.to/juandastic/scaling-ai-memory-how-i-tamed-a-120k-token-prompt-with-deterministic-graphrag-4f85)** — The scaling challenge: how the knowledge graph retrieval was optimized to keep prompts manageable as memory grew.
-3. **[Full Circle: Giving My AI's Knowledge Graph a Notion Interface Using MCP](https://dev.to/juandastic/full-circle-giving-my-ais-knowledge-graph-a-notion-interface-using-mcp-2dmp)** — Closing the loop: exposing the knowledge graph through a Notion interface via MCP, enabling users to review and correct their AI's memory.
+1. **[My Wife Sent 297 Messages in 15 Days. Not to Me. To the AI I Built Her. The Synapse Story](https://dev.to/juandastic/my-wife-sent-297-messages-in-15-days-not-to-me-to-the-ai-i-built-her-the-synapse-story-333o)** - Start here. This is the story of why Synapse exists, how it became part of our daily lives, and what the project looks like today.
+2. **[Beyond RAG: Building an AI Companion with Deep Memory Using Knowledge Graphs](https://dev.to/juandastic/beyond-rag-building-an-ai-companion-with-deep-memory-using-knowledge-graphs-2e6e)** - The first technical version: why traditional RAG wasn't enough and how knowledge graphs became the foundation for persistent AI memory.
+3. **[Scaling AI Memory: How I Tamed a 120K Token Prompt with Deterministic GraphRAG](https://dev.to/juandastic/scaling-ai-memory-how-i-tamed-a-120k-token-prompt-with-deterministic-graphrag-4f85)** - How knowledge graph retrieval was optimized to keep prompts manageable as memory grew.
+4. **[Full Circle: Giving My AI's Knowledge Graph a Notion Interface Using MCP](https://dev.to/juandastic/full-circle-giving-my-ais-knowledge-graph-a-notion-interface-using-mcp-2dmp)** - How the knowledge graph was exposed through a Notion interface via MCP so users can review and correct their AI's memory.
 
 > **Backend:** The knowledge graph processing, memory compilation, and graph operations are handled by [Synapse Cortex](https://github.com/juandastic/synapse-cortex) — the Python backend that powers the brain behind Synapse. It's an essential piece of the full system.
 
