@@ -41,28 +41,6 @@ export const list = query({
 });
 
 /**
- * Return the 3 most recent threads (raw, no persona join).
- * Currently unused — frontend derives from threads.list instead.
- * Kept as a lightweight alternative if needed in the future.
- */
-export const listRecent = query({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return [];
-
-    const threads = await ctx.db
-      .query("threads")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-
-    return [...threads]
-      .sort((a, b) => b.lastMessageAt - a.lastMessageAt)
-      .slice(0, 3);
-  },
-});
-
-/**
  * Get a single thread by ID with ownership check.
  * Includes persona data for the header display.
  */

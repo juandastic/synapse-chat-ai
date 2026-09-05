@@ -7,13 +7,12 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { useNavigation, DrawerActions } from "expo-router/react-navigation";
-import { useAction, useQuery, useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Menu, Search, ChevronRight, Send, RefreshCw } from "lucide-react-native";

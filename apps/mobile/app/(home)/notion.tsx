@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
-  Alert,
   ActivityIndicator,
   Linking,
 } from "react-native";
@@ -27,7 +26,7 @@ const CORRECTION_STEPS = ["scanning", "applying", "done"] as const;
 const POLL_INTERVAL = 30000;
 
 export default function NotionScreen() {
-  const { t, i18n } = useTranslation("notion");
+  const { t } = useTranslation("notion");
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const colors = useColors();
@@ -47,7 +46,6 @@ export default function NotionScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // Export state
-  const [exportJobId, setExportJobId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<string>("");
   const [exportResult, setExportResult] = useState<{ summaryPageUrl?: string; categoriesCount?: number; entriesCount?: number } | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -114,12 +112,10 @@ export default function NotionScreen() {
         stopPolling();
         setExportResult(status.result ?? null);
         setPhase("completed");
-        setExportJobId(null);
       } else if (status.status === "failed") {
         stopPolling();
         setExportError(status.error || "Export failed");
         setPhase("failed");
-        setExportJobId(null);
       }
     } catch {
       // Continue polling
@@ -135,10 +131,8 @@ export default function NotionScreen() {
       await saveConfig({ notionToken: token.trim(), notionPageName: pageName.trim(), notionLanguage: language });
       const result = await startExport({ notionToken: token.trim(), notionPageName: pageName.trim(), notionLanguage: language });
       const jobId = result.jobId;
-      setExportJobId(jobId);
       setPhase("exporting");
       setCurrentStep("hydrating");
-      // Job ID stored in state only — no persistence across app restarts
       pollRef.current = setInterval(() => pollExportStatus(jobId), POLL_INTERVAL);
     } catch (err) {
       setError(t("export.failed"));

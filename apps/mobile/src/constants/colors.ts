@@ -57,9 +57,3 @@ export const darkColors: ColorPalette = {
   primaryForeground: "#1c1814",
   amber: "#d97706",
 };
-
-/**
- * @deprecated Use `useColors()` from ThemeContext instead.
- * Kept for backward compatibility during migration.
- */
-export const colors = lightColors;

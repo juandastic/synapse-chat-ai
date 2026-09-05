@@ -66,9 +66,5 @@ export function useImagePicker() {
     setImages([]);
   }, []);
 
-  const restoreImages = useCallback((imgs: PickedImage[]) => {
-    setImages(imgs);
-  }, []);
-
-  return { images, pickImages, removeImage, clearImages, restoreImages, maxImages: MAX_IMAGES };
+  return { images, pickImages, removeImage, clearImages, restoreImages: setImages, maxImages: MAX_IMAGES };
 }

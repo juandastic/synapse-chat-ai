@@ -372,7 +372,7 @@ sequenceDiagram
     UI->>Http: POST /chat (JWT, sessionId, threadId, assistantMessageId)
 
     Http->>Chat: prepareContext(sessionId, assistantMessageId)
-    Chat->>Chat: Read session snapshot + user_knowledge_cache, getRecent by sessionId
+    Chat->>Chat: Read session snapshot + user_knowledge_cache, getBySession by sessionId
     Chat->>Chat: Resolve R2 image URLs
     Chat-->>Http: apiMessages, userId, requestId
 
@@ -394,7 +394,7 @@ sequenceDiagram
 - Zero database writes during streaming — content is streamed directly to the client via HTTP.
 - Single atomic DB write at the end persists content + metadata.
 - Frontend overlays locally streamed content on the DB message; once `completedAt` is set, DB content becomes authoritative.
-- `getRecent` fetches messages by `sessionId` (previous sessions are ingested into Cortex knowledge).
+- `getBySession` fetches messages by `sessionId` (previous sessions are ingested into Cortex knowledge).
 
 ---
 
@@ -821,7 +821,7 @@ synapse-ai-chat/
 4. **Early return on unchanged stats** — `userMemory.upsert` compares all fields before calling `db.patch`. If nothing changed (common during re-hydration), the write is skipped entirely, preventing unnecessary reactive subscription triggers.
 5. **Single Cortex call per ingest** — `graphStats` is included in the `IngestStatusResponse`, so the poll completion path writes both tables directly without a separate hydration call.
 6. **Knowledge hydration via `/hydrate`** — scheduled as a background action on session creation. Compiles knowledge and graph stats in one call, updating both `user_memory` and `user_knowledge_cache`.
-7. **Session-scoped message context** — `getRecent` fetches the last 20 messages by `sessionId` for the current session only. Previous sessions are already ingested into Cortex, so cross-session continuity comes from the knowledge graph (`user_knowledge_cache`) rather than raw message history.
+7. **Session-scoped message context** — `getBySession` fetches all messages by `sessionId` for the current session only. Previous sessions are already ingested into Cortex, so cross-session continuity comes from the knowledge graph (`user_knowledge_cache`) rather than raw message history.
 8. **Inline persona selection (no modal)** — content area shows `PersonaSelector` card grid. Selecting one creates the thread and navigates directly.
 9. **Thread deletion cascade** — deletes all sessions + messages for the thread in a single mutation.
 10. **NLP-based memory corrections** — instead of manual entity editing, users submit natural language corrections that Graphiti processes through its entity resolution pipeline.

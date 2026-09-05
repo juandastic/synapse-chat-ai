@@ -39,21 +39,13 @@ export function ChatProvider({ threadId, children }: ChatProviderProps) {
     });
   }, [messages, streamedMessageId, streamedContent]);
 
-  const isGenerating = useMemo(() => {
-    if (!messages || messages.length === 0) return false;
-    const lastMessage = messages[messages.length - 1];
-    return (
-      lastMessage.role === "assistant" && lastMessage.completedAt === undefined
-    );
-  }, [messages]);
+  const lastMessage = messages?.[messages.length - 1];
+  const isGenerating =
+    lastMessage?.role === "assistant" && lastMessage.completedAt === undefined;
 
   const startStreaming = useCallback((messageId: Id<"messages">) => {
     setStreamedMessageId(messageId);
     setStreamedContent("");
-  }, []);
-
-  const updateStreamedContent = useCallback((content: string) => {
-    setStreamedContent(content);
   }, []);
 
   const stopStreaming = useCallback(() => {
@@ -68,7 +60,7 @@ export function ChatProvider({ threadId, children }: ChatProviderProps) {
       isLoading,
       threadId,
       startStreaming,
-      updateStreamedContent,
+      updateStreamedContent: setStreamedContent,
       stopStreaming,
     }),
     [
@@ -77,7 +69,7 @@ export function ChatProvider({ threadId, children }: ChatProviderProps) {
       isLoading,
       threadId,
       startStreaming,
-      updateStreamedContent,
+      setStreamedContent,
       stopStreaming,
     ]
   );

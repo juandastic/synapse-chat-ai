@@ -1,9 +1,7 @@
-import { v } from "convex/values";
-import { query, internalQuery, MutationCtx, QueryCtx } from "./_generated/server";
+import { query, MutationCtx, QueryCtx } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 import {
   PLAN_LIMITS,
-  PlanTier,
   isWithinLimit,
   resolveUserPlan,
   CONTACT_INFO,
@@ -111,19 +109,6 @@ export async function checkDailyUsage(
 }
 
 // =============================================================================
-// Internal Query — for use from httpAction (http.ts)
-// =============================================================================
-
-export const checkUsageQuery = internalQuery({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args): Promise<UsageCheckResult> => {
-    const user = await ctx.db.get(args.userId);
-    if (!user) return { allowed: false, reason: "User not found" };
-    return checkDailyUsage(ctx, user);
-  },
-});
-
-// =============================================================================
 // Public Query — frontend subscribes for usage indicator
 // =============================================================================
 
@@ -139,7 +124,7 @@ export const getUsageStatus = query({
     // Unlimited plans — skip monthly_usage read to avoid reactive re-evaluations
     if (limits.dailyMessages === -1 && limits.dailyOutputTokens === -1) {
       return {
-        plan: plan as PlanTier,
+        plan,
         dailyMessages: { used: 0, limit: -1 },
         dailyOutputTokens: { used: 0, limit: -1 },
         resetInfo: "Your limit resets at midnight UTC",
@@ -150,7 +135,7 @@ export const getUsageStatus = query({
     const stats = await getDayStats(ctx, user._id);
 
     return {
-      plan: plan as PlanTier,
+      plan,
       dailyMessages: {
         used: stats.chatMessages ?? 0,
         limit: limits.dailyMessages,

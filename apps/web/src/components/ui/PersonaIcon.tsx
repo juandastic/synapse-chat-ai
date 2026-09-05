@@ -54,11 +54,6 @@ export const LUCIDE_ICON_MAP: Record<string, LucideIcon> = {
   anchor: Anchor,
 };
 
-/** Check if a string is a Lucide icon name */
-export function isLucideIcon(value: string): boolean {
-  return value in LUCIDE_ICON_MAP;
-}
-
 /**
  * Renders a persona icon — either a Lucide icon (inside a tinted circle)
  * or an emoji (as plain text). Supports multiple sizes.

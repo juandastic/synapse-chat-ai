@@ -2,34 +2,6 @@ import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 
 // =============================================================================
-// Types
-// =============================================================================
-
-/** Shape of each daily slot inside dailyStats. */
-interface DayStats {
-  chatMessages: number;
-  chatChars: number;
-  inputTokens: number;
-  outputTokens: number;
-  ingestions: number;
-  corrections: number;
-  ingestedChars: number;
-}
-
-/** Zero-initialized daily stats. */
-function emptyDayStats(): DayStats {
-  return {
-    chatMessages: 0,
-    chatChars: 0,
-    inputTokens: 0,
-    outputTokens: 0,
-    ingestions: 0,
-    corrections: 0,
-    ingestedChars: 0,
-  };
-}
-
-// =============================================================================
 // Internal Mutation
 // =============================================================================
 
@@ -76,89 +48,48 @@ export const trackActivity = internalMutation({
       )
       .unique();
 
-    if (!existing) {
-      // First activity this month — create the document
-      const dayStats: DayStats = emptyDayStats();
+    const delta = {
+      chatMessages: type === "chat" ? count : 0,
+      chatChars: type === "chat" ? chars : 0,
+      inputTokens: type === "chat" ? tokensIn : 0,
+      outputTokens: type === "chat" ? tokensOut : 0,
+      ingestions: type === "ingest" ? count : 0,
+      corrections: type === "correction" ? count : 0,
+      ingestedChars: type === "ingest" || type === "correction" ? chars : 0,
+    };
+    const daySlot: Partial<typeof delta> | undefined = existing?.dailyStats?.[day];
+    const dailyStats = {
+      ...existing?.dailyStats,
+      [day]: {
+        ...daySlot,
+        chatMessages: (daySlot?.chatMessages ?? 0) + delta.chatMessages,
+        chatChars: (daySlot?.chatChars ?? 0) + delta.chatChars,
+        inputTokens: (daySlot?.inputTokens ?? 0) + delta.inputTokens,
+        outputTokens: (daySlot?.outputTokens ?? 0) + delta.outputTokens,
+        ingestions: (daySlot?.ingestions ?? 0) + delta.ingestions,
+        corrections: (daySlot?.corrections ?? 0) + delta.corrections,
+        ingestedChars: (daySlot?.ingestedChars ?? 0) + delta.ingestedChars,
+      },
+    };
+    const totals = {
+      totalChatMessages: (existing?.totalChatMessages ?? 0) + delta.chatMessages,
+      totalChatCharsGenerated: (existing?.totalChatCharsGenerated ?? 0) + delta.chatChars,
+      totalInputTokens: (existing?.totalInputTokens ?? 0) + delta.inputTokens,
+      totalOutputTokens: (existing?.totalOutputTokens ?? 0) + delta.outputTokens,
+      totalIngestions: (existing?.totalIngestions ?? 0) + delta.ingestions,
+      totalCorrections: (existing?.totalCorrections ?? 0) + delta.corrections,
+      totalIngestedChars: (existing?.totalIngestedChars ?? 0) + delta.ingestedChars,
+      dailyStats,
+    };
 
-      if (type === "chat") {
-        dayStats.chatMessages += count;
-        dayStats.chatChars += chars;
-        dayStats.inputTokens += tokensIn;
-        dayStats.outputTokens += tokensOut;
-      } else if (type === "ingest") {
-        dayStats.ingestions += count;
-        dayStats.ingestedChars += chars;
-      } else if (type === "correction") {
-        dayStats.corrections += count;
-        dayStats.ingestedChars += chars;
-      }
-
+    if (existing) {
+      await ctx.db.patch(existing._id, totals);
+    } else {
       await ctx.db.insert("monthly_usage", {
         userId: args.userId,
         month,
-        totalChatMessages: type === "chat" ? count : 0,
-        totalChatCharsGenerated: type === "chat" ? chars : 0,
-        totalInputTokens: type === "chat" ? tokensIn : 0,
-        totalOutputTokens: type === "chat" ? tokensOut : 0,
-        totalIngestions: type === "ingest" ? count : 0,
-        totalCorrections: type === "correction" ? count : 0,
-        totalIngestedChars:
-          type === "ingest" || type === "correction" ? chars : 0,
-        dailyStats: { [day]: dayStats },
+        ...totals,
       });
-
-      return;
     }
-
-    // Existing document — update in place
-    const dailyStats: Record<string, DayStats> = existing.dailyStats ?? {};
-    const daySlot: DayStats = dailyStats[day] ?? emptyDayStats();
-
-    // Increment global totals based on type
-    let chatMessagesDelta = 0;
-    let chatCharsDelta = 0;
-    let inputTokensDelta = 0;
-    let outputTokensDelta = 0;
-    let ingestionsDelta = 0;
-    let correctionsDelta = 0;
-    let ingestedCharsDelta = 0;
-
-    if (type === "chat") {
-      chatMessagesDelta = count;
-      chatCharsDelta = chars;
-      inputTokensDelta = tokensIn;
-      outputTokensDelta = tokensOut;
-
-      daySlot.chatMessages += count;
-      daySlot.chatChars += chars;
-      daySlot.inputTokens += tokensIn;
-      daySlot.outputTokens += tokensOut;
-    } else if (type === "ingest") {
-      ingestionsDelta = count;
-      ingestedCharsDelta = chars;
-
-      daySlot.ingestions += count;
-      daySlot.ingestedChars += chars;
-    } else if (type === "correction") {
-      correctionsDelta = count;
-      ingestedCharsDelta = chars;
-
-      daySlot.corrections += count;
-      daySlot.ingestedChars += chars;
-    }
-
-    dailyStats[day] = daySlot;
-
-    await ctx.db.patch(existing._id, {
-      totalChatMessages: existing.totalChatMessages + chatMessagesDelta,
-      totalChatCharsGenerated:
-        existing.totalChatCharsGenerated + chatCharsDelta,
-      totalInputTokens: existing.totalInputTokens + inputTokensDelta,
-      totalOutputTokens: existing.totalOutputTokens + outputTokensDelta,
-      totalIngestions: existing.totalIngestions + ingestionsDelta,
-      totalCorrections: existing.totalCorrections + correctionsDelta,
-      totalIngestedChars: existing.totalIngestedChars + ingestedCharsDelta,
-      dailyStats,
-    });
   },
 });

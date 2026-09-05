@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { cn, formatMessageTime } from "@/lib/utils";
 import { Doc } from "@synapse/backend/dataModel";
 import { api } from "@synapse/backend/api";
-import { createSecureRehypePlugins } from "@/lib/markdown-security";
+import { secureRehypePlugin } from "@/lib/markdown-security";
 import { useChatContext } from "@/contexts/useChatContext";
 import { useStreamResponse } from "@/hooks/useStreamResponse";
 import { useTranslation } from "react-i18next";
@@ -92,7 +92,7 @@ export const MessageItem = memo(function MessageItem({
             <Streamdown
               rehypePlugins={[
                 defaultRehypePlugins.raw,
-                createSecureRehypePlugins(true), // hardened for AI-generated content
+                secureRehypePlugin,
               ]}
               isAnimating={isActivelyStreaming}
             >

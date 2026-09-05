@@ -1,3 +1,4 @@
+import { getRelativeTime } from "../lib/format";
 import { memo, useCallback, useMemo, useRef } from "react";
 import { View, Text, StyleSheet, Pressable, Animated, Alert } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
@@ -16,21 +17,6 @@ interface ThreadListItemProps {
   lastMessageAt: number;
   onDelete: (threadId: string, title: string) => void;
   closeDrawer: () => void;
-}
-
-function formatRelativeTime(timestamp: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
-  const now = Date.now();
-  const diff = now - timestamp;
-  const minutes = Math.floor(diff / 60_000);
-  const hours = Math.floor(diff / 3_600_000);
-  const days = Math.floor(diff / 86_400_000);
-  const months = Math.floor(diff / 2_592_000_000);
-
-  if (minutes < 1) return t("time.justNow");
-  if (minutes < 60) return t("time.minutesAgo", { count: minutes });
-  if (hours < 24) return t("time.hoursAgo", { count: hours });
-  if (days < 30) return t("time.daysAgo", { count: days });
-  return t("time.monthsAgo", { count: months });
 }
 
 export const ThreadListItem = memo(function ThreadListItem({
@@ -140,7 +126,7 @@ export const ThreadListItem = memo(function ThreadListItem({
             {title}
           </Text>
           <Text style={s.time}>
-            {formatRelativeTime(lastMessageAt, t)}
+            {getRelativeTime(lastMessageAt, t)}
           </Text>
         </View>
       </Pressable>

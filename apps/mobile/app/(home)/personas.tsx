@@ -16,7 +16,7 @@ import { useQuery, useMutation } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
-import { Id, Doc } from "@synapse/backend/dataModel";
+import { Doc } from "@synapse/backend/dataModel";
 import { Menu, Plus, Pencil, Trash2, ChevronLeft } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { captureError } from "../../src/lib/analytics";

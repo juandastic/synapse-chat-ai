@@ -62,23 +62,6 @@ export const getImageUrl = query({
 // Internal Queries
 // =============================================================================
 
-/** Recent messages for a session (AI context window). Previous sessions are already ingested into Cortex. */
-export const getRecent = internalQuery({
-  args: {
-    sessionId: v.id("sessions"),
-    limit: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const messages = await ctx.db
-      .query("messages")
-      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
-      .order("desc")
-      .take(args.limit);
-
-    return messages.reverse();
-  },
-});
-
 /** All messages for a session in chronological order. */
 export const getBySession = internalQuery({
   args: {
@@ -523,23 +506,6 @@ export const resend = mutation({
 // =============================================================================
 // Internal Mutations
 // =============================================================================
-
-/**
- * Persist partial content during generation.
- * Called as a safety checkpoint when the client disconnects mid-stream,
- * so progress is not lost if the runtime is terminated.
- */
-export const updateStreamingContent = internalMutation({
-  args: {
-    id: v.id("messages"),
-    content: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const message = await ctx.db.get(args.id);
-    if (!message || message.completedAt !== undefined) return;
-    await ctx.db.patch(args.id, { content: args.content });
-  },
-});
 
 /**
  * Persist final content + metadata in a single atomic write.

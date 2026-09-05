@@ -22,7 +22,6 @@ export const PLAN_LIMITS = {
 } as const;
 
 export type PlanTier = keyof typeof PLAN_LIMITS;
-export type PlanLimits = (typeof PLAN_LIMITS)[PlanTier];
 
 /** Returns true if usage is within the limit. -1 = unlimited. */
 export function isWithinLimit(used: number, limit: number): boolean {

@@ -1,7 +1,7 @@
 import { Component, type ReactNode } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { captureError } from "../lib/analytics";
-import { colors } from "../constants/colors";
+import { lightColors as colors } from "../constants/colors";
 
 interface Props {
   children: ReactNode;

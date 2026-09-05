@@ -9,10 +9,6 @@ import { CompilationMetadata } from "./cortexConfig";
 import { PromptMode, renderSystemPrompt } from "./prompts";
 
 // =============================================================================
-// Configuration
-// =============================================================================
-
-// =============================================================================
 // Types
 // =============================================================================
 
@@ -107,12 +103,8 @@ export const prepareContext = internalAction({
     const userKnowledge =
       knowledgeCache?.cachedUserKnowledge ?? session.cachedUserKnowledge;
 
-    // Keep persona/system instructions and the compiled knowledge as separate
-    // fields. The server decides whether to inline the compilation into the
-    // prompt or leverage a Gemini CachedContent — on its end the compilation
-    // may live in an explicit cache (75% cheaper on repeated tokens), but the
-    // client always sends everything so the server can fall back transparently
-    // if the cache expired or was never created (small users).
+    // Send compilation separately so Cortex can use its cache or inline the
+    // full text when that cache is unavailable.
     const systemInstruction =
       `${baseSystemPrompt}\n\nCurrent date and time: ${currentDateTime}`;
 
