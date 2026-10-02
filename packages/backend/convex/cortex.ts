@@ -120,7 +120,11 @@ export const hydrate = internalAction({
 
       // Derive included counts from compilationMetadata
       const meta = data.compilationMetadata as
-        | { included_node_ids?: string[]; included_edge_ids?: string[]; is_partial?: boolean }
+        | {
+            included_node_ids?: string[];
+            included_edge_ids?: string[];
+            is_partial?: boolean;
+          }
         | undefined;
 
       // Write stats to user_memory (lightweight, powers reactive UI)

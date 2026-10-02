@@ -53,15 +53,12 @@ function extractErrorMessage(error: unknown): string {
  * including the URL and root cause. No timeout — these are background jobs
  * that can take as long as they need.
  */
-async function cortexFetch(
-  url: string,
-  init: RequestInit
-): Promise<Response> {
+async function cortexFetch(url: string, init: RequestInit): Promise<Response> {
   try {
     return await fetch(url, init);
   } catch (error) {
     throw new Error(
-      `Cortex request to ${url} failed: ${extractErrorMessage(error)}`
+      `Cortex request to ${url} failed: ${extractErrorMessage(error)}`,
     );
   }
 }
@@ -175,7 +172,7 @@ export const processJob = internalAction({
           ctx,
           args.jobId,
           job.payload as IngestPayload,
-          logCtx
+          logCtx,
         );
         if (result === "polling") {
           const delay = POLL_DELAYS_MS[0];
@@ -187,7 +184,7 @@ export const processJob = internalAction({
           await ctx.scheduler.runAfter(
             delay,
             internal.cortexProcessor.pollIngestStatus,
-            { jobId: args.jobId, pollAttempt: 0 }
+            { jobId: args.jobId, pollAttempt: 0 },
           );
           return;
         }
@@ -243,7 +240,7 @@ export const processJob = internalAction({
         await ctx.scheduler.runAfter(
           delay,
           internal.cortexProcessor.processJob,
-          { jobId: args.jobId }
+          { jobId: args.jobId },
         );
       }
     }
@@ -300,11 +297,9 @@ export const pollIngestStatus = internalAction({
           jobId: args.jobId,
           pollAttempt: args.pollAttempt,
         });
-        await ctx.scheduler.runAfter(
-          0,
-          internal.cortexProcessor.processJob,
-          { jobId: args.jobId }
-        );
+        await ctx.scheduler.runAfter(0, internal.cortexProcessor.processJob, {
+          jobId: args.jobId,
+        });
         return;
       }
 
@@ -313,7 +308,7 @@ export const pollIngestStatus = internalAction({
           .text()
           .catch(() => "<unreadable body>");
         throw new Error(
-          `Cortex /ingest/status HTTP ${response.status} ${response.statusText}: ${errorBody.slice(0, 500)}`
+          `Cortex /ingest/status HTTP ${response.status} ${response.statusText}: ${errorBody.slice(0, 500)}`,
         );
       }
 
@@ -336,7 +331,11 @@ export const pollIngestStatus = internalAction({
         // Write stats to user_memory (lightweight, powers reactive UI)
         if (data.graphStats) {
           const meta = data.compilationMetadata as
-            | { included_node_ids?: string[]; included_edge_ids?: string[]; is_partial?: boolean }
+            | {
+                included_node_ids?: string[];
+                included_edge_ids?: string[];
+                is_partial?: boolean;
+              }
             | undefined;
           await ctx.runMutation(internal.userMemory.upsert, {
             userId: payload.userId,
@@ -411,7 +410,7 @@ export const pollIngestStatus = internalAction({
         args.jobId,
         args.pollAttempt,
         payload,
-        errorMessage
+        errorMessage,
       );
     }
   },
@@ -426,7 +425,7 @@ async function scheduleNextPoll(
   jobId: Id<"cortex_jobs">,
   currentAttempt: number,
   payload: IngestPayload,
-  lastError?: string
+  lastError?: string,
 ): Promise<void> {
   const nextAttempt = currentAttempt + 1;
 
@@ -458,7 +457,7 @@ async function scheduleNextPoll(
   await ctx.scheduler.runAfter(
     delay,
     internal.cortexProcessor.pollIngestStatus,
-    { jobId, pollAttempt: nextAttempt }
+    { jobId, pollAttempt: nextAttempt },
   );
 
   console.log("[cortexProcessor] Next poll scheduled", {
@@ -489,7 +488,7 @@ async function processIngest(
   ctx: ProcessorCtx,
   jobId: Id<"cortex_jobs">,
   payload: IngestPayload,
-  logCtx: Record<string, unknown>
+  logCtx: Record<string, unknown>,
 ): Promise<"completed" | "polling"> {
   const apiSecret = process.env.SYNAPSE_CORTEX_API_SECRET;
   if (!apiSecret) {
@@ -524,7 +523,7 @@ async function processIngest(
         role: m.role,
         content: m.content,
         timestamp: Math.floor(m._creationTime),
-      })
+      }),
     ),
     metadata: {
       sessionStartedAt: Math.floor(session.startedAt),
@@ -554,7 +553,7 @@ async function processIngest(
   if (!response.ok) {
     const errorBody = await response.text().catch(() => "<unreadable body>");
     throw new Error(
-      `Cortex /ingest HTTP ${response.status} ${response.statusText}: ${errorBody.slice(0, 500)}`
+      `Cortex /ingest HTTP ${response.status} ${response.statusText}: ${errorBody.slice(0, 500)}`,
     );
   }
 
@@ -596,7 +595,7 @@ async function processIngest(
 async function processCorrection(
   ctx: ProcessorCtx,
   payload: CorrectionPayload,
-  logCtx: Record<string, unknown>
+  logCtx: Record<string, unknown>,
 ): Promise<void> {
   const apiSecret = process.env.SYNAPSE_CORTEX_API_SECRET;
   if (!apiSecret) {
@@ -624,7 +623,7 @@ async function processCorrection(
   if (!response.ok) {
     const errorBody = await response.text().catch(() => "<unreadable body>");
     throw new Error(
-      `Cortex /correction HTTP ${response.status} ${response.statusText}: ${errorBody.slice(0, 500)}`
+      `Cortex /correction HTTP ${response.status} ${response.statusText}: ${errorBody.slice(0, 500)}`,
     );
   }
 
@@ -632,7 +631,7 @@ async function processCorrection(
 
   if (!data.success) {
     throw new Error(
-      `Cortex /correction error: ${data.code} - ${data.error ?? "Unknown"}`
+      `Cortex /correction error: ${data.code} - ${data.error ?? "Unknown"}`,
     );
   }
 
@@ -661,7 +660,7 @@ async function processCorrection(
 /** Shorthand: create a draft session (no longer passes knowledge — user_memory is source of truth). */
 async function createDraft(
   ctx: ProcessorCtx,
-  payload: IngestPayload
+  payload: IngestPayload,
 ): Promise<void> {
   await ctx.runMutation(internal.sessions.createDraftSession, {
     userId: payload.userId,
@@ -676,7 +675,7 @@ async function createDraft(
  */
 async function createFallbackDraft(
   ctx: ProcessorCtx,
-  payload: IngestPayload
+  payload: IngestPayload,
 ): Promise<void> {
   try {
     await createDraft(ctx, payload);

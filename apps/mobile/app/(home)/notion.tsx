@@ -18,9 +18,24 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { captureError } from "../../src/lib/analytics";
 import { useColors } from "../../src/contexts/ThemeContext";
 
-type Phase = "config" | "exporting" | "completed" | "failed" | "correcting" | "corrections-completed" | "corrections-failed";
+type Phase =
+  | "config"
+  | "exporting"
+  | "completed"
+  | "failed"
+  | "correcting"
+  | "corrections-completed"
+  | "corrections-failed";
 
-const EXPORT_STEPS = ["hydrating", "analyzing", "extracting_entries", "creating_databases", "populating", "summarizing", "done"] as const;
+const EXPORT_STEPS = [
+  "hydrating",
+  "analyzing",
+  "extracting_entries",
+  "creating_databases",
+  "populating",
+  "summarizing",
+  "done",
+] as const;
 const CORRECTION_STEPS = ["scanning", "applying", "done"] as const;
 
 const POLL_INTERVAL = 30000;
@@ -47,46 +62,143 @@ export default function NotionScreen() {
 
   // Export state
   const [currentStep, setCurrentStep] = useState<string>("");
-  const [exportResult, setExportResult] = useState<{ summaryPageUrl?: string; categoriesCount?: number; entriesCount?: number } | null>(null);
+  const [exportResult, setExportResult] = useState<{
+    summaryPageUrl?: string;
+    categoriesCount?: number;
+    entriesCount?: number;
+  } | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const s = useMemo(() => StyleSheet.create({
-    root: { flex: 1, backgroundColor: colors.paper },
-    header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.rule },
-    headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-    headerTitle: { flex: 1, fontSize: 18, fontWeight: "700", color: colors.ink, textAlign: "center" },
-    content: { padding: 16, gap: 12 },
-    hero: { alignItems: "center", gap: 12, paddingVertical: 24 },
-    heroTitle: { fontSize: 22, fontWeight: "700", color: colors.ink, textAlign: "center" },
-    heroDesc: { fontSize: 14, color: colors.inkMuted, textAlign: "center", lineHeight: 20 },
-    errorBanner: { fontSize: 13, color: colors.error, backgroundColor: colors.errorLight, padding: 12, borderRadius: 8 },
-    fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.ink, marginTop: 8 },
-    input: { fontSize: 15, color: colors.ink, backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.rule, paddingHorizontal: 12, paddingVertical: 10, marginTop: 4 },
-    langRow: { flexDirection: "row", gap: 8, marginTop: 4 },
-    langChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: colors.rule },
-    langChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-    langChipText: { fontSize: 14, color: colors.inkMuted },
-    langChipTextActive: { color: colors.primaryForeground },
-    primaryBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 16 },
-    primaryBtnText: { fontSize: 16, fontWeight: "600", color: colors.primaryForeground },
-    secondaryBtn: { borderWidth: 1, borderColor: colors.rule, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 8 },
-    secondaryBtnText: { fontSize: 16, fontWeight: "600", color: colors.ink },
-    btnDisabled: { opacity: 0.6 },
-    pipelineSection: { alignItems: "center", gap: 12, paddingVertical: 32 },
-    pipelineTitle: { fontSize: 20, fontWeight: "700", color: colors.ink },
-    pipelineDesc: { fontSize: 14, color: colors.inkMuted, textAlign: "center", lineHeight: 20 },
-    stepsContainer: { width: "100%", gap: 12, marginTop: 16 },
-    stepRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-    stepText: { fontSize: 14, color: colors.inkMuted },
-    stepDone: { color: colors.accent },
-    stepActive: { color: colors.ink, fontWeight: "600" },
-    resultSection: { alignItems: "center", gap: 16, paddingVertical: 48 },
-    resultTitle: { fontSize: 22, fontWeight: "700", color: colors.ink },
-    errorTitle: { fontSize: 20, fontWeight: "700", color: colors.error },
-    errorDetail: { fontSize: 14, color: colors.inkMuted, textAlign: "center" },
-  }), [colors]);
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        root: { flex: 1, backgroundColor: colors.paper },
+        header: {
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 12,
+          paddingBottom: 10,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.rule,
+        },
+        headerBtn: {
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        headerTitle: {
+          flex: 1,
+          fontSize: 18,
+          fontWeight: "700",
+          color: colors.ink,
+          textAlign: "center",
+        },
+        content: { padding: 16, gap: 12 },
+        hero: { alignItems: "center", gap: 12, paddingVertical: 24 },
+        heroTitle: {
+          fontSize: 22,
+          fontWeight: "700",
+          color: colors.ink,
+          textAlign: "center",
+        },
+        heroDesc: {
+          fontSize: 14,
+          color: colors.inkMuted,
+          textAlign: "center",
+          lineHeight: 20,
+        },
+        errorBanner: {
+          fontSize: 13,
+          color: colors.error,
+          backgroundColor: colors.errorLight,
+          padding: 12,
+          borderRadius: 8,
+        },
+        fieldLabel: {
+          fontSize: 13,
+          fontWeight: "600",
+          color: colors.ink,
+          marginTop: 8,
+        },
+        input: {
+          fontSize: 15,
+          color: colors.ink,
+          backgroundColor: colors.card,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          marginTop: 4,
+        },
+        langRow: { flexDirection: "row", gap: 8, marginTop: 4 },
+        langChip: {
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: colors.rule,
+        },
+        langChipActive: {
+          backgroundColor: colors.primary,
+          borderColor: colors.primary,
+        },
+        langChipText: { fontSize: 14, color: colors.inkMuted },
+        langChipTextActive: { color: colors.primaryForeground },
+        primaryBtn: {
+          backgroundColor: colors.primary,
+          borderRadius: 12,
+          paddingVertical: 14,
+          alignItems: "center",
+          marginTop: 16,
+        },
+        primaryBtnText: {
+          fontSize: 16,
+          fontWeight: "600",
+          color: colors.primaryForeground,
+        },
+        secondaryBtn: {
+          borderWidth: 1,
+          borderColor: colors.rule,
+          borderRadius: 12,
+          paddingVertical: 14,
+          alignItems: "center",
+          marginTop: 8,
+        },
+        secondaryBtnText: {
+          fontSize: 16,
+          fontWeight: "600",
+          color: colors.ink,
+        },
+        btnDisabled: { opacity: 0.6 },
+        pipelineSection: { alignItems: "center", gap: 12, paddingVertical: 32 },
+        pipelineTitle: { fontSize: 20, fontWeight: "700", color: colors.ink },
+        pipelineDesc: {
+          fontSize: 14,
+          color: colors.inkMuted,
+          textAlign: "center",
+          lineHeight: 20,
+        },
+        stepsContainer: { width: "100%", gap: 12, marginTop: 16 },
+        stepRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+        stepText: { fontSize: 14, color: colors.inkMuted },
+        stepDone: { color: colors.accent },
+        stepActive: { color: colors.ink, fontWeight: "600" },
+        resultSection: { alignItems: "center", gap: 16, paddingVertical: 48 },
+        resultTitle: { fontSize: 22, fontWeight: "700", color: colors.ink },
+        errorTitle: { fontSize: 20, fontWeight: "700", color: colors.error },
+        errorDetail: {
+          fontSize: 14,
+          color: colors.inkMuted,
+          textAlign: "center",
+        },
+      }),
+    [colors],
+  );
 
   // Load saved config
   useEffect(() => {
@@ -104,36 +216,56 @@ export default function NotionScreen() {
     }
   }, []);
 
-  const pollExportStatus = useCallback(async (jobId: string) => {
-    try {
-      const status = await getExportStatus({ jobId });
-      if (status.progress?.currentStep) setCurrentStep(status.progress.currentStep);
-      if (status.status === "completed") {
-        stopPolling();
-        setExportResult(status.result ?? null);
-        setPhase("completed");
-      } else if (status.status === "failed") {
-        stopPolling();
-        setExportError(status.error || "Export failed");
-        setPhase("failed");
+  const pollExportStatus = useCallback(
+    async (jobId: string) => {
+      try {
+        const status = await getExportStatus({ jobId });
+        if (status.progress?.currentStep)
+          setCurrentStep(status.progress.currentStep);
+        if (status.status === "completed") {
+          stopPolling();
+          setExportResult(status.result ?? null);
+          setPhase("completed");
+        } else if (status.status === "failed") {
+          stopPolling();
+          setExportError(status.error || "Export failed");
+          setPhase("failed");
+        }
+      } catch {
+        // Continue polling
       }
-    } catch {
-      // Continue polling
-    }
-  }, [getExportStatus, stopPolling]);
+    },
+    [getExportStatus, stopPolling],
+  );
 
   const handleExport = useCallback(async () => {
-    if (!token.trim()) { setError(t("config.tokenRequired")); return; }
-    if (!pageName.trim()) { setError(t("config.pageNameRequired")); return; }
+    if (!token.trim()) {
+      setError(t("config.tokenRequired"));
+      return;
+    }
+    if (!pageName.trim()) {
+      setError(t("config.pageNameRequired"));
+      return;
+    }
     setIsStarting(true);
     setError(null);
     try {
-      await saveConfig({ notionToken: token.trim(), notionPageName: pageName.trim(), notionLanguage: language });
-      const result = await startExport({ notionToken: token.trim(), notionPageName: pageName.trim(), notionLanguage: language });
+      await saveConfig({
+        notionToken: token.trim(),
+        notionPageName: pageName.trim(),
+        notionLanguage: language,
+      });
+      const result = await startExport({
+        notionToken: token.trim(),
+        notionPageName: pageName.trim(),
+        notionLanguage: language,
+      });
       const jobId = result.jobId;
       setPhase("exporting");
       setCurrentStep("hydrating");
-      pollRef.current = setInterval(() => pollExportStatus(jobId), POLL_INTERVAL);
+      pollRef.current = setInterval(() => {
+        void pollExportStatus(jobId);
+      }, POLL_INTERVAL);
     } catch (err) {
       setError(t("export.failed"));
       captureError(err, { source: "notion", action: "start_export" });
@@ -142,31 +274,41 @@ export default function NotionScreen() {
     }
   }, [token, pageName, language, saveConfig, startExport, pollExportStatus, t]);
 
-  const pollCorrectionsStatus = useCallback(async (jobId: string) => {
-    try {
-      const status = await getCorrectionsStatus({ jobId });
-      if (status.progress?.currentStep) setCurrentStep(status.progress.currentStep);
-      if (status.status === "completed") {
-        stopPolling();
-        setPhase("corrections-completed");
-      } else if (status.status === "failed") {
-        stopPolling();
-        setPhase("corrections-failed");
+  const pollCorrectionsStatus = useCallback(
+    async (jobId: string) => {
+      try {
+        const status = await getCorrectionsStatus({ jobId });
+        if (status.progress?.currentStep)
+          setCurrentStep(status.progress.currentStep);
+        if (status.status === "completed") {
+          stopPolling();
+          setPhase("corrections-completed");
+        } else if (status.status === "failed") {
+          stopPolling();
+          setPhase("corrections-failed");
+        }
+      } catch {
+        // Continue polling
       }
-    } catch {
-      // Continue polling
-    }
-  }, [getCorrectionsStatus, stopPolling]);
+    },
+    [getCorrectionsStatus, stopPolling],
+  );
 
   const handleSync = useCallback(async () => {
     setIsStarting(true);
     setError(null);
     try {
-      const result = await startCorrections({ notionToken: token.trim(), notionPageName: pageName.trim(), notionLanguage: language });
+      const result = await startCorrections({
+        notionToken: token.trim(),
+        notionPageName: pageName.trim(),
+        notionLanguage: language,
+      });
       setPhase("correcting");
       setCurrentStep("scanning");
       const jobId = result.jobId;
-      pollRef.current = setInterval(() => pollCorrectionsStatus(jobId), POLL_INTERVAL);
+      pollRef.current = setInterval(() => {
+        void pollCorrectionsStatus(jobId);
+      }, POLL_INTERVAL);
     } catch (err) {
       setError(t("export.correctionsFailed"));
       captureError(err, { source: "notion", action: "start_corrections" });
@@ -190,7 +332,10 @@ export default function NotionScreen() {
   return (
     <View style={[s.root, { paddingTop: insets.top }]}>
       <View style={s.header}>
-        <Pressable style={s.headerBtn} onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
+        <Pressable
+          style={s.headerBtn}
+          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+        >
           <Menu size={22} color={colors.ink} />
         </Pressable>
         <Text style={s.headerTitle}>{t("title")}</Text>
@@ -231,13 +376,23 @@ export default function NotionScreen() {
 
             <Text style={s.fieldLabel}>{t("config.languageLabel")}</Text>
             <View style={s.langRow}>
-              {[{ v: "en", l: "English" }, { v: "es", l: "Español" }].map((opt) => (
+              {[
+                { v: "en", l: "English" },
+                { v: "es", l: "Español" },
+              ].map((opt) => (
                 <Pressable
                   key={opt.v}
                   style={[s.langChip, language === opt.v && s.langChipActive]}
                   onPress={() => setLanguage(opt.v)}
                 >
-                  <Text style={[s.langChipText, language === opt.v && s.langChipTextActive]}>{opt.l}</Text>
+                  <Text
+                    style={[
+                      s.langChipText,
+                      language === opt.v && s.langChipTextActive,
+                    ]}
+                  >
+                    {opt.l}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -247,7 +402,11 @@ export default function NotionScreen() {
               onPress={handleExport}
               disabled={isStarting}
             >
-              {isStarting ? <ActivityIndicator color={colors.primaryForeground} /> : <Text style={s.primaryBtnText}>{t("export.exportButton")}</Text>}
+              {isStarting ? (
+                <ActivityIndicator color={colors.primaryForeground} />
+              ) : (
+                <Text style={s.primaryBtnText}>{t("export.exportButton")}</Text>
+              )}
             </Pressable>
 
             {hasSavedConfig && (
@@ -266,33 +425,50 @@ export default function NotionScreen() {
         {(phase === "exporting" || phase === "correcting") && (
           <View style={s.pipelineSection}>
             <Text style={s.pipelineTitle}>
-              {phase === "exporting" ? t("pipeline.exporting") : t("pipeline.correcting")}
+              {phase === "exporting"
+                ? t("pipeline.exporting")
+                : t("pipeline.correcting")}
             </Text>
             <Text style={s.pipelineDesc}>
-              {phase === "exporting" ? t("pipeline.exportingDescription") : t("pipeline.correctingDescription")}
+              {phase === "exporting"
+                ? t("pipeline.exportingDescription")
+                : t("pipeline.correctingDescription")}
             </Text>
             <View style={s.stepsContainer}>
-              {(phase === "exporting" ? EXPORT_STEPS : CORRECTION_STEPS).map((step) => {
-                const steps = phase === "exporting" ? EXPORT_STEPS : CORRECTION_STEPS;
-                const stepIndex = (steps as readonly string[]).indexOf(step);
-                const currentIndex = (steps as readonly string[]).indexOf(currentStep);
-                const isDone = stepIndex < currentIndex || currentStep === "done";
-                const isActive = step === currentStep && currentStep !== "done";
-                return (
-                  <View key={step} style={s.stepRow}>
-                    {isDone ? (
-                      <Check size={16} color={colors.accent} />
-                    ) : isActive ? (
-                      <ActivityIndicator size="small" color={colors.accent} />
-                    ) : (
-                      <Circle size={16} color={colors.inkMuted} />
-                    )}
-                    <Text style={[s.stepText, isDone && s.stepDone, isActive && s.stepActive]}>
-                      {t(`steps.${step}`)}
-                    </Text>
-                  </View>
-                );
-              })}
+              {(phase === "exporting" ? EXPORT_STEPS : CORRECTION_STEPS).map(
+                (step) => {
+                  const steps =
+                    phase === "exporting" ? EXPORT_STEPS : CORRECTION_STEPS;
+                  const stepIndex = (steps as readonly string[]).indexOf(step);
+                  const currentIndex = (steps as readonly string[]).indexOf(
+                    currentStep,
+                  );
+                  const isDone =
+                    stepIndex < currentIndex || currentStep === "done";
+                  const isActive =
+                    step === currentStep && currentStep !== "done";
+                  return (
+                    <View key={step} style={s.stepRow}>
+                      {isDone ? (
+                        <Check size={16} color={colors.accent} />
+                      ) : isActive ? (
+                        <ActivityIndicator size="small" color={colors.accent} />
+                      ) : (
+                        <Circle size={16} color={colors.inkMuted} />
+                      )}
+                      <Text
+                        style={[
+                          s.stepText,
+                          isDone && s.stepDone,
+                          isActive && s.stepActive,
+                        ]}
+                      >
+                        {t(`steps.${step}`)}
+                      </Text>
+                    </View>
+                  );
+                },
+              )}
             </View>
           </View>
         )}
@@ -303,8 +479,13 @@ export default function NotionScreen() {
             <Check size={48} color={colors.accent} />
             <Text style={s.resultTitle}>{t("completed.exportComplete")}</Text>
             {exportResult?.summaryPageUrl && (
-              <Pressable style={s.primaryBtn} onPress={() => Linking.openURL(exportResult.summaryPageUrl!)}>
-                <Text style={s.primaryBtnText}>{t("completed.openInNotion")}</Text>
+              <Pressable
+                style={s.primaryBtn}
+                onPress={() => Linking.openURL(exportResult.summaryPageUrl!)}
+              >
+                <Text style={s.primaryBtnText}>
+                  {t("completed.openInNotion")}
+                </Text>
               </Pressable>
             )}
             <Pressable style={s.secondaryBtn} onPress={handleReset}>
@@ -317,7 +498,9 @@ export default function NotionScreen() {
         {(phase === "failed" || phase === "corrections-failed") && (
           <View style={s.resultSection}>
             <Text style={s.errorTitle}>
-              {phase === "failed" ? t("failed.exportFailed") : t("failed.correctionsFailed")}
+              {phase === "failed"
+                ? t("failed.exportFailed")
+                : t("failed.correctionsFailed")}
             </Text>
             {exportError && <Text style={s.errorDetail}>{exportError}</Text>}
             <Pressable style={s.secondaryBtn} onPress={handleReset}>
@@ -330,7 +513,9 @@ export default function NotionScreen() {
         {phase === "corrections-completed" && (
           <View style={s.resultSection}>
             <Check size={48} color={colors.accent} />
-            <Text style={s.resultTitle}>{t("completed.correctionsApplied")}</Text>
+            <Text style={s.resultTitle}>
+              {t("completed.correctionsApplied")}
+            </Text>
             <Pressable style={s.secondaryBtn} onPress={handleReset}>
               <Text style={s.secondaryBtnText}>{t("failed.reset")}</Text>
             </Pressable>

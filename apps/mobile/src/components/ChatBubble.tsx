@@ -55,7 +55,7 @@ export function ChatBubble({ role, text, muted }: ChatBubbleProps) {
           color: colors.paper,
         },
       }),
-    [colors]
+    [colors],
   );
 
   return (

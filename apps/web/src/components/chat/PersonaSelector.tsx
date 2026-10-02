@@ -16,15 +16,45 @@ import { MemoryPulse } from "./MemoryPulse";
  * Mirrors convex/personas.ts PERSONA_TEMPLATES keys.
  */
 const TEMPLATES_EN = [
-  { key: "therapist-en", icon: "compass", nameKey: "templates.therapist.name", descKey: "templates.therapist.description" },
-  { key: "wellbeing-en", icon: "leaf", nameKey: "templates.wellbeing.name", descKey: "templates.wellbeing.description" },
-  { key: "coach-en", icon: "zap", nameKey: "templates.coach.name", descKey: "templates.coach.description" },
+  {
+    key: "therapist-en",
+    icon: "compass",
+    nameKey: "templates.therapist.name",
+    descKey: "templates.therapist.description",
+  },
+  {
+    key: "wellbeing-en",
+    icon: "leaf",
+    nameKey: "templates.wellbeing.name",
+    descKey: "templates.wellbeing.description",
+  },
+  {
+    key: "coach-en",
+    icon: "zap",
+    nameKey: "templates.coach.name",
+    descKey: "templates.coach.description",
+  },
 ] as const;
 
 const TEMPLATES_ES = [
-  { key: "therapist-es", icon: "compass", nameKey: "templates.therapist.name", descKey: "templates.therapist.description" },
-  { key: "wellbeing-es", icon: "leaf", nameKey: "templates.wellbeing.name", descKey: "templates.wellbeing.description" },
-  { key: "coach-es", icon: "zap", nameKey: "templates.coach.name", descKey: "templates.coach.description" },
+  {
+    key: "therapist-es",
+    icon: "compass",
+    nameKey: "templates.therapist.name",
+    descKey: "templates.therapist.description",
+  },
+  {
+    key: "wellbeing-es",
+    icon: "leaf",
+    nameKey: "templates.wellbeing.name",
+    descKey: "templates.wellbeing.description",
+  },
+  {
+    key: "coach-es",
+    icon: "zap",
+    nameKey: "templates.coach.name",
+    descKey: "templates.coach.description",
+  },
 ] as const;
 
 /**
@@ -43,11 +73,14 @@ export function PersonaSelector() {
   const recentThreads = useMemo(() => {
     if (!rawThreads || rawThreads.length === 0) return null;
     const personaMap = new Map(
-      (personas ?? []).map((p) => [p._id, { name: p.name, icon: p.icon }])
+      (personas ?? []).map((p) => [p._id, { name: p.name, icon: p.icon }]),
     );
     return rawThreads.slice(0, 3).map((thread) => ({
       ...thread,
-      persona: personaMap.get(thread.personaId) ?? { name: "Unknown", icon: "❓" },
+      persona: personaMap.get(thread.personaId) ?? {
+        name: "Unknown",
+        icon: "❓",
+      },
     }));
   }, [rawThreads, personas]);
   const createFromTemplate = useMutation(api.personas.createFromTemplate);
@@ -59,8 +92,20 @@ export function PersonaSelector() {
 
   // Build a unified list: custom personas + un-adopted templates (same visual)
   type GridItem =
-    | { kind: "persona"; id: string; icon: string; name: string; description?: string }
-    | { kind: "template"; key: string; icon: string; name: string; description: string };
+    | {
+        kind: "persona";
+        id: string;
+        icon: string;
+        name: string;
+        description?: string;
+      }
+    | {
+        kind: "template";
+        key: string;
+        icon: string;
+        name: string;
+        description: string;
+      };
 
   const gridItems = useMemo<GridItem[]>(() => {
     if (!personas) return [];
@@ -95,10 +140,10 @@ export function PersonaSelector() {
     (personaId: Id<"personas">) => {
       startTransition(async () => {
         const threadId = await createThread({ personaId });
-        navigate(`/t/${threadId}`);
+        void navigate(`/t/${threadId}`);
       });
     },
-    [createThread, navigate]
+    [createThread, navigate],
   );
 
   const handleSelectTemplate = useCallback(
@@ -106,19 +151,19 @@ export function PersonaSelector() {
       startTransition(async () => {
         const personaId = await createFromTemplate({ templateKey });
         const threadId = await createThread({ personaId });
-        navigate(`/t/${threadId}`);
+        void navigate(`/t/${threadId}`);
       });
     },
-    [createFromTemplate, createThread, navigate]
+    [createFromTemplate, createThread, navigate],
   );
 
   const hasRecentThreads = recentThreads && recentThreads.length > 0;
 
   // Context-aware greeting and subtitle
   const greeting = hasRecentThreads
-    ? (user?.firstName
-        ? t("personaSelector.greetingWithName", { name: user.firstName })
-        : t("personaSelector.greetingReturning"))
+    ? user?.firstName
+      ? t("personaSelector.greetingWithName", { name: user.firstName })
+      : t("personaSelector.greetingReturning")
     : t("personaSelector.greetingNew");
 
   const subtitle = hasRecentThreads
@@ -128,79 +173,79 @@ export function PersonaSelector() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="flex min-h-full flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-2xl">
-        {/* Header */}
-        <div className="mb-10 text-center">
-          <div className="mx-auto mb-6 h-16 w-16 rounded-full bg-gradient-to-br from-primary/15 to-accent/15 p-4">
-            <Logo />
+        <div className="w-full max-w-2xl">
+          {/* Header */}
+          <div className="mb-10 text-center">
+            <div className="mx-auto mb-6 h-16 w-16 rounded-full bg-gradient-to-br from-primary/15 to-accent/15 p-4">
+              <Logo />
+            </div>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+              {greeting}
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground text-balance">
+              {subtitle}
+            </p>
           </div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-            {greeting}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground text-balance">
-            {subtitle}
-          </p>
+
+          {/* Recent conversations */}
+          {hasRecentThreads && (
+            <RecentThreads
+              threads={recentThreads}
+              t={t}
+              onNavigate={(threadId) => navigate(`/t/${threadId}`)}
+            />
+          )}
+
+          {/* Section label for persona grid (returning users only) */}
+          {hasRecentThreads && gridItems.length > 0 && (
+            <h2 className="mb-4 text-sm font-semibold text-foreground">
+              {t("personaSelector.newConversation")}
+            </h2>
+          )}
+
+          {/* Loading state */}
+          {personas === undefined && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-36 animate-pulse rounded-2xl bg-muted/50"
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Unified personas grid (custom + un-adopted templates) */}
+          {gridItems.length > 0 && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {gridItems.map((item) => (
+                <PersonaCard
+                  key={item.kind === "persona" ? item.id : item.key}
+                  icon={item.icon}
+                  name={item.name}
+                  description={item.description}
+                  disabled={isPending}
+                  onClick={
+                    item.kind === "persona"
+                      ? () => handleSelectPersona(item.id as Id<"personas">)
+                      : () => handleSelectTemplate(item.key)
+                  }
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Pending indicator */}
+          {isPending && (
+            <div className="mt-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <span>{t("personaSelector.creating")}</span>
+            </div>
+          )}
+
+          {/* Memory pulse — quiet footer */}
+          <MemoryPulse className="mt-10" />
         </div>
-
-        {/* Recent conversations */}
-        {hasRecentThreads && (
-          <RecentThreads
-            threads={recentThreads}
-            t={t}
-            onNavigate={(threadId) => navigate(`/t/${threadId}`)}
-          />
-        )}
-
-        {/* Section label for persona grid (returning users only) */}
-        {hasRecentThreads && gridItems.length > 0 && (
-          <h2 className="mb-4 text-sm font-semibold text-foreground">
-            {t("personaSelector.newConversation")}
-          </h2>
-        )}
-
-        {/* Loading state */}
-        {personas === undefined && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-36 animate-pulse rounded-2xl bg-muted/50"
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Unified personas grid (custom + un-adopted templates) */}
-        {gridItems.length > 0 && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {gridItems.map((item) => (
-              <PersonaCard
-                key={item.kind === "persona" ? item.id : item.key}
-                icon={item.icon}
-                name={item.name}
-                description={item.description}
-                disabled={isPending}
-                onClick={
-                  item.kind === "persona"
-                    ? () => handleSelectPersona(item.id as Id<"personas">)
-                    : () => handleSelectTemplate(item.key)
-                }
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Pending indicator */}
-        {isPending && (
-          <div className="mt-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            <span>{t("personaSelector.creating")}</span>
-          </div>
-        )}
-
-        {/* Memory pulse — quiet footer */}
-        <MemoryPulse className="mt-10" />
-      </div>
       </div>
     </div>
   );
@@ -253,7 +298,7 @@ function RecentThreads({
               "flex items-center gap-3 rounded-xl border border-border/50 bg-card px-4 py-3 text-left shadow-sm transition-all",
               "hover:border-primary/20 hover:shadow-md hover:scale-[1.01]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              "active:scale-[0.98]"
+              "active:scale-[0.98]",
             )}
           >
             <PersonaIcon
@@ -304,7 +349,7 @@ function PersonaCard({
         "hover:border-primary/20 hover:shadow-md hover:scale-[1.02]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "active:scale-[0.98]",
-        "disabled:pointer-events-none disabled:opacity-50"
+        "disabled:pointer-events-none disabled:opacity-50",
       )}
     >
       <div className="mb-3 transition-transform group-hover:scale-110">

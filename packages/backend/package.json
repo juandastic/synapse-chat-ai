@@ -9,9 +9,12 @@
     "./chatModels": "./convex/chatModels.ts"
   },
   "scripts": {
-    "test": "tsx --test tests/*.test.ts",
+    "test": "vitest run --root ../.. --project backend",
     "dev": "npx convex dev --env-file ../../.env.local",
-    "deploy": "npx convex deploy"
+    "deploy": "npx convex deploy",
+    "test:watch": "vitest --root ../.. --project backend",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "lint": "eslint . --max-warnings=0"
   },
   "dependencies": {
     "@convex-dev/r2": "^0.9.1",

@@ -88,7 +88,7 @@ export const fetch = action({
         {
           method: "GET",
           headers: { "X-API-SECRET": apiSecret },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -130,10 +130,7 @@ export const correct = action({
   args: {
     correctionText: v.string(),
   },
-  handler: async (
-    ctx,
-    args
-  ): Promise<{ success: boolean; error?: string }> => {
+  handler: async (ctx, args): Promise<{ success: boolean; error?: string }> => {
     let userId: string;
     try {
       userId = await resolveUserId(ctx);

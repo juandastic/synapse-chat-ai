@@ -64,102 +64,138 @@ export default function SignInScreen() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState<"google" | "email" | "demo" | null>(null);
+  const [loading, setLoading] = useState<"google" | "email" | "demo" | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   // Derived state — the email submit button is only active when both fields
   // are filled and the email looks valid
-  const canSubmitEmail = email.trim().length > 0 && password.length > 0 && isValidEmail(email);
+  const canSubmitEmail =
+    email.trim().length > 0 && password.length > 0 && isValidEmail(email);
 
-  const s = useMemo(() => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.paper },
-    scrollContent: { paddingHorizontal: 32, paddingTop: 60, paddingBottom: 40 },
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.paper },
+        scrollContent: {
+          paddingHorizontal: 32,
+          paddingTop: 60,
+          paddingBottom: 40,
+        },
 
-    back: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.accentLight,
-      borderWidth: 1,
-      borderColor: colors.rule,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 32,
-    },
-    title: { fontSize: 26, fontWeight: "700", color: colors.ink, marginBottom: 8 },
-    subtitle: { fontSize: 15, lineHeight: 22, color: colors.inkMuted, marginBottom: 28 },
+        back: {
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: colors.accentLight,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 32,
+        },
+        title: {
+          fontSize: 26,
+          fontWeight: "700",
+          color: colors.ink,
+          marginBottom: 8,
+        },
+        subtitle: {
+          fontSize: 15,
+          lineHeight: 22,
+          color: colors.inkMuted,
+          marginBottom: 28,
+        },
 
-    error: {
-      fontSize: 14,
-      color: colors.error,
-      backgroundColor: colors.errorLight,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderRadius: 10,
-      marginBottom: 16,
-      overflow: "hidden",
-    },
+        error: {
+          fontSize: 14,
+          color: colors.error,
+          backgroundColor: colors.errorLight,
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+          borderRadius: 10,
+          marginBottom: 16,
+          overflow: "hidden",
+        },
 
-    /* Google button */
-    googleButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 10,
-      backgroundColor: colors.white,
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderRadius: 50,
-      paddingVertical: 14,
-    },
-    googleIcon: { fontSize: 16, fontWeight: "700", color: colors.ink },
-    googleText: { fontSize: 15, fontWeight: "600", color: colors.ink },
+        /* Google button */
+        googleButton: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          backgroundColor: colors.white,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          borderRadius: 50,
+          paddingVertical: 14,
+        },
+        googleIcon: { fontSize: 16, fontWeight: "700", color: colors.ink },
+        googleText: { fontSize: 15, fontWeight: "600", color: colors.ink },
 
-    /* Divider */
-    divider: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 20 },
-    dividerLine: { flex: 1, height: 1, backgroundColor: colors.rule },
-    dividerText: { fontSize: 13, color: colors.inkMuted },
+        /* Divider */
+        divider: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+          marginVertical: 20,
+        },
+        dividerLine: { flex: 1, height: 1, backgroundColor: colors.rule },
+        dividerText: { fontSize: 13, color: colors.inkMuted },
 
-    /* Inputs */
-    inputGroup: { marginBottom: 16 },
-    label: { fontSize: 13, fontWeight: "600", color: colors.ink, marginBottom: 6 },
-    input: {
-      backgroundColor: colors.white,
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 15,
-      color: colors.ink,
-    },
+        /* Inputs */
+        inputGroup: { marginBottom: 16 },
+        label: {
+          fontSize: 13,
+          fontWeight: "600",
+          color: colors.ink,
+          marginBottom: 6,
+        },
+        input: {
+          backgroundColor: colors.white,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          borderRadius: 12,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          fontSize: 15,
+          color: colors.ink,
+        },
 
-    /* Primary submit */
-    primaryButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      backgroundColor: colors.ink,
-      borderRadius: 50,
-      paddingVertical: 16,
-    },
-    primaryText: { fontSize: 15, fontWeight: "600", color: colors.paper },
-    disabled: { opacity: 0.4 },
-    pressed: { opacity: 0.8 },
+        /* Primary submit */
+        primaryButton: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          backgroundColor: colors.ink,
+          borderRadius: 50,
+          paddingVertical: 16,
+        },
+        primaryText: { fontSize: 15, fontWeight: "600", color: colors.paper },
+        disabled: { opacity: 0.4 },
+        pressed: { opacity: 0.8 },
 
-    /* Demo button */
-    demoButton: {
-      backgroundColor: colors.accentLight,
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderRadius: 50,
-      paddingVertical: 14,
-      alignItems: "center",
-    },
-    demoText: { fontSize: 15, fontWeight: "600", color: colors.ink },
-    demoNote: { fontSize: 13, color: colors.inkMuted, textAlign: "center", marginTop: 8 },
-  }), [colors]);
+        /* Demo button */
+        demoButton: {
+          backgroundColor: colors.accentLight,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          borderRadius: 50,
+          paddingVertical: 14,
+          alignItems: "center",
+        },
+        demoText: { fontSize: 15, fontWeight: "600", color: colors.ink },
+        demoNote: {
+          fontSize: 13,
+          color: colors.inkMuted,
+          textAlign: "center",
+          marginTop: 8,
+        },
+      }),
+    [colors],
+  );
 
   // -----------------------------------------------------------------------
   // Auth handlers
@@ -177,7 +213,10 @@ export default function SignInScreen() {
 
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
-        console.log("[SignIn] Google sign-in successful, session:", createdSessionId);
+        console.log(
+          "[SignIn] Google sign-in successful, session:",
+          createdSessionId,
+        );
       } else {
         // User dismissed the browser or flow was incomplete
         console.log("[SignIn] Google OAuth flow cancelled or incomplete");

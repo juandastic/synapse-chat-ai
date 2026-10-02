@@ -15,8 +15,9 @@ export function ChatProvider({ threadId, children }: ChatProviderProps) {
   const [streamedMessageId, setStreamedMessageId] =
     useState<Id<"messages"> | null>(null);
   const [streamedContent, setStreamedContent] = useState("");
-  const [editingMessage, setEditingMessage] =
-    useState<Doc<"messages"> | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Doc<"messages"> | null>(
+    null,
+  );
 
   const isLoading = messages === undefined;
 
@@ -91,12 +92,10 @@ export function ChatProvider({ threadId, children }: ChatProviderProps) {
       startStreaming,
       setStreamedContent,
       stopStreaming,
-    ]
+    ],
   );
 
   return (
-    <ChatContext.Provider value={contextValue}>
-      {children}
-    </ChatContext.Provider>
+    <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>
   );
 }

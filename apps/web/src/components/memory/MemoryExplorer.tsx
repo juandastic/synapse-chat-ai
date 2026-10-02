@@ -50,21 +50,22 @@ export function MemoryExplorer() {
       setGraphData(data);
 
       // Clear selection if the previously selected node no longer exists
-      if (selectedNode && !data.nodes.some((n) => n.id === selectedNode.id)) {
-        setSelectedNode(null);
-      }
+      setSelectedNode((selected) =>
+        selected && !data.nodes.some((n) => n.id === selected.id)
+          ? null
+          : selected,
+      );
     } catch {
       setError(t("explorer.failedToLoad"));
     } finally {
       setLoading(false);
     }
-  }, [fetchGraph, selectedNode]);
+  }, [fetchGraph, t]);
 
   // Load on mount
   useEffect(() => {
-    loadGraph();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void loadGraph();
+  }, [loadGraph]);
 
   const handleNodeClick = useCallback((node: GraphNode) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node));
@@ -82,7 +83,7 @@ export function MemoryExplorer() {
 
   const handleCorrectionSent = useCallback(() => {
     // Re-fetch graph after a successful correction
-    loadGraph();
+    void loadGraph();
   }, [loadGraph]);
 
   // ---------------------------------------------------------------------------
@@ -105,7 +106,8 @@ export function MemoryExplorer() {
         </h1>
         {graphData && !loading && (
           <span className="text-[11px] text-muted-foreground/50">
-            {t("explorer.node", { count: graphData.nodes.length })} {" · "} {t("explorer.relationship", { count: graphData.links.length })}
+            {t("explorer.node", { count: graphData.nodes.length })} {" · "}{" "}
+            {t("explorer.relationship", { count: graphData.links.length })}
           </span>
         )}
 
@@ -114,7 +116,11 @@ export function MemoryExplorer() {
           <button
             onClick={() => setEntityListOpen((v) => !v)}
             className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label={entityListOpen ? t("explorer.hideEntityList") : t("explorer.showEntityList")}
+            aria-label={
+              entityListOpen
+                ? t("explorer.hideEntityList")
+                : t("explorer.showEntityList")
+            }
           >
             {entityListOpen ? (
               <X className="h-4 w-4" />

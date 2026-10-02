@@ -9,7 +9,13 @@
     "name": "Free",
     "price": "$0",
     "description": "Persistent memory powered by a knowledge graph. Your AI starts every conversation knowing who you are.",
-    "features": ["10 messages per day", "Knowledge graph with 30K token context", "All persona templates", "Full graph exploration", "Community support"],
+    "features": [
+      "10 messages per day",
+      "Knowledge graph with 30K token context",
+      "All persona templates",
+      "Full graph exploration",
+      "Community support"
+    ],
     "cta": "Get started"
   },
   "pro": {
@@ -17,14 +23,27 @@
     "badge": "Recommended",
     "price": "Coming soon",
     "description": "Intelligent retrieval beyond the context window. Your full graph becomes searchable mid-conversation.",
-    "features": ["50 messages per day", "Higher daily output budget", "Intelligent retrieval beyond 30K context", "Full graph searchable mid-conversation", "Custom persona creation", "Priority support"],
+    "features": [
+      "50 messages per day",
+      "Higher daily output budget",
+      "Intelligent retrieval beyond 30K context",
+      "Full graph searchable mid-conversation",
+      "Custom persona creation",
+      "Priority support"
+    ],
     "cta": "Contact us"
   },
   "therapeutic": {
     "name": "Therapeutic",
     "price": "Coming soon",
     "description": "Designed for use alongside a therapist. Your AI becomes a bridge between sessions.",
-    "features": ["Everything in Pro", "Share graph insights with your professional", "Crisis detection and alerts", "Session reminders and therapy context", "Homework and technique integration"],
+    "features": [
+      "Everything in Pro",
+      "Share graph insights with your professional",
+      "Crisis detection and alerts",
+      "Session reminders and therapy context",
+      "Homework and technique integration"
+    ],
     "cta": "Contact us"
   },
   "contactModal": {

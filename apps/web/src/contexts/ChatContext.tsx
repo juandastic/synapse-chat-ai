@@ -71,12 +71,10 @@ export function ChatProvider({ threadId, children }: ChatProviderProps) {
       startStreaming,
       setStreamedContent,
       stopStreaming,
-    ]
+    ],
   );
 
   return (
-    <ChatContext.Provider value={contextValue}>
-      {children}
-    </ChatContext.Provider>
+    <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>
   );
 }

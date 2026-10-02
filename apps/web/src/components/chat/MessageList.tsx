@@ -18,6 +18,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const hasMessages = Boolean(messages?.length);
 
   const isAtBottom = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -25,8 +26,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
     return (
       container.scrollHeight - container.scrollTop - container.clientHeight < 30
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages]);
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -35,6 +35,8 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
   }, []);
 
   useEffect(() => {
+    // The scroll container only mounts after the first message arrives.
+    if (!hasMessages) return;
     const container = scrollContainerRef.current;
     if (!container) return;
 
@@ -44,7 +46,7 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
 
     container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [isAtBottom]);
+  }, [isAtBottom, hasMessages]);
 
   // Auto-scroll only on new messages, not on content updates
   useEffect(() => {
@@ -72,7 +74,9 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
       <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          <span className="text-sm">{t("messageList.loadingConversation")}</span>
+          <span className="text-sm">
+            {t("messageList.loadingConversation")}
+          </span>
         </div>
       </div>
     );
@@ -119,18 +123,14 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
 
   return (
     <div className="relative h-full">
-      <div
-        ref={scrollContainerRef}
-        className="h-full overflow-y-auto"
-      >
+      <div ref={scrollContainerRef} className="h-full overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
           {messages.map((message, index) => {
             const prevMessage = messages[index - 1];
             const showSessionDivider =
               prevMessage && prevMessage.sessionId !== message.sessionId;
             const isStreaming =
-              message.role === "assistant" &&
-              message.completedAt === undefined;
+              message.role === "assistant" && message.completedAt === undefined;
 
             const isLast = index === messages.length - 1;
 
@@ -140,7 +140,11 @@ export function MessageList({ personaIcon, personaName }: MessageListProps) {
                   <SessionDivider timestamp={message._creationTime} />
                 )}
                 <div className="message-item">
-                  <MessageItem message={message} isStreaming={isStreaming} isLast={isLast} />
+                  <MessageItem
+                    message={message}
+                    isStreaming={isStreaming}
+                    isLast={isLast}
+                  />
                 </div>
               </Fragment>
             );

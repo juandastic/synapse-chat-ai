@@ -55,6 +55,9 @@ i18n
       lookupLocalStorage: "synapse-lang",
       caches: ["localStorage"],
     },
+  })
+  .catch((error) => {
+    console.error("[i18n] Initialization failed:", error);
   });
 
 export default i18n;

@@ -53,7 +53,12 @@ export function MemoryIntroBanner() {
         },
         body: { flex: 1, gap: 8 },
         text: { fontSize: 13, lineHeight: 18, color: colors.ink },
-        actions: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
+        actions: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          marginTop: 2,
+        },
         gotItBtn: {
           backgroundColor: colors.ink,
           borderRadius: 16,
@@ -68,7 +73,7 @@ export function MemoryIntroBanner() {
           justifyContent: "center",
         },
       }),
-    [colors]
+    [colors],
   );
 
   // Don't render until we know the flag; don't re-render after dismissal.
@@ -87,13 +92,15 @@ export function MemoryIntroBanner() {
         </Text>
         <View style={s.actions}>
           <Pressable style={s.gotItBtn} onPress={handleDismiss}>
-            <Text style={s.gotItText}>
-              {isEs ? "Entendido" : "Got it"}
-            </Text>
+            <Text style={s.gotItText}>{isEs ? "Entendido" : "Got it"}</Text>
           </Pressable>
         </View>
       </View>
-      <Pressable style={s.closeBtn} onPress={handleDismiss} accessibilityLabel="Close">
+      <Pressable
+        style={s.closeBtn}
+        onPress={handleDismiss}
+        accessibilityLabel="Close"
+      >
         <X size={16} color={colors.inkMuted} />
       </Pressable>
     </View>

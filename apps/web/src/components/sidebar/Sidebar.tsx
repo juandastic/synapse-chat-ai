@@ -7,7 +7,17 @@ import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
 import { ThreadItem } from "./ThreadItem";
 import { ConfirmDialog } from "../ui/confirm-dialog";
-import { Plus, Settings, Brain, Database, CreditCard, Moon, Sun, Globe, Cog } from "lucide-react";
+import {
+  Plus,
+  Settings,
+  Brain,
+  Database,
+  CreditCard,
+  Moon,
+  Sun,
+  Globe,
+  Cog,
+} from "lucide-react";
 import { Logo } from "../ui/logo";
 import { useTheme } from "../../contexts/ThemeContext";
 
@@ -32,11 +42,14 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
   const threads = useMemo(() => {
     if (!rawThreads) return rawThreads; // preserve undefined for loading state
     const personaMap = new Map(
-      (personas ?? []).map((p) => [p._id, { name: p.name, icon: p.icon }])
+      (personas ?? []).map((p) => [p._id, { name: p.name, icon: p.icon }]),
     );
     return rawThreads.map((thread) => ({
       ...thread,
-      persona: personaMap.get(thread.personaId) ?? { name: "Unknown", icon: "❓" },
+      persona: personaMap.get(thread.personaId) ?? {
+        name: "Unknown",
+        icon: "❓",
+      },
     }));
   }, [rawThreads, personas]);
 
@@ -45,7 +58,9 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
   const tc = useTranslation("common").t;
 
   const toggleLanguage = useCallback(() => {
-    i18n.changeLanguage(i18n.language === "es" ? "en" : "es");
+    i18n.changeLanguage(i18n.language === "es" ? "en" : "es").catch((error) => {
+      console.error("[i18n] Could not change language:", error);
+    });
   }, [i18n]);
 
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
@@ -54,32 +69,32 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
   const [deletePending, startDeleteTransition] = useTransition();
 
   const handleNewChat = () => {
-    navigate("/");
+    void navigate("/");
     onCloseMobile();
   };
 
   const handleSettings = () => {
-    navigate("/settings/personas");
+    void navigate("/settings/personas");
     onCloseMobile();
   };
 
   const handleNotion = () => {
-    navigate("/notion");
+    void navigate("/notion");
     onCloseMobile();
   };
 
   const handleMemory = () => {
-    navigate("/memory");
+    void navigate("/memory");
     onCloseMobile();
   };
 
   const handlePlans = () => {
-    navigate("/plans");
+    void navigate("/plans");
     onCloseMobile();
   };
 
   const handleAccount = () => {
-    navigate("/settings/account");
+    void navigate("/settings/account");
     onCloseMobile();
   };
 
@@ -92,7 +107,7 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
         threadTitle,
       });
     },
-    []
+    [],
   );
 
   /** Execute the thread deletion after confirmation */
@@ -107,7 +122,7 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
 
         // If we're viewing the thread being deleted, navigate away
         if (location.pathname === `/t/${threadId}`) {
-          navigate("/");
+          void navigate("/");
         }
       } catch {
         // The mutation validates ownership; if it fails, just close
@@ -122,7 +137,9 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
       <div
         className="flex h-14 shrink-0 items-center gap-2.5 px-4 cursor-pointer hover:opacity-80 transition-opacity"
         onClick={handleNewChat}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleNewChat()}
+        onKeyDown={(e) =>
+          (e.key === "Enter" || e.key === " ") && handleNewChat()
+        }
         role="button"
         tabIndex={0}
       >
@@ -175,7 +192,10 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
           // Loading skeleton
           <div className="space-y-1.5 px-1">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2.5">
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+              >
                 <div className="h-6 w-6 animate-pulse rounded-full bg-muted" />
                 <div className="flex-1 space-y-1.5">
                   <div className="h-3.5 w-3/4 animate-pulse rounded bg-muted" />
@@ -200,14 +220,20 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
                 <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <p className="text-xs text-muted-foreground/60">{t("noConversations")}</p>
+            <p className="text-xs text-muted-foreground/60">
+              {t("noConversations")}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground/40">
               {t("startNewChat")}
             </p>
           </div>
         ) : (
           // Thread list
-          <nav className="space-y-0.5" onClick={onCloseMobile} onKeyDown={onCloseMobile}>
+          <nav
+            className="space-y-0.5"
+            onClick={onCloseMobile}
+            onKeyDown={onCloseMobile}
+          >
             {threads.map((thread) => (
               <ThreadItem
                 key={thread._id}
@@ -250,7 +276,9 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
           <button
             onClick={toggleLanguage}
             className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label={i18n.language === "en" ? "Cambiar a Español" : "Switch to English"}
+            aria-label={
+              i18n.language === "en" ? "Cambiar a Español" : "Switch to English"
+            }
           >
             <Globe className="h-3.5 w-3.5" />
             {i18n.language === "en" ? "ES" : "EN"}
@@ -258,7 +286,11 @@ export function Sidebar({ onCloseMobile, isDemoUser }: SidebarProps) {
           <button
             onClick={toggleTheme}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label={theme === "dark" ? tc("switchToLightMode") : tc("switchToDarkMode")}
+            aria-label={
+              theme === "dark"
+                ? tc("switchToLightMode")
+                : tc("switchToDarkMode")
+            }
           >
             {theme === "dark" ? (
               <Sun className="h-4 w-4" />

@@ -68,14 +68,14 @@ export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
       onChange(icon);
       setIsOpen(false);
     },
-    [onChange]
+    [onChange],
   );
 
   const handleEmojiSelect = useCallback(
     (emojiData: EmojiClickData) => {
       handleSelect(emojiData.emoji);
     },
-    [handleSelect]
+    [handleSelect],
   );
 
   return (
@@ -89,7 +89,7 @@ export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
           "flex h-10 w-full items-center justify-center rounded-lg border border-border/50 bg-card text-xl transition-all",
           "hover:border-primary/30 hover:bg-primary/5",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
-          isOpen && "border-primary/30 ring-2 ring-ring/20"
+          isOpen && "border-primary/30 ring-2 ring-ring/20",
         )}
         aria-label="Choose icon"
         aria-expanded={isOpen}
@@ -102,7 +102,7 @@ export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
         <div
           className={cn(
             "absolute left-0 top-full z-50 mt-2 w-[22rem] origin-top-left overflow-hidden rounded-xl border border-border/50 bg-card shadow-lg",
-            "animate-in fade-in-0 zoom-in-95 duration-150"
+            "animate-in fade-in-0 zoom-in-95 duration-150",
           )}
         >
           {/* Category tabs */}
@@ -114,7 +114,7 @@ export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
                 "flex-1 px-3 py-2 text-xs font-medium transition-colors",
                 activeTab === "emoji"
                   ? "border-b-2 border-primary text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               Emoji
@@ -126,7 +126,7 @@ export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
                 "flex-1 px-3 py-2 text-xs font-medium transition-colors",
                 activeTab === "icons"
                   ? "border-b-2 border-primary text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               Icons
@@ -169,8 +169,7 @@ export function EmojiPicker({ value, onChange, id }: EmojiPickerProps) {
                     className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-md transition-all",
                       "hover:scale-110 hover:bg-primary/10",
-                      name === value &&
-                        "bg-primary/15 ring-1 ring-primary/30"
+                      name === value && "bg-primary/15 ring-1 ring-primary/30",
                     )}
                     aria-label={`Select ${name} icon`}
                   >

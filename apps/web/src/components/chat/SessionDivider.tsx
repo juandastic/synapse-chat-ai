@@ -27,7 +27,9 @@ export const SessionDivider = memo(function SessionDivider({
             d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
-        <span className="font-medium">{formatSessionDate(timestamp, i18n.language)}</span>
+        <span className="font-medium">
+          {formatSessionDate(timestamp, i18n.language)}
+        </span>
       </div>
       <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-transparent" />
     </div>

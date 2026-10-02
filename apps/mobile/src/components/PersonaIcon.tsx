@@ -78,7 +78,7 @@ export function PersonaIcon({ icon, size = "md" }: PersonaIconProps) {
           backgroundColor: colors.accentLight,
         },
       }),
-    [colors]
+    [colors],
   );
 
   if (Icon) {
@@ -98,7 +98,5 @@ export function PersonaIcon({ icon, size = "md" }: PersonaIconProps) {
     );
   }
 
-  return (
-    <Text style={{ fontSize: config.emoji }}>{icon}</Text>
-  );
+  return <Text style={{ fontSize: config.emoji }}>{icon}</Text>;
 }

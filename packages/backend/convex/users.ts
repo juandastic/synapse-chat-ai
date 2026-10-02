@@ -13,7 +13,11 @@ import { getChatModel } from "./chatModels";
 
 function publicUser(user: Doc<"users"> | null) {
   if (!user) return null;
-  const { chatModel: _model, modelSelectorEnabled: _selector, ...profile } = user;
+  const {
+    chatModel: _model,
+    modelSelectorEnabled: _selector,
+    ...profile
+  } = user;
   return profile;
 }
 
@@ -47,7 +51,7 @@ export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
   return ctx.db
     .query("users")
     .withIndex("by_token", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier)
+      q.eq("tokenIdentifier", identity.tokenIdentifier),
     )
     .unique();
 }
@@ -70,7 +74,7 @@ export async function getOrCreateUser(ctx: MutationCtx) {
   const existingUser = await ctx.db
     .query("users")
     .withIndex("by_token", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier)
+      q.eq("tokenIdentifier", identity.tokenIdentifier),
     )
     .unique();
 
@@ -80,7 +84,7 @@ export async function getOrCreateUser(ctx: MutationCtx) {
 
   // Derive display name from identity (prefer name > email > fallback)
   const displayName = sanitizeName(
-    identity.name ?? identity.email ?? "Anonymous"
+    identity.name ?? identity.email ?? "Anonymous",
   );
 
   const userId = await ctx.db.insert("users", {
@@ -142,7 +146,7 @@ export const getByToken = internalQuery({
     return ctx.db
       .query("users")
       .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", args.tokenIdentifier)
+        q.eq("tokenIdentifier", args.tokenIdentifier),
       )
       .unique();
   },
@@ -171,7 +175,10 @@ export const getChatSettings = query({
     if (user?.modelSelectorEnabled !== true) {
       return { modelSelectorEnabled: false, model: null };
     }
-    return { modelSelectorEnabled: true, model: getChatModel(user.chatModel).id };
+    return {
+      modelSelectorEnabled: true,
+      model: getChatModel(user.chatModel).id,
+    };
   },
 });
 
@@ -225,9 +232,7 @@ export const updateProfile = mutation({
     await ctx.scheduler.runAfter(0, internal.analytics.capture, {
       distinctId: user._id,
       event: "profile updated",
-      properties: {
-        $set: { name },
-      },
+      personProperties: { name },
     });
 
     return publicUser(await ctx.db.get(user._id));
@@ -269,7 +274,8 @@ export const setChatModel = mutation({
   args: { model: v.string() },
   handler: async (ctx, args) => {
     const user = await getOrCreateUser(ctx);
-    if (user.modelSelectorEnabled !== true) throw new Error("Model selector is disabled");
+    if (user.modelSelectorEnabled !== true)
+      throw new Error("Model selector is disabled");
     const model = getChatModel(args.model);
     await ctx.db.patch(user._id, { chatModel: model.id });
   },
@@ -286,13 +292,18 @@ export const setUserChatConfig = internalMutation({
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("User not found");
     await ctx.db.patch(user._id, {
-      ...(args.chatModel !== undefined ? { chatModel: getChatModel(args.chatModel).id } : {}),
-      ...(args.modelSelectorEnabled !== undefined ? { modelSelectorEnabled: args.modelSelectorEnabled } : {}),
+      ...(args.chatModel !== undefined
+        ? { chatModel: getChatModel(args.chatModel).id }
+        : {}),
+      ...(args.modelSelectorEnabled !== undefined
+        ? { modelSelectorEnabled: args.modelSelectorEnabled }
+        : {}),
     });
     console.log("[users.setUserChatConfig] Chat configuration updated", {
       userId: user._id,
       chatModel: args.chatModel ?? user.chatModel ?? getChatModel().id,
-      modelSelectorEnabled: args.modelSelectorEnabled ?? user.modelSelectorEnabled ?? false,
+      modelSelectorEnabled:
+        args.modelSelectorEnabled ?? user.modelSelectorEnabled ?? false,
     });
   },
 });

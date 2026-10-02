@@ -6,7 +6,7 @@ import { usePostHog } from "posthog-react-native";
 import { api } from "@synapse/backend/api";
 import { Doc } from "@synapse/backend/dataModel";
 import * as Clipboard from "expo-clipboard";
-import * as Haptics from "expo-haptics";
+import { impactFeedback, successFeedback } from "../lib/haptics";
 import { Copy, Pencil, RotateCcw, Trash2, Flag } from "lucide-react-native";
 
 import { useColors } from "../contexts/ThemeContext";
@@ -33,7 +33,9 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
   const [reported, setReported] = useState(false);
 
   const editableMessage = useMemo(() => {
-    const messageIndex = messages?.findIndex((item) => item._id === message._id);
+    const messageIndex = messages?.findIndex(
+      (item) => item._id === message._id,
+    );
     if (messageIndex === undefined || messageIndex < 0 || !messages) {
       return null;
     }
@@ -53,7 +55,7 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
 
   const handleReport = useCallback(() => {
     if (reported) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    successFeedback();
     posthog?.capture("message_reported", {
       thread_id: message.threadId,
       message_id: message._id,
@@ -65,20 +67,28 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
       i18n.language === "es" ? "Reportado" : "Reported",
       i18n.language === "es"
         ? "Gracias por el feedback."
-        : "Thanks for the feedback."
+        : "Thanks for the feedback.",
     );
     onClose();
-  }, [reported, posthog, message._id, message.threadId, message.role, i18n.language, onClose]);
+  }, [
+    reported,
+    posthog,
+    message._id,
+    message.threadId,
+    message.role,
+    i18n.language,
+    onClose,
+  ]);
 
   const handleCopy = useCallback(async () => {
     await Clipboard.setStringAsync(message.content);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    successFeedback();
     onClose();
   }, [message.content, onClose]);
 
   const handleEdit = useCallback(() => {
     if (!editableMessage || isGenerating) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactFeedback("light");
     beginEditing(editableMessage);
     onClose();
   }, [beginEditing, editableMessage, isGenerating, onClose]);
@@ -86,7 +96,7 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
   const handleRetry = useCallback(async () => {
     if (isRetrying || isGenerating) return;
     setIsRetrying(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    impactFeedback("medium");
     onClose();
     try {
       const result = await resendMessage({ userMessageId: message._id });
@@ -98,10 +108,18 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
     } finally {
       setIsRetrying(false);
     }
-  }, [isRetrying, isGenerating, resendMessage, message._id, startStreaming, streamResponse, onClose]);
+  }, [
+    isRetrying,
+    isGenerating,
+    resendMessage,
+    message._id,
+    startStreaming,
+    streamResponse,
+    onClose,
+  ]);
 
   const handleDelete = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    impactFeedback("medium");
     onClose();
     Alert.alert(
       t("messageItem.confirmDeleteTitle"),
@@ -120,7 +138,7 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
             }
           },
         },
-      ]
+      ],
     );
   }, [deleteMessage, message._id, onClose, t]);
 
@@ -166,7 +184,7 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
           marginVertical: 4,
         },
       }),
-    [colors]
+    [colors],
   );
 
   return (
@@ -174,7 +192,13 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
       <View style={s.handle} />
 
       {message.content.length > 0 && (
-        <ActionRow icon={Copy} label={t("messageItem.copy")} onPress={handleCopy} colors={colors} s={s} />
+        <ActionRow
+          icon={Copy}
+          label={t("messageItem.copy")}
+          onPress={handleCopy}
+          colors={colors}
+          s={s}
+        />
       )}
 
       {editableMessage && (

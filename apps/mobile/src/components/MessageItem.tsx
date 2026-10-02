@@ -17,7 +17,7 @@ import {
   type LayoutChangeEvent,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import * as Haptics from "expo-haptics";
+import { impactFeedback } from "../lib/haptics";
 import type { Doc } from "@synapse/backend/dataModel";
 import Markdown from "react-native-markdown-display";
 import type { ASTNode, RenderRules } from "react-native-markdown-display";
@@ -111,7 +111,7 @@ export const MessageItem = memo(function MessageItem({
   const [assistantContentWidth, setAssistantContentWidth] = useState(0);
 
   const handleActionsPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    impactFeedback("medium");
     onActionsPress?.(message);
   }, [message, onActionsPress]);
 

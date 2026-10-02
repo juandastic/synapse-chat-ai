@@ -91,7 +91,11 @@ export function PersonaIcon({
   }
 
   return (
-    <span className={cn(sizeConfig.emoji, className)} role="img" aria-hidden="true">
+    <span
+      className={cn(sizeConfig.emoji, className)}
+      role="img"
+      aria-hidden="true"
+    >
       {icon}
     </span>
   );

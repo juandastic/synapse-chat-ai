@@ -39,7 +39,10 @@ export const prepareContext = internalAction({
     sessionId: v.id("sessions"),
     assistantMessageId: v.id("messages"),
   },
-  handler: async (ctx, args): Promise<{
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
     apiMessages: ApiMessage[];
     systemInstruction: string;
     compilation?: string;
@@ -55,7 +58,7 @@ export const prepareContext = internalAction({
   }> => {
     const session: Doc<"sessions"> | null = await ctx.runQuery(
       internal.sessions.get,
-      { id: args.sessionId }
+      { id: args.sessionId },
     );
 
     if (!session) {
@@ -64,18 +67,18 @@ export const prepareContext = internalAction({
 
     const history: Doc<"messages">[] = await ctx.runQuery(
       internal.messages.getBySession,
-      { sessionId: args.sessionId }
+      { sessionId: args.sessionId },
     );
 
     const assistantMessage = history.find(
-      (message) => message._id === args.assistantMessageId
+      (message) => message._id === args.assistantMessageId,
     );
     if (!assistantMessage || assistantMessage.role !== "assistant") {
       throw new Error("Assistant message not found in session");
     }
 
     const promptMode: PromptMode = session.promptSnapshot
-      ? session.promptMode ?? "legacy"
+      ? (session.promptMode ?? "legacy")
       : "legacy";
     const baseSystemPrompt = session.promptSnapshot
       ? renderSystemPrompt(promptMode, session.promptSnapshot)
@@ -99,22 +102,25 @@ export const prepareContext = internalAction({
     // falling back to historical sessions that still contain the old field.
     const knowledgeCache = await ctx.runQuery(
       internal.userKnowledgeCache.getByUserId,
-      { userId: session.userId }
+      { userId: session.userId },
     );
     const userKnowledge =
       knowledgeCache?.cachedUserKnowledge ?? session.cachedUserKnowledge;
 
     // Send compilation separately so Cortex can use its cache or inline the
     // full text when that cache is unavailable.
-    const systemInstruction =
-      `${baseSystemPrompt}\n\nCurrent date and time: ${currentDateTime}`;
+    const systemInstruction = `${baseSystemPrompt}\n\nCurrent date and time: ${currentDateTime}`;
 
     const filteredHistory = history.filter(
-      (m) => m._id !== args.assistantMessageId
+      (m) => m._id !== args.assistantMessageId,
     );
-    if (!getChatModel(assistantMessage.generationTarget?.model).images &&
-      filteredHistory.some((message) => (message.imageKeys?.length ?? 0) > 0)) {
-      throw new Error("This model does not support images in the conversation. Choose a model with vision.");
+    if (
+      !getChatModel(assistantMessage.generationTarget?.model).images &&
+      filteredHistory.some((message) => (message.imageKeys?.length ?? 0) > 0)
+    ) {
+      throw new Error(
+        "This model does not support images in the conversation. Choose a model with vision.",
+      );
     }
 
     // Only user/assistant turns — system is passed as its own field.
@@ -160,12 +166,14 @@ export const prepareContext = internalAction({
       sessionId: args.sessionId,
       historyCount: filteredHistory.length,
       hasUserKnowledge: !!userKnowledge,
-      knowledgeSource: knowledgeCache?.cachedUserKnowledge ? "user_knowledge_cache" : "session",
+      knowledgeSource: knowledgeCache?.cachedUserKnowledge
+        ? "user_knowledge_cache"
+        : "session",
       systemInstructionLength: systemInstruction.length,
       compilationLength: userKnowledge?.length ?? 0,
       hasCacheName: !!cacheName,
       messagesWithImages: filteredHistory.filter(
-        (m) => m.imageKeys && m.imageKeys.length > 0
+        (m) => m.imageKeys && m.imageKeys.length > 0,
       ).length,
       promptMode,
       voicePromptVersion: session.promptSnapshot?.personalityVersion,

@@ -159,18 +159,28 @@ export const startExport = action({
           pageName: args.notionPageName,
           language: args.notionLanguage,
         }),
-      }
+      },
     );
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      const message = extractErrorMessage(body, `Export request failed (${response.status})`);
-      console.warn("[notion.startExport] Request failed", { userId, status: response.status, message });
+      const message = extractErrorMessage(
+        body,
+        `Export request failed (${response.status})`,
+      );
+      console.warn("[notion.startExport] Request failed", {
+        userId,
+        status: response.status,
+        message,
+      });
       throw new Error(message);
     }
 
     const data: ExportStartResponse = await response.json();
-    console.log("[notion.startExport] Export job accepted", { userId, jobId: data.jobId });
+    console.log("[notion.startExport] Export job accepted", {
+      userId,
+      jobId: data.jobId,
+    });
     return data;
   },
 });
@@ -190,11 +200,13 @@ export const getExportStatus = action({
       {
         method: "GET",
         headers: { "X-API-SECRET": apiSecret },
-      }
+      },
     );
 
     if (response.status === 404) {
-      console.warn("[notion.getExportStatus] Export job not found", { jobId: args.jobId });
+      console.warn("[notion.getExportStatus] Export job not found", {
+        jobId: args.jobId,
+      });
       throw new Error("Export job not found");
     }
 
@@ -273,18 +285,28 @@ export const startCorrections = action({
           pageName: args.notionPageName,
           language: args.notionLanguage,
         }),
-      }
+      },
     );
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      const message = extractErrorMessage(body, `Corrections request failed (${response.status})`);
-      console.warn("[notion.startCorrections] Request failed", { userId, status: response.status, message });
+      const message = extractErrorMessage(
+        body,
+        `Corrections request failed (${response.status})`,
+      );
+      console.warn("[notion.startCorrections] Request failed", {
+        userId,
+        status: response.status,
+        message,
+      });
       throw new Error(message);
     }
 
     const data: CorrectionsStartResponse = await response.json();
-    console.log("[notion.startCorrections] Corrections job accepted", { userId, jobId: data.jobId });
+    console.log("[notion.startCorrections] Corrections job accepted", {
+      userId,
+      jobId: data.jobId,
+    });
     return data;
   },
 });
@@ -304,11 +326,13 @@ export const getCorrectionsStatus = action({
       {
         method: "GET",
         headers: { "X-API-SECRET": apiSecret },
-      }
+      },
     );
 
     if (response.status === 404) {
-      console.warn("[notion.getCorrectionsStatus] Corrections job not found", { jobId: args.jobId });
+      console.warn("[notion.getCorrectionsStatus] Corrections job not found", {
+        jobId: args.jobId,
+      });
       throw new Error("Corrections job not found");
     }
 

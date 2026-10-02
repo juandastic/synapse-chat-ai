@@ -17,7 +17,7 @@ import { CHAT_MODELS, DEFAULT_CHAT_MODEL } from "@synapse/backend/chatModels";
 import { Id } from "@synapse/backend/dataModel";
 import { Send, ImagePlus, Pencil, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
+import { impactFeedback } from "../lib/haptics";
 import { captureError } from "../lib/analytics";
 
 import { useTheme } from "../contexts/ThemeContext";
@@ -44,12 +44,8 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const textInputRef = useRef<TextInput>(null);
   const { colors } = useTheme();
 
-  const {
-    isGenerating,
-    startStreaming,
-    editingMessage,
-    cancelEditing,
-  } = useChatContext();
+  const { isGenerating, startStreaming, editingMessage, cancelEditing } =
+    useChatContext();
   const sendMessage = useMutation(api.messages.send);
   const saveChatModel = useMutation(api.users.setChatModel);
   const chatSettings = useQuery(api.users.getChatSettings);
@@ -60,7 +56,9 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const uploadImage = useImageUpload();
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
-  const modelCapabilities = useQuery(api.messages.getModelCapabilities, { threadId });
+  const modelCapabilities = useQuery(api.messages.getModelCapabilities, {
+    threadId,
+  });
   const posthog = usePostHog();
   const { t, i18n } = useTranslation("chat");
   const insets = useSafeAreaInsets();
@@ -74,9 +72,14 @@ export function ChatInput({ threadId }: ChatInputProps) {
     maxImages,
   } = useImagePicker();
 
-  const activeModel = CHAT_MODELS.find((model) => model.id === selectedModelId) ?? DEFAULT_CHAT_MODEL;
-  const contextHasImages = modelCapabilities?.hasImages === true || images.length > 0;
-  const modelUnavailable = !editingMessage && !activeModel.images &&
+  const activeModel =
+    CHAT_MODELS.find((model) => model.id === selectedModelId) ??
+    DEFAULT_CHAT_MODEL;
+  const contextHasImages =
+    modelCapabilities?.hasImages === true || images.length > 0;
+  const modelUnavailable =
+    !editingMessage &&
+    !activeModel.images &&
     (contextHasImages || modelCapabilities === undefined);
 
   const handleSelectModel = async (model: string) => {
@@ -85,7 +88,9 @@ export function ChatInput({ threadId }: ChatInputProps) {
     try {
       await saveChatModel({ model });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("chatInput.modelSaveFailed"));
+      setError(
+        err instanceof Error ? err.message : t("chatInput.modelSaveFailed"),
+      );
     } finally {
       setIsSavingModel(false);
     }
@@ -107,11 +112,12 @@ export function ChatInput({ threadId }: ChatInputProps) {
     const hasImages = images.length > 0;
 
     if (!trimmedContent && !hasImages) return;
-    if (isSubmitting || isSavingModel || isGenerating || modelUnavailable) return;
+    if (isSubmitting || isSavingModel || isGenerating || modelUnavailable)
+      return;
 
     setIsSubmitting(true);
     setError(null);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactFeedback("light");
 
     const savedContent = content;
     const savedImages = [...images];
@@ -269,9 +275,9 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const isDisabled = isSubmitting || isSavingModel || isGenerating || isAtLimit;
   const canSubmit =
     (content.trim().length > 0 || images.length > 0) &&
-    !isDisabled && !modelUnavailable;
-  const canAttach =
-    !editingMessage && images.length < maxImages && !isDisabled;
+    !isDisabled &&
+    !modelUnavailable;
+  const canAttach = !editingMessage && images.length < maxImages && !isDisabled;
 
   const s = useMemo(
     () =>
@@ -546,11 +552,13 @@ export function ChatInput({ threadId }: ChatInputProps) {
             )}
             {(editingMessage || modelUnavailable) && (
               <Text style={s.modelHint}>
-                {t(editingMessage
-                  ? "chatInput.modelEditingHint"
-                  : contextHasImages
-                    ? "chatInput.modelImageMismatch"
-                    : "chatInput.modelCheckingImages")}
+                {t(
+                  editingMessage
+                    ? "chatInput.modelEditingHint"
+                    : contextHasImages
+                      ? "chatInput.modelImageMismatch"
+                      : "chatInput.modelCheckingImages",
+                )}
               </Text>
             )}
           </View>

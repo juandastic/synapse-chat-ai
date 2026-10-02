@@ -34,9 +34,7 @@ export const list = query({
       .collect();
 
     // Sort by most recent activity
-    return [...threads].sort(
-      (a, b) => b.lastMessageAt - a.lastMessageAt
-    );
+    return [...threads].sort((a, b) => b.lastMessageAt - a.lastMessageAt);
   },
 });
 
@@ -64,7 +62,11 @@ export const get = query({
     return {
       ...thread,
       persona: persona
-        ? { name: persona.name, icon: persona.icon, description: persona.description }
+        ? {
+            name: persona.name,
+            icon: persona.icon,
+            description: persona.description,
+          }
         : { name: "Unknown", icon: "❓", description: undefined },
     };
   },

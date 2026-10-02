@@ -38,9 +38,14 @@ function ClerkLoadingWatchdog({ children }: { children: ReactNode }) {
     if (isLoaded) return;
     const timer = setTimeout(() => {
       console.error("[ClerkWatchdog] Clerk failed to load within 10s");
-      captureError(new Error("Clerk failed to load within 10s — possible native_api_disabled or network error"), {
-        source: "clerk_watchdog",
-      });
+      captureError(
+        new Error(
+          "Clerk failed to load within 10s — possible native_api_disabled or network error",
+        ),
+        {
+          source: "clerk_watchdog",
+        },
+      );
       setTimedOut(true);
     }, 10_000);
     return () => clearTimeout(timer);
@@ -48,10 +53,28 @@ function ClerkLoadingWatchdog({ children }: { children: ReactNode }) {
 
   if (timedOut && !isLoaded) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32, backgroundColor: "#fff" }}>
-        <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 8 }}>Connection Error</Text>
-        <Text style={{ fontSize: 14, textAlign: "center", color: "#666", lineHeight: 20 }}>
-          Unable to connect to authentication service. Please check your internet connection and try again.
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 32,
+          backgroundColor: "#fff",
+        }}
+      >
+        <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 8 }}>
+          Connection Error
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            textAlign: "center",
+            color: "#666",
+            lineHeight: 20,
+          }}
+        >
+          Unable to connect to authentication service. Please check your
+          internet connection and try again.
         </Text>
       </View>
     );
@@ -79,17 +102,17 @@ const posthogHost =
 
 if (!convexUrl) {
   throw new Error(
-    "Missing EXPO_PUBLIC_CONVEX_URL — add it to apps/mobile/.env.local"
+    "Missing EXPO_PUBLIC_CONVEX_URL — add it to apps/mobile/.env.local",
   );
 }
 if (!clerkPublishableKey) {
   throw new Error(
-    "Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY — add it to apps/mobile/.env.local"
+    "Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY — add it to apps/mobile/.env.local",
   );
 }
 if (!posthogApiKey) {
   throw new Error(
-    "Missing EXPO_PUBLIC_POSTHOG_KEY — add it to apps/mobile/.env.local"
+    "Missing EXPO_PUBLIC_POSTHOG_KEY — add it to apps/mobile/.env.local",
   );
 }
 
@@ -141,7 +164,7 @@ function AuthGate() {
       console.log("[AuthGate] Not signed in → redirecting to /(auth)");
       router.replace("/(auth)");
     }
-  }, [isLoaded, isSignedIn, segments]);
+  }, [isLoaded, isSignedIn, segments, router]);
 
   // Reset PostHog identity when user signs out
   useEffect(() => {
@@ -149,7 +172,7 @@ function AuthGate() {
       posthog?.reset();
     }
     prevSignedIn.current = isSignedIn;
-  }, [isSignedIn]);
+  }, [isSignedIn, posthog]);
 
   // Don't render anything until Clerk has loaded the session from SecureStore
   if (!isLoaded) return null;
@@ -180,7 +203,9 @@ function ScreenTracker() {
 
   useEffect(() => {
     if (posthog && pathname) {
-      posthog.screen(pathname);
+      posthog.screen(pathname).catch((error) => {
+        console.warn("[PostHog] Could not track screen:", error);
+      });
     }
   }, [posthog, pathname]);
 

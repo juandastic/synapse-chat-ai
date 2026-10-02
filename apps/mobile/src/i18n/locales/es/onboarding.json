@@ -15,10 +15,22 @@
     "title": "Ingeniería de memoria,\nno memorización",
     "description": "Cuatro pasos de conversación a conocimiento estructurado.",
     "steps": [
-      { "title": "Conversa", "desc": "Habla sobre tu día, tus metas, tus preocupaciones. Cada sesión se captura automáticamente." },
-      { "title": "Ingesta", "desc": "Se extraen entidades y relaciones en un grafo de conocimiento." },
-      { "title": "Compila", "desc": "Tu grafo se inyecta en futuras sesiones como contexto estructurado." },
-      { "title": "Evoluciona", "desc": "Cada conversación refina el grafo. Mientras más hables, mejor se vuelve." }
+      {
+        "title": "Conversa",
+        "desc": "Habla sobre tu día, tus metas, tus preocupaciones. Cada sesión se captura automáticamente."
+      },
+      {
+        "title": "Ingesta",
+        "desc": "Se extraen entidades y relaciones en un grafo de conocimiento."
+      },
+      {
+        "title": "Compila",
+        "desc": "Tu grafo se inyecta en futuras sesiones como contexto estructurado."
+      },
+      {
+        "title": "Evoluciona",
+        "desc": "Cada conversación refina el grafo. Mientras más hables, mejor se vuelve."
+      }
     ]
   },
   "personas": {
@@ -48,7 +60,12 @@
       "name": "Impulso",
       "subtitle": "Coach de crecimiento — directo, honesto, orientado a la acción",
       "approach": "Te acompaña en la rendición de cuentas con tus metas — y sabe qué realmente te descarrila. Directo y claro, sin relleno. Respeta que el descanso es una estrategia, no un fracaso.",
-      "theories": ["Entrevista Motivacional", "Intenciones de Implementación", "Activación Conductual", "Metas SMART"],
+      "theories": [
+        "Entrevista Motivacional",
+        "Intenciones de Implementación",
+        "Activación Conductual",
+        "Metas SMART"
+      ],
       "useCases": [
         "Establecer y rastrear metas con alguien que recuerda tus compromisos",
         "Superar la procrastinación identificando tus detonantes específicos",

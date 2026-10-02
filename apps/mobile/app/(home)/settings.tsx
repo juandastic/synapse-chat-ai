@@ -126,19 +126,22 @@ export default function SettingsScreen() {
         rowPressed: { backgroundColor: colors.accentLight },
         pressed: { opacity: 0.7 },
       }),
-    [colors]
+    [colors],
   );
 
-  const handleOpenUrl = useCallback(async (url: string) => {
-    try {
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert(
-        isEs ? "No se pudo abrir el link" : "Couldn't open link",
-        url
-      );
-    }
-  }, [isEs]);
+  const handleOpenUrl = useCallback(
+    async (url: string) => {
+      try {
+        await Linking.openURL(url);
+      } catch {
+        Alert.alert(
+          isEs ? "No se pudo abrir el link" : "Couldn't open link",
+          url,
+        );
+      }
+    },
+    [isEs],
+  );
 
   const handleDeleteAccount = useCallback(() => {
     if (deleting) return;
@@ -180,11 +183,11 @@ export default function SettingsScreen() {
                     router.replace("/(auth)" as never);
                   },
                 },
-              ]
+              ],
             );
           },
         },
-      ]
+      ],
     );
   }, [deleting, isEs, posthog, convexUser?._id, email, signOut, router]);
 
@@ -197,9 +200,7 @@ export default function SettingsScreen() {
         >
           <Menu size={22} color={colors.ink} />
         </Pressable>
-        <Text style={s.headerTitle}>
-          {isEs ? "Cuenta" : "Account"}
-        </Text>
+        <Text style={s.headerTitle}>{isEs ? "Cuenta" : "Account"}</Text>
         <View style={s.headerBtn} />
       </View>
 
@@ -215,9 +216,7 @@ export default function SettingsScreen() {
           </View>
           <View style={s.rowSeparator} />
           <View style={s.row}>
-            <Text style={s.rowLabel}>
-              {isEs ? "Nombre" : "Name"}
-            </Text>
+            <Text style={s.rowLabel}>{isEs ? "Nombre" : "Name"}</Text>
             <Text style={s.rowValue} numberOfLines={1}>
               {convexUser?.name ?? "—"}
             </Text>

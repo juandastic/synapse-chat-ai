@@ -124,7 +124,10 @@ http.route({
         tokenIdentifier: identity.tokenIdentifier,
       });
     } catch {
-      return new Response("Invalid generation request", { status: 403, headers });
+      return new Response("Invalid generation request", {
+        status: 403,
+        headers,
+      });
     }
 
     // ── Prepare context (Node.js action — resolves R2 image URLs) ────────
@@ -249,7 +252,8 @@ http.route({
             // The server uses it via cached_content on this request; if it
             // has expired server-side, Cortex falls back to inlining the
             // compilation from the same body and retries transparently.
-            ...(target.provider === "vertex" && cacheName !== undefined && { cache_name: cacheName }),
+            ...(target.provider === "vertex" &&
+              cacheName !== undefined && { cache_name: cacheName }),
             messages: apiMessages,
             stream: true,
             user_id: userId,

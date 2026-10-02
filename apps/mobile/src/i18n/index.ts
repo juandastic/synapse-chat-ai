@@ -23,24 +23,49 @@ import esPlans from "./locales/es/plans.json";
 
 const deviceLocale =
   Platform.OS === "ios"
-    ? NativeModules.SettingsManager?.settings?.AppleLocale ??
-      NativeModules.SettingsManager?.settings?.AppleLanguages?.[0]
+    ? (NativeModules.SettingsManager?.settings?.AppleLocale ??
+      NativeModules.SettingsManager?.settings?.AppleLanguages?.[0])
     : NativeModules.I18nManager?.localeIdentifier;
 
 const deviceLang = deviceLocale?.split(/[-_]/)[0] ?? "en";
 
-i18n.use(initReactI18next).init({
-  resources: {
-    en: { onboarding: enOnboarding, auth: enAuth, home: enHome, chat: enChat, sidebar: enSidebar, settings: enSettings, memory: enMemory, notion: enNotion, plans: enPlans },
-    es: { onboarding: esOnboarding, auth: esAuth, home: esHome, chat: esChat, sidebar: esSidebar, settings: esSettings, memory: esMemory, notion: esNotion, plans: esPlans },
-  },
-  lng: deviceLang,
-  fallbackLng: "en",
-  supportedLngs: ["en", "es"],
-  defaultNS: "onboarding",
-  interpolation: {
-    escapeValue: false,
-  },
-});
+i18n
+  .use(initReactI18next)
+  .init({
+    resources: {
+      en: {
+        onboarding: enOnboarding,
+        auth: enAuth,
+        home: enHome,
+        chat: enChat,
+        sidebar: enSidebar,
+        settings: enSettings,
+        memory: enMemory,
+        notion: enNotion,
+        plans: enPlans,
+      },
+      es: {
+        onboarding: esOnboarding,
+        auth: esAuth,
+        home: esHome,
+        chat: esChat,
+        sidebar: esSidebar,
+        settings: esSettings,
+        memory: esMemory,
+        notion: esNotion,
+        plans: esPlans,
+      },
+    },
+    lng: deviceLang,
+    fallbackLng: "en",
+    supportedLngs: ["en", "es"],
+    defaultNS: "onboarding",
+    interpolation: {
+      escapeValue: false,
+    },
+  })
+  .catch((error) => {
+    console.error("[i18n] Initialization failed:", error);
+  });
 
 export default i18n;

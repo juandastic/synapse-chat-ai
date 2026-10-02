@@ -26,16 +26,40 @@
   },
   "conversations": {
     "regular": [
-      { "role": "user", "text": "I had a terrible day. Everything feels overwhelming again." },
-      { "role": "ai", "text": "I'm sorry to hear that. Have you tried taking some deep breaths or going for a walk? Sometimes a change of scenery helps." },
-      { "role": "user", "text": "I told you last week this keeps happening after meetings with my boss..." },
-      { "role": "ai", "text": "I don't have context from previous conversations. Can you tell me more about what's going on with your boss?" }
+      {
+        "role": "user",
+        "text": "I had a terrible day. Everything feels overwhelming again."
+      },
+      {
+        "role": "ai",
+        "text": "I'm sorry to hear that. Have you tried taking some deep breaths or going for a walk? Sometimes a change of scenery helps."
+      },
+      {
+        "role": "user",
+        "text": "I told you last week this keeps happening after meetings with my boss..."
+      },
+      {
+        "role": "ai",
+        "text": "I don't have context from previous conversations. Can you tell me more about what's going on with your boss?"
+      }
     ],
     "synapse": [
-      { "role": "user", "text": "I had a terrible day. Everything feels overwhelming again." },
-      { "role": "ai", "text": "I hear you. The last three times you've described this 'everything crashing' feeling, it followed tense interactions with David. Did something happen in today's meeting?" },
-      { "role": "user", "text": "Yes. He dismissed my proposal in front of everyone. Again." },
-      { "role": "ai", "text": "That pattern of public dismissal has been a consistent trigger for you — it connects to the authority dynamics we've explored before. Last time, the body scan helped you move from shutdown back to your window. Want to try that now, or do you need to just be angry first?" }
+      {
+        "role": "user",
+        "text": "I had a terrible day. Everything feels overwhelming again."
+      },
+      {
+        "role": "ai",
+        "text": "I hear you. The last three times you've described this 'everything crashing' feeling, it followed tense interactions with David. Did something happen in today's meeting?"
+      },
+      {
+        "role": "user",
+        "text": "Yes. He dismissed my proposal in front of everyone. Again."
+      },
+      {
+        "role": "ai",
+        "text": "That pattern of public dismissal has been a consistent trigger for you — it connects to the authority dynamics we've explored before. Last time, the body scan helped you move from shutdown back to your window. Want to try that now, or do you need to just be angry first?"
+      }
     ]
   },
   "pipeline": {
@@ -44,10 +68,22 @@
     "description": "Four steps from conversation to structured knowledge.",
     "step": "Step {{number}}",
     "steps": [
-      { "title": "Converse", "desc": "Talk about your day, your goals, your worries. Every session gets captured automatically." },
-      { "title": "Ingest", "desc": "Sessions are processed through Graphiti, extracting entities and relationships into Neo4j." },
-      { "title": "Compile", "desc": "Your knowledge graph is compiled and injected into future sessions as structured context." },
-      { "title": "Evolve", "desc": "Each conversation refines the graph. The more you talk, the better it gets." }
+      {
+        "title": "Converse",
+        "desc": "Talk about your day, your goals, your worries. Every session gets captured automatically."
+      },
+      {
+        "title": "Ingest",
+        "desc": "Sessions are processed through Graphiti, extracting entities and relationships into Neo4j."
+      },
+      {
+        "title": "Compile",
+        "desc": "Your knowledge graph is compiled and injected into future sessions as structured context."
+      },
+      {
+        "title": "Evolve",
+        "desc": "Each conversation refines the graph. The more you talk, the better it gets."
+      }
     ]
   },
   "personas": {
@@ -62,10 +98,22 @@
         "detail": {
           "subtitle": "Therapeutic companion — neuroaffirmative by default",
           "theories": [
-            { "name": "Acceptance & Commitment Therapy (ACT)", "desc": "Builds psychological flexibility through values clarification, cognitive defusion, and willingness to sit with difficult emotions instead of avoiding them." },
-            { "name": "Dialectical Behavior Therapy (DBT)", "desc": "Teaches distress tolerance, emotion regulation, interpersonal effectiveness, and mindfulness — skills for navigating intensity without shutting down." },
-            { "name": "Polyvagal Theory", "desc": "Reads your nervous system states — safe/social, fight/flight, or shutdown — and helps you move between them without pathologizing any response." },
-            { "name": "Somatic Experiencing", "desc": "Brings awareness to where emotions live in your body. \"Where do you notice that?\" is not a cliché — it's a doorway to regulation." }
+            {
+              "name": "Acceptance & Commitment Therapy (ACT)",
+              "desc": "Builds psychological flexibility through values clarification, cognitive defusion, and willingness to sit with difficult emotions instead of avoiding them."
+            },
+            {
+              "name": "Dialectical Behavior Therapy (DBT)",
+              "desc": "Teaches distress tolerance, emotion regulation, interpersonal effectiveness, and mindfulness — skills for navigating intensity without shutting down."
+            },
+            {
+              "name": "Polyvagal Theory",
+              "desc": "Reads your nervous system states — safe/social, fight/flight, or shutdown — and helps you move between them without pathologizing any response."
+            },
+            {
+              "name": "Somatic Experiencing",
+              "desc": "Brings awareness to where emotions live in your body. \"Where do you notice that?\" is not a cliché — it's a doorway to regulation."
+            }
           ],
           "useCases": [
             "Processing recurring anxiety, grief, or anger with someone who remembers the full pattern",
@@ -84,9 +132,18 @@
         "detail": {
           "subtitle": "Wellbeing companion — reflective, not prescriptive",
           "theories": [
-            { "name": "PERMA Model (Seligman)", "desc": "Explores five pillars of flourishing: Positive emotions, Engagement, Relationships, Meaning, and Accomplishment — a map for what makes life feel full." },
-            { "name": "Self-Compassion (Kristin Neff)", "desc": "Practices three components: common humanity (you're not alone in this), mindfulness (noticing without drowning), and self-kindness (treating yourself as you'd treat a friend)." },
-            { "name": "Mindfulness-Based Stress Reduction (MBSR)", "desc": "Present-moment awareness, non-judgment, and beginner's mind — turning attention into a skill rather than a chore." }
+            {
+              "name": "PERMA Model (Seligman)",
+              "desc": "Explores five pillars of flourishing: Positive emotions, Engagement, Relationships, Meaning, and Accomplishment — a map for what makes life feel full."
+            },
+            {
+              "name": "Self-Compassion (Kristin Neff)",
+              "desc": "Practices three components: common humanity (you're not alone in this), mindfulness (noticing without drowning), and self-kindness (treating yourself as you'd treat a friend)."
+            },
+            {
+              "name": "Mindfulness-Based Stress Reduction (MBSR)",
+              "desc": "Present-moment awareness, non-judgment, and beginner's mind — turning attention into a skill rather than a chore."
+            }
           ],
           "useCases": [
             "Daily emotional check-ins without the pressure of \"doing therapy\"",
@@ -105,10 +162,22 @@
         "detail": {
           "subtitle": "Growth coach — direct, honest, action-oriented",
           "theories": [
-            { "name": "Motivational Interviewing (Miller & Rollnick)", "desc": "Evokes your own motivation instead of imposing external pressure. Explores ambivalence without judgment — because pushing harder doesn't work when the resistance is internal." },
-            { "name": "Implementation Intentions (Gollwitzer)", "desc": "Bridges the gap between wanting and doing with \"When [situation], I will [behavior]\" — turning vague intentions into automatic responses." },
-            { "name": "Behavioral Activation", "desc": "When motivation is low, start with low-effort, high-value actions to build momentum. Movement creates motivation, not the other way around." },
-            { "name": "SMART Goals", "desc": "Specific, Measurable, Achievable, Relevant, Time-bound — a framework that turns \"I want to be better\" into something you can actually track and achieve." }
+            {
+              "name": "Motivational Interviewing (Miller & Rollnick)",
+              "desc": "Evokes your own motivation instead of imposing external pressure. Explores ambivalence without judgment — because pushing harder doesn't work when the resistance is internal."
+            },
+            {
+              "name": "Implementation Intentions (Gollwitzer)",
+              "desc": "Bridges the gap between wanting and doing with \"When [situation], I will [behavior]\" — turning vague intentions into automatic responses."
+            },
+            {
+              "name": "Behavioral Activation",
+              "desc": "When motivation is low, start with low-effort, high-value actions to build momentum. Movement creates motivation, not the other way around."
+            },
+            {
+              "name": "SMART Goals",
+              "desc": "Specific, Measurable, Achievable, Relevant, Time-bound — a framework that turns \"I want to be better\" into something you can actually track and achieve."
+            }
           ],
           "useCases": [
             "Setting and tracking goals with someone who remembers your commitments across sessions",
@@ -133,10 +202,22 @@
     "title": "You see everything it knows",
     "description": "The Memory Explorer shows your full knowledge graph. Inspect it, correct it, or delete from it. You're always in control.",
     "features": [
-      { "title": "Explore your graph", "desc": "Interactive visualization of every entity and relationship in your graph." },
-      { "title": "Correct in plain English", "desc": "\"I left TechCorp.\" The graph updates. No forms, no menus." },
-      { "title": "Fully open source", "desc": "The entire codebase is public. See how it works, fork it, contribute." },
-      { "title": "Export to Notion", "desc": "Sync your graph to Notion. Review offline. Push corrections back." }
+      {
+        "title": "Explore your graph",
+        "desc": "Interactive visualization of every entity and relationship in your graph."
+      },
+      {
+        "title": "Correct in plain English",
+        "desc": "\"I left TechCorp.\" The graph updates. No forms, no menus."
+      },
+      {
+        "title": "Fully open source",
+        "desc": "The entire codebase is public. See how it works, fork it, contribute."
+      },
+      {
+        "title": "Export to Notion",
+        "desc": "Sync your graph to Notion. Review offline. Push corrections back."
+      }
     ]
   },
   "pricing": {

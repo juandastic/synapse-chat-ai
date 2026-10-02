@@ -58,7 +58,7 @@ export function MemoryPulse() {
           maxWidth: 280,
         },
       }),
-    [colors]
+    [colors],
   );
 
   // Loading state
@@ -85,9 +85,10 @@ export function MemoryPulse() {
   }
 
   const totalMemories = stats.entityCount + stats.relationshipCount;
-  const formattedTokens = stats.totalTokens >= 1000
-    ? `~${Math.round(stats.totalTokens / 1000)}K`
-    : `${stats.totalTokens}`;
+  const formattedTokens =
+    stats.totalTokens >= 1000
+      ? `~${Math.round(stats.totalTokens / 1000)}K`
+      : `${stats.totalTokens}`;
 
   return (
     <View style={s.container}>
@@ -97,7 +98,8 @@ export function MemoryPulse() {
           {totalMemories.toLocaleString()} {t("memoryPulse.memories")}
           {stats.totalTokens > 0 && (
             <Text style={s.tokensText}>
-              {" · "}{formattedTokens} tokens
+              {" · "}
+              {formattedTokens} tokens
             </Text>
           )}
         </Text>

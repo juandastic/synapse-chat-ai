@@ -13,14 +13,20 @@ export function usePostHogIdentify() {
   const { user } = useUser();
   const convexUser = useQuery(api.users.me);
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
+  const userId = convexUser?._id;
+  const name = convexUser?.name;
+  const email = user?.primaryEmailAddress?.emailAddress;
+  const plan = usageStatus?.plan ?? "free";
 
   useEffect(() => {
-    if (convexUser && user && posthog) {
-      posthog.identify(convexUser._id, {
-        email: user.primaryEmailAddress?.emailAddress ?? null,
-        name: convexUser.name,
+    if (userId && user && posthog) {
+      posthog.identify(userId, {
+        email: email ?? null,
+        name: name ?? null,
       });
-      posthog.register({ plan: usageStatus?.plan ?? "free" });
+      posthog.register({ plan }).catch((error) => {
+        console.warn("[PostHog] Could not register plan:", error);
+      });
     }
-  }, [posthog, convexUser?._id, user, usageStatus?.plan]);
+  }, [posthog, userId, name, email, user, plan]);
 }

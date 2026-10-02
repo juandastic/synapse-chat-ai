@@ -14,30 +14,33 @@ export function setPostHogInstance(ph: PostHog) {
  */
 export function captureError(
   error: unknown,
-  context: { source: string; [key: string]: unknown }
+  context: { source: string; [key: string]: unknown },
 ) {
-  const message =
-    error instanceof Error ? error.message : String(error);
-  const type =
-    error instanceof Error ? error.name : "UnknownError";
+  const message = error instanceof Error ? error.message : String(error);
+  const type = error instanceof Error ? error.name : "UnknownError";
 
   if (!posthogInstance) {
-    console.warn("[captureError] PostHog not initialized yet, error not sent:", message);
+    console.warn(
+      "[captureError] PostHog not initialized yet, error not sent:",
+      message,
+    );
     return;
   }
 
   const errorObj = error instanceof Error ? error : new Error(message);
   const rawStack = errorObj.stack?.slice(0, 8_000);
-  const cause = "cause" in errorObj
-    ? (errorObj as Error & { cause?: unknown }).cause
-    : undefined;
+  const cause =
+    "cause" in errorObj
+      ? (errorObj as Error & { cause?: unknown }).cause
+      : undefined;
   const causeType = cause instanceof Error ? cause.name : undefined;
-  const causeMessage = cause instanceof Error
-    ? cause.message
-        .replace(/https?:\/\/\S+/gi, "[redacted-url]")
-        .replace(/(?:file|content):\/\/\S+/gi, "[redacted-file-uri]")
-        .slice(0, 500)
-    : undefined;
+  const causeMessage =
+    cause instanceof Error
+      ? cause.message
+          .replace(/https?:\/\/\S+/gi, "[redacted-url]")
+          .replace(/(?:file|content):\/\/\S+/gi, "[redacted-file-uri]")
+          .slice(0, 500)
+      : undefined;
 
   console.log("[captureError] Sending to PostHog:", {
     type,

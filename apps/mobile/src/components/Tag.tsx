@@ -26,7 +26,7 @@ export function Tag({ label }: { label: string }) {
           color: colors.accent,
         },
       }),
-    [colors]
+    [colors],
   );
 
   return (

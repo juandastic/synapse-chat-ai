@@ -71,7 +71,7 @@ export function ConfirmDialog({
         onCancel();
       }
     },
-    [onCancel]
+    [onCancel],
   );
 
   if (!open) return null;
@@ -103,7 +103,7 @@ export function ConfirmDialog({
                 "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
                 isDanger
                   ? "bg-destructive/10 text-destructive"
-                  : "bg-primary/10 text-primary"
+                  : "bg-primary/10 text-primary",
               )}
             >
               {isDanger ? (
@@ -147,7 +147,7 @@ export function ConfirmDialog({
               "rounded-xl px-4 py-2 text-sm font-medium shadow-sm transition-colors disabled:opacity-50",
               isDanger
                 ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                : "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-primary text-primary-foreground hover:bg-primary/90",
             )}
           >
             {loading ? (
@@ -162,6 +162,6 @@ export function ConfirmDialog({
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

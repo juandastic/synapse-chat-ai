@@ -90,7 +90,9 @@ export function NotionExportPage() {
   // ── Form fields ────────────────────────────────────────────────────────────
   const [notionToken, setNotionToken] = useState("");
   const [notionPageName, setNotionPageName] = useState("");
-  const [notionLanguage, setNotionLanguage] = useState(i18n.language === "es" ? "Español" : "English");
+  const [notionLanguage, setNotionLanguage] = useState(
+    i18n.language === "es" ? "Español" : "English",
+  );
 
   // ── Shared lifecycle ───────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("config");
@@ -102,27 +104,43 @@ export function NotionExportPage() {
   // ── Export-specific state ──────────────────────────────────────────────────
   const [isSubmittingExport, setIsSubmittingExport] = useState(false);
   const [exportJobId, setExportJobId] = useState<string | null>(null);
-  const [exportCurrentStep, setExportCurrentStep] = useState<string | null>(null);
-  const [exportCategoriesDesigned, setExportCategoriesDesigned] = useState<number | null>(null);
-  const [exportEntriesExtracted, setExportEntriesExtracted] = useState<number | null>(null);
+  const [exportCurrentStep, setExportCurrentStep] = useState<string | null>(
+    null,
+  );
+  const [exportCategoriesDesigned, setExportCategoriesDesigned] = useState<
+    number | null
+  >(null);
+  const [exportEntriesExtracted, setExportEntriesExtracted] = useState<
+    number | null
+  >(null);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
 
   // ── Corrections-specific state ─────────────────────────────────────────────
   const [isSubmittingCorrections, setIsSubmittingCorrections] = useState(false);
   const [correctionsJobId, setCorrectionsJobId] = useState<string | null>(null);
-  const [correctionsCurrentStep, setCorrectionsCurrentStep] = useState<string | null>(null);
-  const [correctionsDatabasesScanned, setCorrectionsDatabasesScanned] = useState<number | null>(null);
+  const [correctionsCurrentStep, setCorrectionsCurrentStep] = useState<
+    string | null
+  >(null);
+  const [correctionsDatabasesScanned, setCorrectionsDatabasesScanned] =
+    useState<number | null>(null);
   const [correctionsFound, setCorrectionsFound] = useState<number | null>(null);
-  const [correctionsApplied, setCorrectionsApplied] = useState<number | null>(null);
-  const [correctionsFailed, setCorrectionsFailed] = useState<number | null>(null);
-  const [correctionsResult, setCorrectionsResult] = useState<CorrectionsResult | null>(null);
+  const [correctionsApplied, setCorrectionsApplied] = useState<number | null>(
+    null,
+  );
+  const [correctionsFailed, setCorrectionsFailed] = useState<number | null>(
+    null,
+  );
+  const [correctionsResult, setCorrectionsResult] =
+    useState<CorrectionsResult | null>(null);
 
   // ── Pre-fill form from saved config ───────────────────────────────────────
   useEffect(() => {
     if (!savedConfig) return;
     if (savedConfig.notionToken) setNotionToken(savedConfig.notionToken);
-    if (savedConfig.notionPageName) setNotionPageName(savedConfig.notionPageName);
-    if (savedConfig.notionLanguage) setNotionLanguage(savedConfig.notionLanguage);
+    if (savedConfig.notionPageName)
+      setNotionPageName(savedConfig.notionPageName);
+    if (savedConfig.notionLanguage)
+      setNotionLanguage(savedConfig.notionLanguage);
   }, [savedConfig]);
 
   // ── Restore in-flight job from localStorage on mount ──────────────────────
@@ -140,9 +158,12 @@ export function NotionExportPage() {
         try {
           const status = await getExportStatus({ jobId: storedExportId });
           if (status.status === "processing") {
-            if (status.progress?.currentStep) setExportCurrentStep(status.progress.currentStep);
-            if (status.progress?.categoriesDesigned != null) setExportCategoriesDesigned(status.progress.categoriesDesigned);
-            if (status.progress?.entriesExtracted != null) setExportEntriesExtracted(status.progress.entriesExtracted);
+            if (status.progress?.currentStep)
+              setExportCurrentStep(status.progress.currentStep);
+            if (status.progress?.categoriesDesigned != null)
+              setExportCategoriesDesigned(status.progress.categoriesDesigned);
+            if (status.progress?.entriesExtracted != null)
+              setExportEntriesExtracted(status.progress.entriesExtracted);
             setExportJobId(storedExportId);
             setPhase("exporting");
           } else if (status.status === "completed" && status.result) {
@@ -150,7 +171,9 @@ export function NotionExportPage() {
             setPhase("completed");
             localStorage.removeItem(STORAGE_KEY_EXPORT);
           } else if (status.status === "failed") {
-            setTerminalError(formatJobError(status.error, status.code, "Export failed"));
+            setTerminalError(
+              formatJobError(status.error, status.code, "Export failed"),
+            );
             setPhase("failed");
             localStorage.removeItem(STORAGE_KEY_EXPORT);
           }
@@ -159,13 +182,20 @@ export function NotionExportPage() {
         }
       } else if (storedCorrectionsId) {
         try {
-          const status = await getCorrectionsStatus({ jobId: storedCorrectionsId });
+          const status = await getCorrectionsStatus({
+            jobId: storedCorrectionsId,
+          });
           if (status.status === "processing") {
-            if (status.progress?.currentStep) setCorrectionsCurrentStep(status.progress.currentStep);
-            if (status.progress?.databasesScanned != null) setCorrectionsDatabasesScanned(status.progress.databasesScanned);
-            if (status.progress?.correctionsFound != null) setCorrectionsFound(status.progress.correctionsFound);
-            if (status.progress?.correctionsApplied != null) setCorrectionsApplied(status.progress.correctionsApplied);
-            if (status.progress?.correctionsFailed != null) setCorrectionsFailed(status.progress.correctionsFailed);
+            if (status.progress?.currentStep)
+              setCorrectionsCurrentStep(status.progress.currentStep);
+            if (status.progress?.databasesScanned != null)
+              setCorrectionsDatabasesScanned(status.progress.databasesScanned);
+            if (status.progress?.correctionsFound != null)
+              setCorrectionsFound(status.progress.correctionsFound);
+            if (status.progress?.correctionsApplied != null)
+              setCorrectionsApplied(status.progress.correctionsApplied);
+            if (status.progress?.correctionsFailed != null)
+              setCorrectionsFailed(status.progress.correctionsFailed);
             setCorrectionsJobId(storedCorrectionsId);
             setPhase("correcting");
           } else if (status.status === "completed" && status.result) {
@@ -173,7 +203,9 @@ export function NotionExportPage() {
             setPhase("corrections-completed");
             localStorage.removeItem(STORAGE_KEY_CORRECTIONS);
           } else if (status.status === "failed") {
-            setTerminalError(formatJobError(status.error, status.code, "Corrections failed"));
+            setTerminalError(
+              formatJobError(status.error, status.code, "Corrections failed"),
+            );
             setPhase("corrections-failed");
             localStorage.removeItem(STORAGE_KEY_CORRECTIONS);
           }
@@ -184,9 +216,8 @@ export function NotionExportPage() {
       setRestoring(false);
     };
 
-    restore();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally runs once; action hooks are stable Convex references
+    void restore();
+  }, [getExportStatus, getCorrectionsStatus]); // Convex action references are stable
 
   // ── Stop polling whenever phase leaves an active state ────────────────────
   useEffect(() => {
@@ -222,7 +253,9 @@ export function NotionExportPage() {
         } else if (status.status === "failed") {
           clearInterval(pollRef.current!);
           localStorage.removeItem(STORAGE_KEY_EXPORT);
-          setTerminalError(formatJobError(status.error, status.code, "Export failed"));
+          setTerminalError(
+            formatJobError(status.error, status.code, "Export failed"),
+          );
           setPhase("failed");
         }
       } catch (err) {
@@ -237,10 +270,12 @@ export function NotionExportPage() {
       }
     };
 
-    pollRef.current = setInterval(poll, 30_000);
-    poll();
+    pollRef.current = setInterval(() => {
+      void poll();
+    }, 30_000);
+    void poll();
     return () => clearInterval(pollRef.current!);
-  }, [phase, exportJobId, getExportStatus]);
+  }, [phase, exportJobId, getExportStatus, t]);
 
   // ── Corrections polling ────────────────────────────────────────────────────
   useEffect(() => {
@@ -274,7 +309,9 @@ export function NotionExportPage() {
         } else if (status.status === "failed") {
           clearInterval(pollRef.current!);
           localStorage.removeItem(STORAGE_KEY_CORRECTIONS);
-          setTerminalError(formatJobError(status.error, status.code, "Corrections failed"));
+          setTerminalError(
+            formatJobError(status.error, status.code, "Corrections failed"),
+          );
           setPhase("corrections-failed");
         }
       } catch (err) {
@@ -289,14 +326,19 @@ export function NotionExportPage() {
       }
     };
 
-    pollRef.current = setInterval(poll, 30_000);
-    poll();
+    pollRef.current = setInterval(() => {
+      void poll();
+    }, 30_000);
+    void poll();
     return () => clearInterval(pollRef.current!);
-  }, [phase, correctionsJobId, getCorrectionsStatus]);
+  }, [phase, correctionsJobId, getCorrectionsStatus, t]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
-  const validateForm = (): { token: string; page: string } | null => {
+  const validateForm = useCallback((): {
+    token: string;
+    page: string;
+  } | null => {
     const token = notionToken.trim();
     const page = notionPageName.trim();
     if (!token) {
@@ -308,7 +350,7 @@ export function NotionExportPage() {
       return null;
     }
     return { token, page };
-  };
+  }, [notionToken, notionPageName, t]);
 
   const handleExport = useCallback(
     async (e: React.SyntheticEvent) => {
@@ -339,8 +381,7 @@ export function NotionExportPage() {
         setIsSubmittingExport(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [notionToken, notionPageName, notionLanguage, saveConfig, startExportAction]
+    [validateForm, notionLanguage, saveConfig, startExportAction, t],
   );
 
   const handleStartCorrections = useCallback(async () => {
@@ -360,12 +401,13 @@ export function NotionExportPage() {
       setCorrectionsJobId(response.jobId);
       setPhase("correcting");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : t("export.correctionsFailed"));
+      setSubmitError(
+        err instanceof Error ? err.message : t("export.correctionsFailed"),
+      );
     } finally {
       setIsSubmittingCorrections(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notionToken, notionPageName, notionLanguage, startCorrectionsAction]);
+  }, [validateForm, notionLanguage, startCorrectionsAction, t]);
 
   const handleReset = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY_EXPORT);
@@ -416,115 +458,130 @@ export function NotionExportPage() {
 
       {/* Scrollable content */}
       {!restoring && (
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-xl space-y-8 px-6 py-8">
-          {/* Hero */}
-          <div className="space-y-3 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-accent/15">
-              <Database className="h-7 w-7 text-primary" />
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-xl space-y-8 px-6 py-8">
+            {/* Hero */}
+            <div className="space-y-3 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-accent/15">
+                <Database className="h-7 w-7 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                  {t("hero.title")}
+                </h2>
+                <p className="mt-2 text-balance text-sm leading-relaxed text-muted-foreground">
+                  {t("hero.description")}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">
-                {t("hero.title")}
-              </h2>
-              <p className="mt-2 text-balance text-sm leading-relaxed text-muted-foreground">
-                {t("hero.description")}
-              </p>
+
+            {/* Feature highlights */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <FeatureCard
+                icon={<Network className="h-4 w-4 text-primary" />}
+                title={t("features.fullGraph")}
+                description={t("features.fullGraphDesc")}
+              />
+              <FeatureCard
+                icon={<Sparkles className="h-4 w-4 text-primary" />}
+                title={t("features.aiSchemas")}
+                description={t("features.aiSchemasDesc")}
+              />
+              <FeatureCard
+                icon={<LayoutGrid className="h-4 w-4 text-primary" />}
+                title={t("features.structured")}
+                description={t("features.structuredDesc")}
+              />
             </div>
-          </div>
 
-          {/* Feature highlights */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <FeatureCard
-              icon={<Network className="h-4 w-4 text-primary" />}
-              title={t("features.fullGraph")}
-              description={t("features.fullGraphDesc")}
-            />
-            <FeatureCard
-              icon={<Sparkles className="h-4 w-4 text-primary" />}
-              title={t("features.aiSchemas")}
-              description={t("features.aiSchemasDesc")}
-            />
-            <FeatureCard
-              icon={<LayoutGrid className="h-4 w-4 text-primary" />}
-              title={t("features.structured")}
-              description={t("features.structuredDesc")}
-            />
-          </div>
+            {/* Main card */}
+            <div className="rounded-2xl border border-border/50 bg-card shadow-sm">
+              {phase === "config" && (
+                <ConfigSection
+                  notionToken={notionToken}
+                  notionPageName={notionPageName}
+                  notionLanguage={notionLanguage}
+                  onTokenChange={setNotionToken}
+                  onPageNameChange={setNotionPageName}
+                  onLanguageChange={setNotionLanguage}
+                  onExport={handleExport}
+                  onStartCorrections={handleStartCorrections}
+                  error={submitError}
+                  isSubmittingExport={isSubmittingExport}
+                  isSubmittingCorrections={isSubmittingCorrections}
+                  hasSavedConfig={!!savedConfig?.notionToken}
+                />
+              )}
 
-          {/* Main card */}
-          <div className="rounded-2xl border border-border/50 bg-card shadow-sm">
-            {phase === "config" && (
-              <ConfigSection
-                notionToken={notionToken}
-                notionPageName={notionPageName}
-                notionLanguage={notionLanguage}
-                onTokenChange={setNotionToken}
-                onPageNameChange={setNotionPageName}
-                onLanguageChange={setNotionLanguage}
-                onExport={handleExport}
-                onStartCorrections={handleStartCorrections}
-                error={submitError}
-                isSubmittingExport={isSubmittingExport}
-                isSubmittingCorrections={isSubmittingCorrections}
-                hasSavedConfig={!!savedConfig?.notionToken}
-              />
-            )}
+              {phase === "exporting" && (
+                <PipelineSection
+                  title={t("pipeline.exporting")}
+                  subtitle={t("pipeline.exportingDescription")}
+                  steps={EXPORT_STEPS}
+                  currentStep={exportCurrentStep}
+                  stats={[
+                    {
+                      label: t("stats.categories"),
+                      value: exportCategoriesDesigned,
+                    },
+                    {
+                      label: t("stats.entries"),
+                      value: exportEntriesExtracted,
+                    },
+                  ]}
+                />
+              )}
 
-            {phase === "exporting" && (
-              <PipelineSection
-                title={t("pipeline.exporting")}
-                subtitle={t("pipeline.exportingDescription")}
-                steps={EXPORT_STEPS}
-                currentStep={exportCurrentStep}
-                stats={[
-                  { label: t("stats.categories"), value: exportCategoriesDesigned },
-                  { label: t("stats.entries"), value: exportEntriesExtracted },
-                ]}
-              />
-            )}
+              {phase === "completed" && exportResult && (
+                <ExportCompletedSection
+                  result={exportResult}
+                  onReset={handleReset}
+                />
+              )}
 
-            {phase === "completed" && exportResult && (
-              <ExportCompletedSection result={exportResult} onReset={handleReset} />
-            )}
+              {phase === "failed" && (
+                <FailedSection
+                  title={t("failed.exportFailed")}
+                  error={terminalError}
+                  onReset={handleReset}
+                />
+              )}
 
-            {phase === "failed" && (
-              <FailedSection
-                title={t("failed.exportFailed")}
-                error={terminalError}
-                onReset={handleReset}
-              />
-            )}
+              {phase === "correcting" && (
+                <PipelineSection
+                  title={t("pipeline.correcting")}
+                  subtitle={t("pipeline.correctingDescription")}
+                  steps={CORRECTION_STEPS}
+                  currentStep={correctionsCurrentStep}
+                  stats={[
+                    {
+                      label: t("stats.databases"),
+                      value: correctionsDatabasesScanned,
+                    },
+                    { label: t("stats.found"), value: correctionsFound },
+                    { label: t("stats.applied"), value: correctionsApplied },
+                    { label: t("stats.failed"), value: correctionsFailed },
+                  ]}
+                />
+              )}
 
-            {phase === "correcting" && (
-              <PipelineSection
-                title={t("pipeline.correcting")}
-                subtitle={t("pipeline.correctingDescription")}
-                steps={CORRECTION_STEPS}
-                currentStep={correctionsCurrentStep}
-                stats={[
-                  { label: t("stats.databases"), value: correctionsDatabasesScanned },
-                  { label: t("stats.found"), value: correctionsFound },
-                  { label: t("stats.applied"), value: correctionsApplied },
-                  { label: t("stats.failed"), value: correctionsFailed },
-                ]}
-              />
-            )}
+              {phase === "corrections-completed" && correctionsResult && (
+                <CorrectionsCompletedSection
+                  result={correctionsResult}
+                  onReset={handleReset}
+                />
+              )}
 
-            {phase === "corrections-completed" && correctionsResult && (
-              <CorrectionsCompletedSection result={correctionsResult} onReset={handleReset} />
-            )}
-
-            {phase === "corrections-failed" && (
-              <FailedSection
-                title={t("failed.correctionsFailed")}
-                error={terminalError}
-                onReset={handleReset}
-              />
-            )}
+              {phase === "corrections-failed" && (
+                <FailedSection
+                  title={t("failed.correctionsFailed")}
+                  error={terminalError}
+                  onReset={handleReset}
+                />
+              )}
+            </div>
           </div>
         </div>
-      </div>
       )}
     </div>
   );
@@ -538,7 +595,7 @@ export function NotionExportPage() {
 function formatJobError(
   error: string | undefined,
   code: string | undefined,
-  fallback: string
+  fallback: string,
 ): string {
   if (!error) return fallback;
   return code ? `${error} (${code})` : error;
@@ -572,7 +629,9 @@ function FeatureCard({
         {icon}
         <span className="text-xs font-semibold text-foreground">{title}</span>
       </div>
-      <p className="text-xs leading-relaxed text-muted-foreground">{description}</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        {description}
+      </p>
     </div>
   );
 }
@@ -656,21 +715,29 @@ function ConfigSection({
               </HelpStep>
               <HelpStep n={2}>
                 {t("help.step2_prefix")}{" "}
-                <strong className="text-foreground/80">{t("help.step2_bold")}</strong> {t("help.step2_suffix")} <code className="font-mono text-foreground/70">ntn_</code>.
+                <strong className="text-foreground/80">
+                  {t("help.step2_bold")}
+                </strong>{" "}
+                {t("help.step2_suffix")}{" "}
+                <code className="font-mono text-foreground/70">ntn_</code>.
               </HelpStep>
-              <HelpStep n={3}>
-                {t("help.step3")}
-              </HelpStep>
+              <HelpStep n={3}>{t("help.step3")}</HelpStep>
               <HelpStep n={4}>
                 {t("help.step4_prefix")}{" "}
-                <strong className="text-foreground/80">{t("help.step4_bold1")}</strong>{" "}
+                <strong className="text-foreground/80">
+                  {t("help.step4_bold1")}
+                </strong>{" "}
                 {t("help.step4_middle")}{" "}
-                <strong className="text-foreground/80">{t("help.step4_bold2")}</strong> {t("help.step4_arrow")}{" "}
-                <strong className="text-foreground/80">{t("help.step4_bold3")}</strong> {t("help.step4_suffix")}
+                <strong className="text-foreground/80">
+                  {t("help.step4_bold2")}
+                </strong>{" "}
+                {t("help.step4_arrow")}{" "}
+                <strong className="text-foreground/80">
+                  {t("help.step4_bold3")}
+                </strong>{" "}
+                {t("help.step4_suffix")}
               </HelpStep>
-              <HelpStep n={5}>
-                {t("help.step5")}
-              </HelpStep>
+              <HelpStep n={5}>{t("help.step5")}</HelpStep>
             </ol>
           </div>
         </div>
@@ -678,7 +745,9 @@ function ConfigSection({
 
       <form onSubmit={onExport} className="divide-y divide-border/40">
         <div className="px-5 py-4">
-          <h3 className="text-sm font-semibold text-foreground">{t("config.title")}</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            {t("config.title")}
+          </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {t("config.description")}
           </p>
@@ -694,7 +763,10 @@ function ConfigSection({
           {/* Token field */}
           <div>
             <div className="mb-1.5 flex items-center justify-between">
-              <label htmlFor="notion-token" className="text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="notion-token"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 {t("config.tokenLabel")}
               </label>
               <button
@@ -719,7 +791,10 @@ function ConfigSection({
           {/* Page name + language */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="notion-page" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="notion-page"
+                className="mb-1.5 block text-xs font-medium text-muted-foreground"
+              >
                 {t("config.pageNameLabel")}
               </label>
               <input
@@ -732,7 +807,10 @@ function ConfigSection({
               />
             </div>
             <div>
-              <label htmlFor="notion-language" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="notion-language"
+                className="mb-1.5 block text-xs font-medium text-muted-foreground"
+              >
                 {t("config.languageLabel")}
               </label>
               <select
@@ -759,7 +837,7 @@ function ConfigSection({
             className={cn(
               "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all",
               "hover:bg-primary/90 active:scale-[0.98]",
-              "disabled:pointer-events-none disabled:opacity-50"
+              "disabled:pointer-events-none disabled:opacity-50",
             )}
           >
             {isSubmittingExport ? (
@@ -783,7 +861,7 @@ function ConfigSection({
               className={cn(
                 "inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border/50 px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all",
                 "hover:bg-muted hover:text-foreground active:scale-[0.98]",
-                "disabled:pointer-events-none disabled:opacity-50"
+                "disabled:pointer-events-none disabled:opacity-50",
               )}
             >
               {isSubmittingCorrections ? (
@@ -834,9 +912,17 @@ interface PipelineSectionProps {
   stats: PipelineStat[];
 }
 
-function PipelineSection({ title, subtitle, steps, currentStep, stats }: PipelineSectionProps) {
+function PipelineSection({
+  title,
+  subtitle,
+  steps,
+  currentStep,
+  stats,
+}: PipelineSectionProps) {
   const { t } = useTranslation("notion");
-  const currentIdx = currentStep ? steps.findIndex((s) => s.key === currentStep) : -1;
+  const currentIdx = currentStep
+    ? steps.findIndex((s) => s.key === currentStep)
+    : -1;
   const visibleStats = stats.filter((s) => s.value != null);
 
   return (
@@ -869,7 +955,7 @@ function PipelineSection({ title, subtitle, steps, currentStep, stats }: Pipelin
                     "text-sm",
                     isDone && "text-muted-foreground/50",
                     isActive && "font-medium text-foreground",
-                    !isDone && !isActive && "text-muted-foreground/35"
+                    !isDone && !isActive && "text-muted-foreground/35",
                   )}
                 >
                   {t(step.labelKey)}
@@ -893,7 +979,9 @@ function PipelineSection({ title, subtitle, steps, currentStep, stats }: Pipelin
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <div className="text-lg font-semibold tabular-nums text-foreground">{value}</div>
+      <div className="text-lg font-semibold tabular-nums text-foreground">
+        {value}
+      </div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   );
@@ -920,9 +1008,15 @@ function ExportCompletedSection({
           <CheckCircle2 className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-foreground">{t("completed.exportComplete")}</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            {t("completed.exportComplete")}
+          </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            {t("completed.exportStats", { count: result.categoriesCount, entries: result.entriesCount, duration: minutes > 0 ? `${minutes}m` : "<1m" })}
+            {t("completed.exportStats", {
+              count: result.categoriesCount,
+              entries: result.entriesCount,
+              duration: minutes > 0 ? `${minutes}m` : "<1m",
+            })}
           </p>
         </div>
       </div>
@@ -934,7 +1028,7 @@ function ExportCompletedSection({
           rel="noopener noreferrer"
           className={cn(
             "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all",
-            "hover:bg-primary/90 active:scale-[0.98]"
+            "hover:bg-primary/90 active:scale-[0.98]",
           )}
         >
           {t("completed.openInNotion")}
@@ -974,10 +1068,18 @@ function CorrectionsCompletedSection({
           <CheckCircle2 className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-foreground">{t("completed.correctionsApplied")}</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            {t("completed.correctionsApplied")}
+          </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            {t("completed.correctionsStats", { applied: result.correctionsApplied, found: result.correctionsFound })}
-            {result.correctionsFailed > 0 && t("completed.correctionsStatsFailed", { failed: result.correctionsFailed })}
+            {t("completed.correctionsStats", {
+              applied: result.correctionsApplied,
+              found: result.correctionsFound,
+            })}
+            {result.correctionsFailed > 0 &&
+              t("completed.correctionsStatsFailed", {
+                failed: result.correctionsFailed,
+              })}
             {" · "}
             {minutes > 0 ? `${minutes}m` : "<1m"}
           </p>
@@ -986,7 +1088,9 @@ function CorrectionsCompletedSection({
 
       {failedList.length > 0 && (
         <div className="space-y-1.5 px-5 py-3">
-          <p className="text-[11px] font-medium text-muted-foreground">{t("completed.failedCorrections")}</p>
+          <p className="text-[11px] font-medium text-muted-foreground">
+            {t("completed.failedCorrections")}
+          </p>
           {failedList.map((fc, i) => (
             <div
               key={i}
@@ -1035,7 +1139,9 @@ function FailedSection({
         </div>
         <div>
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-          {error && <p className="mt-1 text-xs text-muted-foreground">{error}</p>}
+          {error && (
+            <p className="mt-1 text-xs text-muted-foreground">{error}</p>
+          )}
         </div>
       </div>
 
@@ -1044,7 +1150,7 @@ function FailedSection({
           onClick={onReset}
           className={cn(
             "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all",
-            "hover:bg-primary/90 active:scale-[0.98]"
+            "hover:bg-primary/90 active:scale-[0.98]",
           )}
         >
           {tc("tryAgain")}

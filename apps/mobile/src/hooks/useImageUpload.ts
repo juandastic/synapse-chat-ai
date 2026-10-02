@@ -65,7 +65,7 @@ function uploadError(
   startedAt: number,
   base: Omit<ImageUploadTelemetry, "upload_stage" | "duration_ms">,
   error?: unknown,
-  extra?: Partial<ImageUploadTelemetry>
+  extra?: Partial<ImageUploadTelemetry>,
 ): ImageUploadError {
   return new ImageUploadError(message, {
     ...base,
@@ -110,12 +110,13 @@ export function useImageUpload() {
           "Unable to read the selected image",
           startedAt,
           baseTelemetry,
-          error
+          error,
         );
       }
 
       const fileSize = image.fileSize ?? file.size;
-      const mimeType = image.mimeType || file.type || "application/octet-stream";
+      const mimeType =
+        image.mimeType || file.type || "application/octet-stream";
       const fileTelemetry = {
         ...baseTelemetry,
         mime_type: mimeType,
@@ -134,7 +135,7 @@ export function useImageUpload() {
           "Unable to prepare the image upload",
           startedAt,
           fileTelemetry,
-          error
+          error,
         );
       }
 
@@ -158,7 +159,7 @@ export function useImageUpload() {
             startedAt,
             remoteTelemetry,
             undefined,
-            { http_status: response.status }
+            { http_status: response.status },
           );
         }
       } catch (error) {
@@ -168,7 +169,7 @@ export function useImageUpload() {
           "Unable to transfer the image to storage",
           startedAt,
           remoteTelemetry,
-          error
+          error,
         );
       }
 
@@ -180,7 +181,7 @@ export function useImageUpload() {
           "The image uploaded, but its metadata could not be saved",
           startedAt,
           remoteTelemetry,
-          error
+          error,
         );
       }
 
@@ -192,12 +193,12 @@ export function useImageUpload() {
         },
       };
     },
-    [generateUploadUrl, syncMetadata]
+    [generateUploadUrl, syncMetadata],
   );
 }
 
 export function getImageUploadErrorTelemetry(
-  error: unknown
+  error: unknown,
 ): ImageUploadTelemetry | null {
   return error instanceof ImageUploadError ? error.telemetry : null;
 }

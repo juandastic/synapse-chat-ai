@@ -40,7 +40,7 @@ export const ThreadItem = memo(function ThreadItem({
             "flex items-center gap-3 rounded-xl px-3 py-2.5 pr-9 text-sm transition-all",
             isActive
               ? "border-l-2 border-primary bg-primary/10 text-foreground"
-              : "border-l-2 border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              : "border-l-2 border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground",
           )
         }
       >

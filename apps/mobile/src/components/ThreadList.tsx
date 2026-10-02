@@ -15,7 +15,16 @@ import { useUser } from "@clerk/expo";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
-import { Plus, Brain, Settings, Database, CreditCard, Globe, Sun, Moon } from "lucide-react-native";
+import {
+  Plus,
+  Brain,
+  Settings,
+  Database,
+  CreditCard,
+  Globe,
+  Sun,
+  Moon,
+} from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors, useTheme } from "../contexts/ThemeContext";
@@ -30,11 +39,14 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
   const threads = useMemo(() => {
     if (!rawThreads) return rawThreads; // preserve undefined for loading state
     const personaMap = new Map(
-      (personas ?? []).map((p) => [p._id, { name: p.name, icon: p.icon }])
+      (personas ?? []).map((p) => [p._id, { name: p.name, icon: p.icon }]),
     );
     return rawThreads.map((thread) => ({
       ...thread,
-      persona: personaMap.get(thread.personaId) ?? { name: "Unknown", icon: "❓" },
+      persona: personaMap.get(thread.personaId) ?? {
+        name: "Unknown",
+        icon: "❓",
+      },
     }));
   }, [rawThreads, personas]);
   const router = useRouter();
@@ -61,11 +73,13 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
         // Mutation validates ownership
       }
     },
-    [removeThread]
+    [removeThread],
   );
 
   const toggleLanguage = useCallback(() => {
-    i18n.changeLanguage(i18n.language === "es" ? "en" : "es");
+    i18n.changeLanguage(i18n.language === "es" ? "en" : "es").catch((error) => {
+      console.error("[i18n] Could not change language:", error);
+    });
   }, [i18n]);
 
   const initials =
@@ -84,7 +98,7 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
         closeDrawer={closeDrawer}
       />
     ),
-    [handleDelete, closeDrawer]
+    [handleDelete, closeDrawer],
   );
 
   const s = useMemo(
@@ -223,7 +237,7 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
           color: colors.inkMuted,
         },
       }),
-    [colors]
+    [colors],
   );
 
   return (
@@ -249,28 +263,40 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
         </Pressable>
         <Pressable
           style={({ pressed }) => [s.actionButton, pressed && s.actionPressed]}
-          onPress={() => { closeDrawer(); router.push("/(home)/memory" as never); }}
+          onPress={() => {
+            closeDrawer();
+            router.push("/(home)/memory" as never);
+          }}
         >
           <Brain size={16} color={colors.inkMuted} />
           <Text style={s.actionLabel}>{t("memory")}</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [s.actionButton, pressed && s.actionPressed]}
-          onPress={() => { closeDrawer(); router.push("/(home)/notion" as never); }}
+          onPress={() => {
+            closeDrawer();
+            router.push("/(home)/notion" as never);
+          }}
         >
           <Database size={16} color={colors.inkMuted} />
           <Text style={s.actionLabel}>Notion</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [s.actionButton, pressed && s.actionPressed]}
-          onPress={() => { closeDrawer(); router.push("/(home)/personas" as never); }}
+          onPress={() => {
+            closeDrawer();
+            router.push("/(home)/personas" as never);
+          }}
         >
           <Settings size={16} color={colors.inkMuted} />
           <Text style={s.actionLabel}>{t("personas")}</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [s.actionButton, pressed && s.actionPressed]}
-          onPress={() => { closeDrawer(); router.push("/(home)/plans" as never); }}
+          onPress={() => {
+            closeDrawer();
+            router.push("/(home)/plans" as never);
+          }}
         >
           <CreditCard size={16} color={colors.inkMuted} />
           <Text style={s.actionLabel}>{t("plans")}</Text>
@@ -285,7 +311,9 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
         renderItem={renderItem}
         keyExtractor={(item) => item._id}
         style={s.list}
-        contentContainerStyle={threads?.length === 0 ? s.emptyContainer : undefined}
+        contentContainerStyle={
+          threads?.length === 0 ? s.emptyContainer : undefined
+        }
         ListEmptyComponent={
           threads !== undefined ? (
             <View style={s.empty}>
@@ -308,7 +336,10 @@ export function ThreadList({ navigation }: DrawerContentComponentProps) {
         <View style={s.footerLeft}>
           <Pressable
             style={s.avatar}
-            onPress={() => { closeDrawer(); router.push("/(home)/settings" as never); }}
+            onPress={() => {
+              closeDrawer();
+              router.push("/(home)/settings" as never);
+            }}
             accessibilityLabel={i18n.language === "es" ? "Cuenta" : "Account"}
           >
             {user?.imageUrl ? (

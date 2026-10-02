@@ -5,14 +5,7 @@ import { useTranslation } from "react-i18next";
 import posthog from "posthog-js";
 import { toast } from "sonner";
 import { api } from "@synapse/backend/api";
-import {
-  ArrowLeft,
-  CheckCircle,
-  Heart,
-  Sparkles,
-  X,
-  Zap,
-} from "lucide-react";
+import { ArrowLeft, CheckCircle, Heart, Sparkles, X, Zap } from "lucide-react";
 
 // =============================================================================
 // Contact Modal
@@ -142,7 +135,9 @@ function ContactModal({
             disabled={submitting}
             className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
           >
-            {submitting ? t("contactModal.submitting") : t("contactModal.submit")}
+            {submitting
+              ? t("contactModal.submitting")
+              : t("contactModal.submit")}
           </button>
         </form>
       </div>
@@ -171,7 +166,9 @@ function PlanCard({
 }) {
   const { t } = useTranslation("landing");
   const ts = useTranslation("settings").t;
-  const features = t(`pricing.${plan}.features`, { returnObjects: true }) as string[];
+  const features = t(`pricing.${plan}.features`, {
+    returnObjects: true,
+  }) as string[];
   const Icon = PLAN_ICONS[iconIndex];
 
   return (
@@ -252,7 +249,9 @@ export function PlansPage() {
   const convexUser = useQuery(api.users.me);
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
 
-  const [contactModalPlan, setContactModalPlan] = useState<"pro" | "therapeutic" | null>(null);
+  const [contactModalPlan, setContactModalPlan] = useState<
+    "pro" | "therapeutic" | null
+  >(null);
 
   const currentPlan = usageStatus?.plan ?? "free";
 
@@ -298,7 +297,7 @@ export function PlansPage() {
                 source: "in_app",
                 user_id: convexUser?._id,
               });
-              navigate("/");
+              void navigate("/");
             }}
           />
           <PlanCard

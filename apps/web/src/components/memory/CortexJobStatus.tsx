@@ -68,7 +68,10 @@ function JobStatusRow({
   const { t } = useTranslation("memory");
   const tc = useTranslation("common").t;
 
-  const label = type === "ingest" ? t("cortexJob.memoryGraph") : t("cortexJob.memoryCorrection");
+  const label =
+    type === "ingest"
+      ? t("cortexJob.memoryGraph")
+      : t("cortexJob.memoryCorrection");
   const isRetrying =
     status === "processing" && nextRetryAt && nextRetryAt > Date.now();
 
@@ -80,7 +83,10 @@ function JobStatusRow({
         <span className="text-destructive">
           {t("cortexJob.failedToUpdate", { label })}
           {lastError && (
-            <span className="text-destructive/70"> ({lastError.slice(0, 60)})</span>
+            <span className="text-destructive/70">
+              {" "}
+              ({lastError.slice(0, 60)})
+            </span>
           )}
         </span>
         <button
@@ -88,7 +94,7 @@ function JobStatusRow({
           className={cn(
             "ml-auto flex items-center gap-1 rounded-md px-2 py-0.5",
             "text-xs font-medium text-primary",
-            "hover:bg-primary/10 transition-colors"
+            "hover:bg-primary/10 transition-colors",
           )}
         >
           <RefreshCw className="h-3 w-3" />
@@ -102,7 +108,7 @@ function JobStatusRow({
   if (isRetrying) {
     const minutesLeft = Math.max(
       1,
-      Math.ceil((nextRetryAt - Date.now()) / 60_000)
+      Math.ceil((nextRetryAt - Date.now()) / 60_000),
     );
     const isActualRetry = !!lastError;
     return (
@@ -132,7 +138,10 @@ function JobStatusRow({
         {attempts > 0 && (
           <span className="text-muted-foreground/50">
             {" "}
-            {t("cortexJob.attempt", { current: attempts + 1, max: maxAttempts })}
+            {t("cortexJob.attempt", {
+              current: attempts + 1,
+              max: maxAttempts,
+            })}
           </span>
         )}
       </span>

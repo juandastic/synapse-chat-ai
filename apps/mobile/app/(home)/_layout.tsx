@@ -12,13 +12,17 @@ export default function HomeLayout() {
   useTermsSync();
   const colors = useColors();
 
-  const s = useMemo(() => StyleSheet.create({
-    root: { flex: 1 },
-    drawer: {
-      width: 300,
-      backgroundColor: colors.paper,
-    },
-  }), [colors]);
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        root: { flex: 1 },
+        drawer: {
+          width: 300,
+          backgroundColor: colors.paper,
+        },
+      }),
+    [colors],
+  );
 
   return (
     <GestureHandlerRootView style={s.root}>

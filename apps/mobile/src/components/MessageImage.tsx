@@ -20,7 +20,9 @@ interface MessageImageProps {
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-export const MessageImage = memo(function MessageImage({ imageKey }: MessageImageProps) {
+export const MessageImage = memo(function MessageImage({
+  imageKey,
+}: MessageImageProps) {
   const colors = useColors();
   const imageUrl = useQuery(api.messages.getImageUrl, { key: imageKey });
   const [fullscreen, setFullscreen] = useState(false);
@@ -63,7 +65,7 @@ export const MessageImage = memo(function MessageImage({ imageKey }: MessageImag
           height: SCREEN_HEIGHT * 0.7,
         },
       }),
-    [colors]
+    [colors],
   );
 
   if (!imageUrl) {

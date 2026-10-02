@@ -54,7 +54,10 @@ export function ContactModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(44, 36, 24, 0.6)", backdropFilter: "blur(4px)" }}
+      style={{
+        background: "rgba(44, 36, 24, 0.6)",
+        backdropFilter: "blur(4px)",
+      }}
       onClick={onClose}
     >
       <div
@@ -95,8 +98,13 @@ export function ContactModal({
               onChange={(e) => setName(e.target.value)}
               placeholder={t("contactModal.namePlaceholder")}
               className="w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors"
-              style={{ border: `1px solid ${color.rule}`, background: "transparent" }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = color.accent)}
+              style={{
+                border: `1px solid ${color.rule}`,
+                background: "transparent",
+              }}
+              onFocus={(e) =>
+                (e.currentTarget.style.borderColor = color.accent)
+              }
               onBlur={(e) => (e.currentTarget.style.borderColor = color.rule)}
             />
           </div>
@@ -112,8 +120,13 @@ export function ContactModal({
               onChange={(e) => setEmail(e.target.value)}
               placeholder={t("contactModal.emailPlaceholder")}
               className="w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors"
-              style={{ border: `1px solid ${color.rule}`, background: "transparent" }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = color.accent)}
+              style={{
+                border: `1px solid ${color.rule}`,
+                background: "transparent",
+              }}
+              onFocus={(e) =>
+                (e.currentTarget.style.borderColor = color.accent)
+              }
               onBlur={(e) => (e.currentTarget.style.borderColor = color.rule)}
             />
           </div>
@@ -129,8 +142,13 @@ export function ContactModal({
               placeholder={t("contactModal.messagePlaceholder")}
               rows={4}
               className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-none transition-colors"
-              style={{ border: `1px solid ${color.rule}`, background: "transparent" }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = color.accent)}
+              style={{
+                border: `1px solid ${color.rule}`,
+                background: "transparent",
+              }}
+              onFocus={(e) =>
+                (e.currentTarget.style.borderColor = color.accent)
+              }
               onBlur={(e) => (e.currentTarget.style.borderColor = color.rule)}
             />
           </div>
@@ -141,7 +159,9 @@ export function ContactModal({
             className="w-full rounded-full py-2.5 text-sm font-medium transition-opacity hover:opacity-85 disabled:opacity-50"
             style={{ background: color.accent, color: color.paper }}
           >
-            {submitting ? t("contactModal.submitting") : t("contactModal.submit")}
+            {submitting
+              ? t("contactModal.submitting")
+              : t("contactModal.submit")}
           </button>
         </form>
       </div>

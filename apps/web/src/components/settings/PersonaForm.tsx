@@ -43,12 +43,14 @@ export function PersonaForm({
   const [icon, setIcon] = useState(initialData?.icon ?? "🤖");
   const { t, i18n } = useTranslation("settings");
   const tc = useTranslation("common").t;
-  const [language, setLanguage] = useState(initialData?.language ?? (i18n.language === "es" ? "Español" : "English"));
+  const [language, setLanguage] = useState(
+    initialData?.language ?? (i18n.language === "es" ? "Español" : "English"),
+  );
   const [description, setDescription] = useState(
-    initialData?.description ?? ""
+    initialData?.description ?? "",
   );
   const [systemPrompt, setSystemPrompt] = useState(
-    initialData?.systemPrompt ?? ""
+    initialData?.systemPrompt ?? "",
   );
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -85,11 +87,13 @@ export function PersonaForm({
             systemPrompt: trimmedPrompt,
           });
         } catch (err) {
-          setError(err instanceof Error ? err.message : t("personaForm.submitError"));
+          setError(
+            err instanceof Error ? err.message : t("personaForm.submitError"),
+          );
         }
       });
     },
-    [name, icon, language, description, systemPrompt, onSubmit]
+    [name, icon, language, description, systemPrompt, onSubmit, t],
   );
 
   return (
@@ -103,13 +107,19 @@ export function PersonaForm({
       {/* Name and Icon row */}
       <div className="flex gap-3">
         <div className="w-20">
-          <label htmlFor="persona-icon" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+          <label
+            htmlFor="persona-icon"
+            className="mb-1.5 block text-xs font-medium text-muted-foreground"
+          >
             {t("personaForm.iconLabel")}
           </label>
           <EmojiPicker id="persona-icon" value={icon} onChange={setIcon} />
         </div>
         <div className="flex-1">
-          <label htmlFor="persona-name" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+          <label
+            htmlFor="persona-name"
+            className="mb-1.5 block text-xs font-medium text-muted-foreground"
+          >
             {t("personaForm.nameLabel")}
           </label>
           <input
@@ -126,7 +136,10 @@ export function PersonaForm({
 
       {/* Language */}
       <div>
-        <label htmlFor="persona-language" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+        <label
+          htmlFor="persona-language"
+          className="mb-1.5 block text-xs font-medium text-muted-foreground"
+        >
           {t("personaForm.languageLabel")}
         </label>
         <select
@@ -145,9 +158,14 @@ export function PersonaForm({
 
       {/* Description */}
       <div>
-        <label htmlFor="persona-description" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+        <label
+          htmlFor="persona-description"
+          className="mb-1.5 block text-xs font-medium text-muted-foreground"
+        >
           {t("personaForm.descriptionLabel")}
-          <span className="ml-1 text-muted-foreground/50">({t("personaForm.optional")})</span>
+          <span className="ml-1 text-muted-foreground/50">
+            ({t("personaForm.optional")})
+          </span>
         </label>
         <input
           id="persona-description"
@@ -162,7 +180,10 @@ export function PersonaForm({
 
       {/* System Prompt */}
       <div>
-        <label htmlFor="persona-system-prompt" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+        <label
+          htmlFor="persona-system-prompt"
+          className="mb-1.5 block text-xs font-medium text-muted-foreground"
+        >
           {t("personaForm.systemPromptLabel")}
         </label>
         <textarea
@@ -195,7 +216,7 @@ export function PersonaForm({
           className={cn(
             "inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all",
             "hover:bg-primary/90 active:scale-[0.98]",
-            "disabled:pointer-events-none disabled:opacity-50"
+            "disabled:pointer-events-none disabled:opacity-50",
           )}
         >
           {isPending && (

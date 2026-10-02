@@ -25,9 +25,15 @@ export function LegalAcceptanceText() {
   return (
     <p className="mt-4 text-[11px]" style={{ color: color.inkDim }}>
       {isEs ? (
-        <>Al registrarte, debes tener al menos 13 años y aceptas los {terms} y la {privacy}.</>
+        <>
+          Al registrarte, debes tener al menos 13 años y aceptas los {terms} y
+          la {privacy}.
+        </>
       ) : (
-        <>By signing up, you must be at least 13 years old and you agree to the {terms} and {privacy}.</>
+        <>
+          By signing up, you must be at least 13 years old and you agree to the{" "}
+          {terms} and {privacy}.
+        </>
       )}
     </p>
   );

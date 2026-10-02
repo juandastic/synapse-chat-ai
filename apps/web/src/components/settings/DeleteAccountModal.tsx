@@ -62,7 +62,7 @@ export function DeleteAccountModal({ open, onClose }: DeleteAccountModalProps) {
 
     setSubmitted(true);
     toast.success(
-      isEs ? "Solicitud de eliminación enviada" : "Deletion request submitted"
+      isEs ? "Solicitud de eliminación enviada" : "Deletion request submitted",
     );
 
     await new Promise((r) => setTimeout(r, SIGN_OUT_DELAY_MS));
@@ -72,7 +72,7 @@ export function DeleteAccountModal({ open, onClose }: DeleteAccountModalProps) {
     } catch {
       /* ignore; we still navigate home */
     }
-    navigate("/");
+    void navigate("/");
   };
 
   if (!open) return null;
@@ -86,9 +86,7 @@ export function DeleteAccountModal({ open, onClose }: DeleteAccountModalProps) {
     >
       <div className="absolute inset-0 bg-background/70 backdrop-blur-sm animate-in fade-in duration-200" />
 
-      <div
-        className="relative z-10 w-full max-w-md rounded-2xl border border-border/50 bg-card shadow-xl animate-in fade-in zoom-in-95 duration-200"
-      >
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-border/50 bg-card shadow-xl animate-in fade-in zoom-in-95 duration-200">
         {!submitted && !submitting && (
           <button
             onClick={onClose}
@@ -212,6 +210,6 @@ export function DeleteAccountModal({ open, onClose }: DeleteAccountModalProps) {
         )}
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

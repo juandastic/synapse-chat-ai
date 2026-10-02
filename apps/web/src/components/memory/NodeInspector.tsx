@@ -171,7 +171,7 @@ function RelationshipRow({
   return (
     <li
       className={cn(
-        "rounded-lg border border-border/50 bg-card px-3 py-2 text-xs"
+        "rounded-lg border border-border/50 bg-card px-3 py-2 text-xs",
       )}
     >
       <div className="flex items-center gap-1.5 text-muted-foreground">

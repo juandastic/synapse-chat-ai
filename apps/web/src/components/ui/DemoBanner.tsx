@@ -22,9 +22,7 @@ export function DemoBanner() {
 
   return (
     <div className="relative flex items-center justify-center gap-3 bg-primary/10 px-4 py-2 text-sm">
-      <span className="text-foreground/80">
-        {t("demo.exploringMessage")}
-      </span>
+      <span className="text-foreground/80">{t("demo.exploringMessage")}</span>
       <button
         onClick={handleSignUp}
         className="rounded-full bg-primary px-4 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"

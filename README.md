@@ -4,6 +4,8 @@ https://synapse-chat.juandago.dev/
 
 A multi-thread, persona-based conversational interface with **deep memory**. Each conversation is linked to a persona (AI personality) and maintains persistent context through a knowledge graph powered by [Graphiti](https://github.com/getzep/graphiti) / Neo4j. Users can visualize, inspect, and correct their knowledge graph in real time.
 
+See [TESTING.md](./TESTING.md) for the test commands, protected behaviors and testing strategy.
+
 ---
 
 ## The story behind Synapse

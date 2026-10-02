@@ -33,9 +33,7 @@ module.exports = {
     },
   },
   android: {
-    package: isDevelopment
-      ? `${bundleIdentifier}.dev`
-      : bundleIdentifier,
+    package: isDevelopment ? `${bundleIdentifier}.dev` : bundleIdentifier,
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#F5F0E8",

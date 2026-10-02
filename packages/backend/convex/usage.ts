@@ -20,7 +20,7 @@ export const trackActivity = internalMutation({
     type: v.union(
       v.literal("chat"),
       v.literal("ingest"),
-      v.literal("correction")
+      v.literal("correction"),
     ),
     metrics: v.object({
       tokensIn: v.optional(v.number()),
@@ -44,7 +44,7 @@ export const trackActivity = internalMutation({
     const existing = await ctx.db
       .query("monthly_usage")
       .withIndex("by_user_month", (q) =>
-        q.eq("userId", args.userId).eq("month", month)
+        q.eq("userId", args.userId).eq("month", month),
       )
       .unique();
 
@@ -57,7 +57,8 @@ export const trackActivity = internalMutation({
       corrections: type === "correction" ? count : 0,
       ingestedChars: type === "ingest" || type === "correction" ? chars : 0,
     };
-    const daySlot: Partial<typeof delta> | undefined = existing?.dailyStats?.[day];
+    const daySlot: Partial<typeof delta> | undefined =
+      existing?.dailyStats?.[day];
     const dailyStats = {
       ...existing?.dailyStats,
       [day]: {
@@ -72,13 +73,17 @@ export const trackActivity = internalMutation({
       },
     };
     const totals = {
-      totalChatMessages: (existing?.totalChatMessages ?? 0) + delta.chatMessages,
-      totalChatCharsGenerated: (existing?.totalChatCharsGenerated ?? 0) + delta.chatChars,
+      totalChatMessages:
+        (existing?.totalChatMessages ?? 0) + delta.chatMessages,
+      totalChatCharsGenerated:
+        (existing?.totalChatCharsGenerated ?? 0) + delta.chatChars,
       totalInputTokens: (existing?.totalInputTokens ?? 0) + delta.inputTokens,
-      totalOutputTokens: (existing?.totalOutputTokens ?? 0) + delta.outputTokens,
+      totalOutputTokens:
+        (existing?.totalOutputTokens ?? 0) + delta.outputTokens,
       totalIngestions: (existing?.totalIngestions ?? 0) + delta.ingestions,
       totalCorrections: (existing?.totalCorrections ?? 0) + delta.corrections,
-      totalIngestedChars: (existing?.totalIngestedChars ?? 0) + delta.ingestedChars,
+      totalIngestedChars:
+        (existing?.totalIngestedChars ?? 0) + delta.ingestedChars,
       dailyStats,
     };
 

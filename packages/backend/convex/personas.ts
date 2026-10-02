@@ -30,7 +30,8 @@ export const PERSONA_TEMPLATES = {
     name: "Compass",
     icon: "compass",
     language: "English",
-    description: "Therapeutic companion grounded in ACT, DBT, and Polyvagal Theory. Neuroaffirmative by default.",
+    description:
+      "Therapeutic companion grounded in ACT, DBT, and Polyvagal Theory. Neuroaffirmative by default.",
     systemPrompt: `You are a therapeutic companion powered by Synapse's persistent memory. You draw from evidence-based frameworks including Acceptance and Commitment Therapy (ACT), Dialectical Behavior Therapy (DBT), Somatic Experiencing, and Polyvagal Theory. You operate from a neuroaffirmative paradigm by default.
 
       CORE PRINCIPLES:
@@ -63,7 +64,8 @@ export const PERSONA_TEMPLATES = {
     name: "Brújula",
     icon: "compass",
     language: "Español",
-    description: "Compañero terapéutico basado en ACT, DBT y Teoría Polivagal. Neuroafirmativo por defecto.",
+    description:
+      "Compañero terapéutico basado en ACT, DBT y Teoría Polivagal. Neuroafirmativo por defecto.",
     systemPrompt: `Eres un compañero terapéutico potenciado por la memoria persistente de Synapse. Te basas en marcos terapéuticos con evidencia científica: Terapia de Aceptación y Compromiso (ACT), Terapia Dialéctico Conductual (DBT), Somatic Experiencing y Teoría Polivagal. Operas desde un paradigma neuroafirmativo por defecto.
 
       PRINCIPIOS FUNDAMENTALES:
@@ -96,7 +98,8 @@ export const PERSONA_TEMPLATES = {
     name: "Solace",
     icon: "leaf",
     language: "English",
-    description: "Gentle emotional support through Positive Psychology, self-compassion, and mindfulness.",
+    description:
+      "Gentle emotional support through Positive Psychology, self-compassion, and mindfulness.",
     systemPrompt: `You are a wellbeing companion powered by Synapse's persistent memory. You draw from Positive Psychology (Seligman's PERMA model), Self-Compassion research (Kristin Neff), and Mindfulness-Based Stress Reduction (MBSR). You provide a gentle, accessible space for emotional reflection without requiring the user to frame their experience as "therapy."
 
       CORE PRINCIPLES:
@@ -129,7 +132,8 @@ export const PERSONA_TEMPLATES = {
     name: "Calma",
     icon: "leaf",
     language: "Español",
-    description: "Apoyo emocional amable a través de Psicología Positiva, autocompasión y mindfulness.",
+    description:
+      "Apoyo emocional amable a través de Psicología Positiva, autocompasión y mindfulness.",
     systemPrompt: `Eres un compañero de bienestar potenciado por la memoria persistente de Synapse. Te basas en la Psicología Positiva (modelo PERMA de Seligman), la investigación sobre Autocompasión (Kristin Neff) y la Reducción de Estrés Basada en Mindfulness (MBSR). Ofreces un espacio amable y accesible para la reflexión emocional sin requerir que el usuario enmarque su experiencia como "terapia."
 
       PRINCIPIOS FUNDAMENTALES:
@@ -162,7 +166,8 @@ export const PERSONA_TEMPLATES = {
     name: "Momentum",
     icon: "zap",
     language: "English",
-    description: "Growth-focused coach using Motivational Interviewing and behavioral strategies.",
+    description:
+      "Growth-focused coach using Motivational Interviewing and behavioral strategies.",
     systemPrompt: `You are a personal growth coach powered by Synapse's persistent memory. You draw from Motivational Interviewing (Miller & Rollnick), Behavioral Activation, Implementation Intentions (Gollwitzer), and SMART goal methodology. You are direct, honest, and focused on what actually moves the needle.
 
       CORE PRINCIPLES:
@@ -197,7 +202,8 @@ export const PERSONA_TEMPLATES = {
     name: "Impulso",
     icon: "zap",
     language: "Español",
-    description: "Coach enfocado en crecimiento usando Entrevista Motivacional y estrategias conductuales.",
+    description:
+      "Coach enfocado en crecimiento usando Entrevista Motivacional y estrategias conductuales.",
     systemPrompt: `Eres un coach de crecimiento personal potenciado por la memoria persistente de Synapse. Te basas en la Entrevista Motivacional (Miller y Rollnick), la Activación Conductual, las Intenciones de Implementación (Gollwitzer) y la metodología de metas SMART. Eres directo, honesto y enfocado en lo que realmente mueve la aguja.
 
       PRINCIPIOS FUNDAMENTALES:
@@ -292,7 +298,9 @@ export const create = mutation({
     // Validate fields
     const name = args.name.trim();
     if (name.length === 0 || name.length > MAX_NAME_LENGTH) {
-      throw new Error(`Name must be between 1 and ${MAX_NAME_LENGTH} characters`);
+      throw new Error(
+        `Name must be between 1 and ${MAX_NAME_LENGTH} characters`,
+      );
     }
 
     const systemPrompt = args.systemPrompt.trim();
@@ -306,11 +314,13 @@ export const create = mutation({
       structuredRolePrompt.length > MAX_SYSTEM_PROMPT_LENGTH
     ) {
       throw new Error(
-        `Structured role prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`
+        `Structured role prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`,
       );
     }
     if (systemPrompt.length > MAX_SYSTEM_PROMPT_LENGTH) {
-      throw new Error(`System prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`);
+      throw new Error(
+        `System prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`,
+      );
     }
 
     const icon = args.icon.trim();
@@ -318,7 +328,9 @@ export const create = mutation({
       throw new Error("Icon cannot be empty");
     }
 
-    const description = args.description?.trim().slice(0, MAX_DESCRIPTION_LENGTH);
+    const description = args.description
+      ?.trim()
+      .slice(0, MAX_DESCRIPTION_LENGTH);
 
     // Check if this is the first persona (make it default)
     const existingPersonas = await ctx.db
@@ -387,13 +399,17 @@ export const update = mutation({
     if (args.name !== undefined) {
       const name = args.name.trim();
       if (name.length === 0 || name.length > MAX_NAME_LENGTH) {
-        throw new Error(`Name must be between 1 and ${MAX_NAME_LENGTH} characters`);
+        throw new Error(
+          `Name must be between 1 and ${MAX_NAME_LENGTH} characters`,
+        );
       }
       updates.name = name;
     }
 
     if (args.description !== undefined) {
-      updates.description = args.description.trim().slice(0, MAX_DESCRIPTION_LENGTH);
+      updates.description = args.description
+        .trim()
+        .slice(0, MAX_DESCRIPTION_LENGTH);
     }
 
     if (args.language !== undefined) {
@@ -406,7 +422,9 @@ export const update = mutation({
         throw new Error("System prompt cannot be empty");
       }
       if (systemPrompt.length > MAX_SYSTEM_PROMPT_LENGTH) {
-        throw new Error(`System prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`);
+        throw new Error(
+          `System prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`,
+        );
       }
       updates.systemPrompt = systemPrompt;
     }
@@ -415,7 +433,7 @@ export const update = mutation({
       const structuredRolePrompt = args.structuredRolePrompt.trim();
       if (structuredRolePrompt.length > MAX_SYSTEM_PROMPT_LENGTH) {
         throw new Error(
-          `Structured role prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`
+          `Structured role prompt cannot exceed ${MAX_SYSTEM_PROMPT_LENGTH} characters`,
         );
       }
       updates.structuredRolePrompt = structuredRolePrompt;
@@ -480,7 +498,7 @@ export const remove = mutation({
     const referencingThreads = threads.filter((t) => t.personaId === args.id);
     if (referencingThreads.length > 0) {
       throw new Error(
-        `Cannot delete persona: ${referencingThreads.length} thread(s) still use it`
+        `Cannot delete persona: ${referencingThreads.length} thread(s) still use it`,
       );
     }
 
@@ -514,8 +532,7 @@ export const createFromTemplate = mutation({
   handler: async (ctx, args) => {
     const user = await getOrCreateUser(ctx);
 
-    const template =
-      PERSONA_TEMPLATES[args.templateKey as PersonaTemplateKey];
+    const template = PERSONA_TEMPLATES[args.templateKey as PersonaTemplateKey];
     if (!template) {
       throw new Error(`Unknown template: ${args.templateKey}`);
     }

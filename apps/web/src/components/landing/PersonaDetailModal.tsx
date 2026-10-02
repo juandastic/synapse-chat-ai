@@ -31,7 +31,10 @@ export function PersonaDetailModal({
   onClose,
 }: {
   persona: PersonaItem;
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  icon: React.ComponentType<{
+    className?: string;
+    style?: React.CSSProperties;
+  }>;
   onClose: () => void;
 }) {
   const { t } = useTranslation("landing");
@@ -56,7 +59,10 @@ export function PersonaDetailModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(44, 36, 24, 0.6)", backdropFilter: "blur(4px)" }}
+      style={{
+        background: "rgba(44, 36, 24, 0.6)",
+        backdropFilter: "blur(4px)",
+      }}
       onClick={onClose}
     >
       <div
@@ -119,10 +125,16 @@ export function PersonaDetailModal({
               <div
                 key={i}
                 className="rounded-lg p-4"
-                style={{ background: color.accentLight, border: `1px solid ${color.rule}` }}
+                style={{
+                  background: color.accentLight,
+                  border: `1px solid ${color.rule}`,
+                }}
               >
                 <h5 className="text-sm font-semibold mb-1">{theory.name}</h5>
-                <p className="text-xs leading-relaxed" style={{ color: color.inkMuted }}>
+                <p
+                  className="text-xs leading-relaxed"
+                  style={{ color: color.inkMuted }}
+                >
                   {theory.desc}
                 </p>
               </div>
@@ -148,7 +160,10 @@ export function PersonaDetailModal({
                   className="h-4 w-4 mt-0.5 shrink-0"
                   style={{ color: color.accent }}
                 />
-                <span className="text-sm leading-relaxed" style={{ color: color.inkMuted }}>
+                <span
+                  className="text-sm leading-relaxed"
+                  style={{ color: color.inkMuted }}
+                >
                   {useCase}
                 </span>
               </li>

@@ -32,7 +32,7 @@ export const RETRY_DELAYS_MS = [
  * since we're polling an already-running process, not restarting.
  */
 export const POLL_DELAYS_MS = [
-  5 * 60_000,  // Poll 0: 5 min - small graphs often done by then
+  5 * 60_000, // Poll 0: 5 min - small graphs often done by then
   10 * 60_000, // Poll 1: +10 min (~15 min total)
   10 * 60_000, // Poll 2: +10 min (~25 min total)
   10 * 60_000, // Poll 3: +10 min (~35 min total)
@@ -73,15 +73,10 @@ export const enqueueIngest = internalMutation({
     // Snapshot message stats for debugging/observability (cheap indexed read)
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_session", (q) =>
-        q.eq("sessionId", args.closedSessionId)
-      )
+      .withIndex("by_session", (q) => q.eq("sessionId", args.closedSessionId))
       .collect();
     const messageCount = messages.length;
-    const totalChars = messages.reduce(
-      (sum, m) => sum + m.content.length,
-      0
-    );
+    const totalChars = messages.reduce((sum, m) => sum + m.content.length, 0);
 
     const jobId = await ctx.db.insert("cortex_jobs", {
       userId: args.userId,
@@ -101,11 +96,9 @@ export const enqueueIngest = internalMutation({
       updatedAt: now,
     });
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.cortexProcessor.processJob,
-      { jobId }
-    );
+    await ctx.scheduler.runAfter(0, internal.cortexProcessor.processJob, {
+      jobId,
+    });
 
     console.log("[cortexJobs] Enqueued ingest", {
       jobId,
@@ -144,11 +137,9 @@ export const enqueueCorrection = internalMutation({
       updatedAt: now,
     });
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.cortexProcessor.processJob,
-      { jobId }
-    );
+    await ctx.scheduler.runAfter(0, internal.cortexProcessor.processJob, {
+      jobId,
+    });
 
     console.log("[cortexJobs] Enqueued correction", {
       jobId,
@@ -170,7 +161,7 @@ export const updateStatus = internalMutation({
       v.literal("pending"),
       v.literal("processing"),
       v.literal("completed"),
-      v.literal("failed")
+      v.literal("failed"),
     ),
     attempts: v.optional(v.number()),
     lastError: v.optional(v.string()),
@@ -180,8 +171,7 @@ export const updateStatus = internalMutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) return;
 
-    const isTerminal =
-      args.status === "completed" || args.status === "failed";
+    const isTerminal = args.status === "completed" || args.status === "failed";
 
     await ctx.db.patch(args.jobId, {
       status: args.status,
@@ -212,25 +202,25 @@ export const getActiveByUser = query({
       ctx.db
         .query("cortex_jobs")
         .withIndex("by_user_status", (q) =>
-          q.eq("userId", user._id).eq("status", "pending")
+          q.eq("userId", user._id).eq("status", "pending"),
         )
         .collect(),
       ctx.db
         .query("cortex_jobs")
         .withIndex("by_user_status", (q) =>
-          q.eq("userId", user._id).eq("status", "processing")
+          q.eq("userId", user._id).eq("status", "processing"),
         )
         .collect(),
       ctx.db
         .query("cortex_jobs")
         .withIndex("by_user_status", (q) =>
-          q.eq("userId", user._id).eq("status", "failed")
+          q.eq("userId", user._id).eq("status", "failed"),
         )
         .collect(),
     ]);
 
     return [...pending, ...processing, ...failed].sort(
-      (a, b) => b.updatedAt - a.updatedAt
+      (a, b) => b.updatedAt - a.updatedAt,
     );
   },
 });
@@ -261,11 +251,9 @@ export const retryJob = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.cortexProcessor.processJob,
-      { jobId: args.jobId }
-    );
+    await ctx.scheduler.runAfter(0, internal.cortexProcessor.processJob, {
+      jobId: args.jobId,
+    });
 
     console.log("[cortexJobs] Manual retry", {
       jobId: args.jobId,

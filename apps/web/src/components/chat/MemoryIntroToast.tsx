@@ -45,9 +45,9 @@ export function MemoryIntroToast() {
         },
         onDismiss: persistOnce,
         onAutoClose: persistOnce,
-      }
+      },
     );
-  }, [convexUser?._id, convexUser?.memoryIntroSeenAt, setSeen, i18n.language]);
+  }, [convexUser, setSeen, i18n.language]);
 
   return null;
 }

@@ -94,7 +94,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        handleTitleSave();
+        void handleTitleSave();
       } else if (e.key === "Escape") {
         setIsEditingTitle(false);
       }

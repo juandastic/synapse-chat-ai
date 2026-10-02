@@ -34,6 +34,7 @@ export const capture = internalAction({
     distinctId: v.string(),
     event: v.string(),
     properties: v.optional(v.any()),
+    personProperties: v.optional(v.any()),
   },
   handler: async (_ctx, args) => {
     const posthog = createPostHogClient();
@@ -46,7 +47,10 @@ export const capture = internalAction({
       await posthog.captureImmediate({
         distinctId: args.distinctId,
         event: args.event,
-        properties: args.properties ?? {},
+        properties: {
+          ...args.properties,
+          ...(args.personProperties ? { $set: args.personProperties } : {}),
+        },
       });
     } finally {
       await posthog.shutdown();
@@ -101,7 +105,7 @@ export const captureException = internalAction({
       posthog.captureException(
         new Error(args.errorMessage),
         args.distinctId,
-        args.additionalProperties ?? {}
+        args.additionalProperties ?? {},
       );
     } finally {
       await posthog.shutdown();

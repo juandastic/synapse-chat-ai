@@ -14,7 +14,9 @@ export function LegalLayout({ children }: LegalLayoutProps) {
 
   const toggleLanguage = useCallback(() => {
     const newLang = i18n.language === "es" ? "en" : "es";
-    i18n.changeLanguage(newLang);
+    i18n.changeLanguage(newLang).catch((error) => {
+      console.error("[i18n] Could not change language:", error);
+    });
     posthog.capture("language_toggled", { language: newLang, source: "legal" });
   }, [i18n]);
 
@@ -30,7 +32,10 @@ export function LegalLayout({ children }: LegalLayoutProps) {
         style={{ background: color.paperAlpha85, borderColor: color.rule }}
       >
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-70">
+          <Link
+            to="/"
+            className="flex items-center gap-2 transition-opacity hover:opacity-70"
+          >
             <Logo className="h-6 w-6" />
             <span
               className="text-sm font-medium"
@@ -61,18 +66,25 @@ export function LegalLayout({ children }: LegalLayoutProps) {
           className="mt-16 flex flex-wrap items-center gap-4 border-t pt-6 text-xs"
           style={{ borderColor: color.rule, color: color.inkDim }}
         >
-          <Link to="/privacy" className="underline underline-offset-2 hover:opacity-70">
+          <Link
+            to="/privacy"
+            className="underline underline-offset-2 hover:opacity-70"
+          >
             {isEs ? "Privacidad" : "Privacy"}
           </Link>
-          <Link to="/terms" className="underline underline-offset-2 hover:opacity-70">
+          <Link
+            to="/terms"
+            className="underline underline-offset-2 hover:opacity-70"
+          >
             {isEs ? "Términos" : "Terms"}
           </Link>
-          <Link to="/delete-account" className="underline underline-offset-2 hover:opacity-70">
+          <Link
+            to="/delete-account"
+            className="underline underline-offset-2 hover:opacity-70"
+          >
             {isEs ? "Eliminar cuenta" : "Delete account"}
           </Link>
-          <span className="ml-auto">
-            Synapse Chat AI — Juan David Gomez
-          </span>
+          <span className="ml-auto">Synapse Chat AI — Juan David Gomez</span>
         </footer>
       </main>
 

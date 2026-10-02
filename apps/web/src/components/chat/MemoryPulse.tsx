@@ -40,9 +40,10 @@ export function MemoryPulse({ className }: MemoryPulseProps) {
   }
 
   const totalMemories = stats.entityCount + stats.relationshipCount;
-  const formattedTokens = stats.totalTokens >= 1000
-    ? `~${Math.round(stats.totalTokens / 1000)}K`
-    : `${stats.totalTokens}`;
+  const formattedTokens =
+    stats.totalTokens >= 1000
+      ? `~${Math.round(stats.totalTokens / 1000)}K`
+      : `${stats.totalTokens}`;
 
   return (
     <div className={cn("flex flex-col items-center gap-1.5", className)}>
@@ -53,7 +54,8 @@ export function MemoryPulse({ className }: MemoryPulseProps) {
           {totalMemories.toLocaleString()} {t("memoryPulse.memories")}
           {stats.totalTokens > 0 && (
             <span className="text-muted-foreground/60">
-              {" · "}{formattedTokens} tokens
+              {" · "}
+              {formattedTokens} tokens
             </span>
           )}
         </span>

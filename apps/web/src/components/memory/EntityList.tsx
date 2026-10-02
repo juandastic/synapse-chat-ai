@@ -35,7 +35,7 @@ export function EntityList({
     return sorted.filter(
       (n) =>
         n.name.toLowerCase().includes(q) ||
-        n.summary?.toLowerCase().includes(q)
+        n.summary?.toLowerCase().includes(q),
     );
   }, [nodes, query]);
 
@@ -52,7 +52,7 @@ export function EntityList({
             placeholder={t("entityList.filterPlaceholder")}
             className={cn(
               "w-full rounded-lg border border-border/50 bg-background py-1.5 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground/40",
-              "focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20"
+              "focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20",
             )}
           />
         </div>
@@ -76,7 +76,7 @@ export function EntityList({
                   className={cn(
                     "flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors",
                     "hover:bg-muted/50",
-                    isActive && "bg-primary/10"
+                    isActive && "bg-primary/10",
                   )}
                 >
                   {/* Connection count badge */}
@@ -85,7 +85,7 @@ export function EntityList({
                       "mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
                       isActive
                         ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
+                        : "bg-muted text-muted-foreground",
                     )}
                   >
                     {node.val}
@@ -95,7 +95,7 @@ export function EntityList({
                     <p
                       className={cn(
                         "truncate text-xs font-medium",
-                        isActive ? "text-primary" : "text-foreground"
+                        isActive ? "text-primary" : "text-foreground",
                       )}
                     >
                       {node.name}
@@ -116,7 +116,10 @@ export function EntityList({
       {/* Footer count */}
       <div className="shrink-0 border-t border-border/50 px-3 py-1.5">
         <p className="text-[10px] text-muted-foreground/40">
-          {t("entityList.entityCount", { filtered: filtered.length, total: nodes.length })}
+          {t("entityList.entityCount", {
+            filtered: filtered.length,
+            total: nodes.length,
+          })}
         </p>
       </div>
     </div>

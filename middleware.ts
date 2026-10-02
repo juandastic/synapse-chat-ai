@@ -10,13 +10,40 @@ export const config = {
  * an Art. 27 representative and cookie consent banner.
  */
 const BLOCKED_COUNTRIES = new Set([
-  "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR",
-  "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK",
-  "SI", "ES", "SE",
+  "AT",
+  "BE",
+  "BG",
+  "HR",
+  "CY",
+  "CZ",
+  "DK",
+  "EE",
+  "FI",
+  "FR",
+  "DE",
+  "GR",
+  "HU",
+  "IE",
+  "IT",
+  "LV",
+  "LT",
+  "LU",
+  "MT",
+  "NL",
+  "PL",
+  "PT",
+  "RO",
+  "SK",
+  "SI",
+  "ES",
+  "SE",
   // EEA (non-EU)
-  "IS", "LI", "NO",
+  "IS",
+  "LI",
+  "NO",
   // UK + CH
-  "GB", "CH",
+  "GB",
+  "CH",
 ]);
 
 const BLOCKED_BODY = `<!doctype html>

@@ -1,0 +1,10 @@
+node_modules/
+**/dist/
+coverage/
+**/.expo/
+**/_generated/
+**/seed/
+**/ios/
+**/android/
+package-lock.json
+**/*.tsbuildinfo

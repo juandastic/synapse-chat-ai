@@ -76,16 +76,16 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
     } finally {
       setLoading(false);
     }
-  }, [text, loading, correctMemory, onCorrectionSent]);
+  }, [text, loading, correctMemory, onCorrectionSent, t]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        handleSubmit();
+        void handleSubmit();
       }
     },
-    [handleSubmit]
+    [handleSubmit],
   );
 
   return (
@@ -111,7 +111,7 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
           className={cn(
             "flex-1 resize-none rounded-xl border border-border/50 bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40",
             "focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20",
-            "disabled:cursor-not-allowed disabled:opacity-50"
+            "disabled:cursor-not-allowed disabled:opacity-50",
           )}
         />
         <button
@@ -120,7 +120,7 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all",
             "bg-primary text-primary-foreground",
-            "hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
+            "hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed",
           )}
           aria-label={t("correction.sendCorrection")}
         >
@@ -137,9 +137,7 @@ export function MemoryCorrection({ onCorrectionSent }: MemoryCorrectionProps) {
         <p
           className={cn(
             "mt-2 text-xs",
-            feedback.type === "success"
-              ? "text-primary"
-              : "text-destructive"
+            feedback.type === "success" ? "text-primary" : "text-destructive",
           )}
         >
           {feedback.message}

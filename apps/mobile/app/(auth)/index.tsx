@@ -29,12 +29,7 @@ import { useRouter } from "expo-router";
 import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { StatusBar } from "expo-status-bar";
-import {
-  Compass,
-  Leaf,
-  Zap,
-  Sparkles,
-} from "lucide-react-native";
+import { Compass, Leaf, Zap, Sparkles } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import { captureError } from "../../src/lib/analytics";
 
@@ -55,7 +50,14 @@ const DEMO_AVAILABLE = Boolean(DEMO_EMAIL && DEMO_PASSWORD);
 const STEP_NUMS = ["01", "02", "03", "04"];
 
 /** Matches SLIDES order — used for analytics only. */
-const SLIDE_NAMES = ["welcome", "pipeline", "compass", "solace", "momentum", "cta"];
+const SLIDE_NAMES = [
+  "welcome",
+  "pipeline",
+  "compass",
+  "solace",
+  "momentum",
+  "cta",
+];
 
 // ---------------------------------------------------------------------------
 // Slide data — defines the order and type of each carousel page
@@ -90,121 +92,185 @@ const SLIDES: SlideData[] = [
 
 function useScreenStyles() {
   const colors = useColors();
-  const s = useMemo(() => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.paper },
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.paper },
 
-    /* Language toggle */
-    langToggle: {
-      position: "absolute",
-      top: 54,
-      right: 24,
-      zIndex: 10,
-      backgroundColor: colors.accentLight,
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderRadius: 20,
-      paddingHorizontal: 14,
-      paddingVertical: 6,
-    },
-    langToggleText: {
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 1,
-      color: colors.accent,
-    },
+        /* Language toggle */
+        langToggle: {
+          position: "absolute",
+          top: 54,
+          right: 24,
+          zIndex: 10,
+          backgroundColor: colors.accentLight,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          borderRadius: 20,
+          paddingHorizontal: 14,
+          paddingVertical: 6,
+        },
+        langToggleText: {
+          fontSize: 12,
+          fontWeight: "700",
+          letterSpacing: 1,
+          color: colors.accent,
+        },
 
-    /* Slide layout */
-    slideScroll: { flex: 1 },
-    slideScrollContent: { paddingHorizontal: 32, paddingTop: 80, paddingBottom: 24 },
+        /* Slide layout */
+        slideScroll: { flex: 1 },
+        slideScrollContent: {
+          paddingHorizontal: 32,
+          paddingTop: 80,
+          paddingBottom: 24,
+        },
 
-    /* Typography */
-    tagline: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 3,
-      color: colors.accent,
-      marginBottom: 10,
-    },
-    title: {
-      fontSize: 30,
-      fontWeight: "700",
-      color: colors.ink,
-      lineHeight: 38,
-      marginBottom: 14,
-    },
-    description: {
-      fontSize: 15,
-      lineHeight: 23,
-      color: colors.inkMuted,
-      marginBottom: 24,
-    },
+        /* Typography */
+        tagline: {
+          fontSize: 11,
+          fontWeight: "700",
+          letterSpacing: 3,
+          color: colors.accent,
+          marginBottom: 10,
+        },
+        title: {
+          fontSize: 30,
+          fontWeight: "700",
+          color: colors.ink,
+          lineHeight: 38,
+          marginBottom: 14,
+        },
+        description: {
+          fontSize: 15,
+          lineHeight: 23,
+          color: colors.inkMuted,
+          marginBottom: 24,
+        },
 
-    /* Comparison */
-    comparisonContainer: { marginTop: 4, gap: 16 },
-    comparisonSection: { gap: 8 },
-    comparisonLabel: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 2,
-      color: colors.inkMuted,
-      textTransform: "uppercase",
-      marginBottom: 4,
-    },
-    comparisonDivider: { height: 1, backgroundColor: colors.rule },
+        /* Comparison */
+        comparisonContainer: { marginTop: 4, gap: 16 },
+        comparisonSection: { gap: 8 },
+        comparisonLabel: {
+          fontSize: 11,
+          fontWeight: "700",
+          letterSpacing: 2,
+          color: colors.inkMuted,
+          textTransform: "uppercase",
+          marginBottom: 4,
+        },
+        comparisonDivider: { height: 1, backgroundColor: colors.rule },
 
-    /* Pipeline */
-    pipelineList: { gap: 16 },
-    pipelineStep: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
-    pipelineNum: { fontSize: 13, fontWeight: "700", color: colors.accent, width: 24, paddingTop: 2 },
-    pipelineBody: { flex: 1 },
-    pipelineTitle: { fontSize: 16, fontWeight: "700", color: colors.ink, marginBottom: 3 },
-    pipelineDesc: { fontSize: 14, lineHeight: 20, color: colors.inkMuted },
+        /* Pipeline */
+        pipelineList: { gap: 16 },
+        pipelineStep: {
+          flexDirection: "row",
+          gap: 14,
+          alignItems: "flex-start",
+        },
+        pipelineNum: {
+          fontSize: 13,
+          fontWeight: "700",
+          color: colors.accent,
+          width: 24,
+          paddingTop: 2,
+        },
+        pipelineBody: { flex: 1 },
+        pipelineTitle: {
+          fontSize: 16,
+          fontWeight: "700",
+          color: colors.ink,
+          marginBottom: 3,
+        },
+        pipelineDesc: { fontSize: 14, lineHeight: 20, color: colors.inkMuted },
 
-    /* Persona slides */
-    personaHeader: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 },
-    personaHeaderText: { flex: 1 },
-    personaName: { fontSize: 24, fontWeight: "700", color: colors.ink },
-    personaSubtitle: { fontSize: 13, color: colors.inkMuted, marginTop: 2 },
-    personaApproach: { fontSize: 15, lineHeight: 23, color: colors.inkMuted, marginBottom: 24 },
-    sectionLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 2, color: colors.accent, marginBottom: 10 },
-    tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 },
-    useCaseList: { gap: 12 },
+        /* Persona slides */
+        personaHeader: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 14,
+          marginBottom: 16,
+        },
+        personaHeaderText: { flex: 1 },
+        personaName: { fontSize: 24, fontWeight: "700", color: colors.ink },
+        personaSubtitle: { fontSize: 13, color: colors.inkMuted, marginTop: 2 },
+        personaApproach: {
+          fontSize: 15,
+          lineHeight: 23,
+          color: colors.inkMuted,
+          marginBottom: 24,
+        },
+        sectionLabel: {
+          fontSize: 11,
+          fontWeight: "700",
+          letterSpacing: 2,
+          color: colors.accent,
+          marginBottom: 10,
+        },
+        tagRow: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 8,
+          marginBottom: 24,
+        },
+        useCaseList: { gap: 12 },
 
-    /* CTA slide */
-    ctaContainer: { flex: 1, justifyContent: "center", paddingHorizontal: 32 },
-    ctaButtons: { gap: 12 },
-    demoButton: {
-      backgroundColor: colors.accentLight,
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderRadius: 50,
-      paddingVertical: 16,
-      paddingHorizontal: 48,
-      width: "100%",
-      alignItems: "center",
-    },
-    demoButtonText: { color: colors.ink, fontSize: 16, fontWeight: "600" },
-    demoNote: { fontSize: 13, color: colors.inkMuted, textAlign: "center", marginTop: 4 },
-    ctaFooter: { fontSize: 13, color: colors.inkMuted, textAlign: "center", marginTop: 32 },
+        /* CTA slide */
+        ctaContainer: {
+          flex: 1,
+          justifyContent: "center",
+          paddingHorizontal: 32,
+        },
+        ctaButtons: { gap: 12 },
+        demoButton: {
+          backgroundColor: colors.accentLight,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          borderRadius: 50,
+          paddingVertical: 16,
+          paddingHorizontal: 48,
+          width: "100%",
+          alignItems: "center",
+        },
+        demoButtonText: { color: colors.ink, fontSize: 16, fontWeight: "600" },
+        demoNote: {
+          fontSize: 13,
+          color: colors.inkMuted,
+          textAlign: "center",
+          marginTop: 4,
+        },
+        ctaFooter: {
+          fontSize: 13,
+          color: colors.inkMuted,
+          textAlign: "center",
+          marginTop: 32,
+        },
 
-    /* Bottom controls */
-    bottom: { paddingHorizontal: 32, paddingBottom: 50, paddingTop: 12, alignItems: "center", gap: 14 },
-    dots: { flexDirection: "row", gap: 8, marginBottom: 4 },
-    dot: { height: 8, borderRadius: 4 },
-    dotActive: { backgroundColor: colors.accent, width: 24 },
-    dotInactive: { backgroundColor: colors.rule, width: 8 },
-    button: {
-      backgroundColor: colors.ink,
-      borderRadius: 50,
-      paddingVertical: 16,
-      paddingHorizontal: 48,
-      width: "100%",
-      alignItems: "center",
-    },
-    buttonPressed: { opacity: 0.85 },
-    buttonText: { color: colors.paper, fontSize: 16, fontWeight: "600" },
-    skip: { color: colors.inkMuted, fontSize: 14 },
-  }), [colors]);
+        /* Bottom controls */
+        bottom: {
+          paddingHorizontal: 32,
+          paddingBottom: 50,
+          paddingTop: 12,
+          alignItems: "center",
+          gap: 14,
+        },
+        dots: { flexDirection: "row", gap: 8, marginBottom: 4 },
+        dot: { height: 8, borderRadius: 4 },
+        dotActive: { backgroundColor: colors.accent, width: 24 },
+        dotInactive: { backgroundColor: colors.rule, width: 8 },
+        button: {
+          backgroundColor: colors.ink,
+          borderRadius: 50,
+          paddingVertical: 16,
+          paddingHorizontal: 48,
+          width: "100%",
+          alignItems: "center",
+        },
+        buttonPressed: { opacity: 0.85 },
+        buttonText: { color: colors.paper, fontSize: 16, fontWeight: "600" },
+        skip: { color: colors.inkMuted, fontSize: 14 },
+      }),
+    [colors],
+  );
 
   return { s, colors };
 }
@@ -303,18 +369,14 @@ function PersonaSlide({
         <IconBadge icon={icon} />
         <View style={s.personaHeaderText}>
           <Text style={s.personaName}>{t(`${prefix}.name`)}</Text>
-          <Text style={s.personaSubtitle}>
-            {t(`${prefix}.subtitle`)}
-          </Text>
+          <Text style={s.personaSubtitle}>{t(`${prefix}.subtitle`)}</Text>
         </View>
       </View>
 
       <Text style={s.personaApproach}>{t(`${prefix}.approach`)}</Text>
 
       {/* Theoretical foundations as pill tags */}
-      <Text style={s.sectionLabel}>
-        {t("personas.theoreticalFoundations")}
-      </Text>
+      <Text style={s.sectionLabel}>{t("personas.theoreticalFoundations")}</Text>
       <View style={s.tagRow}>
         {theories.map((th, i) => (
           <Tag key={i} label={th} />
@@ -354,10 +416,7 @@ function CTASlide({
 
       <View style={s.ctaButtons}>
         <Pressable
-          style={({ pressed }) => [
-            s.button,
-            pressed && s.buttonPressed,
-          ]}
+          style={({ pressed }) => [s.button, pressed && s.buttonPressed]}
           onPress={onSignIn}
         >
           <Text style={s.buttonText}>{t("cta.getStarted")}</Text>
@@ -365,10 +424,7 @@ function CTASlide({
 
         {DEMO_AVAILABLE && (
           <Pressable
-            style={({ pressed }) => [
-              s.demoButton,
-              pressed && s.buttonPressed,
-            ]}
+            style={({ pressed }) => [s.demoButton, pressed && s.buttonPressed]}
             onPress={onDemo}
             disabled={demoLoading}
           >
@@ -380,9 +436,7 @@ function CTASlide({
           </Pressable>
         )}
 
-        {DEMO_AVAILABLE && (
-          <Text style={s.demoNote}>{t("cta.demoNote")}</Text>
-        )}
+        {DEMO_AVAILABLE && <Text style={s.demoNote}>{t("cta.demoNote")}</Text>}
       </View>
 
       <Text style={s.ctaFooter}>
@@ -420,7 +474,7 @@ export default function OnboardingScreen() {
         });
       }
     },
-    [posthog]
+    [posthog],
   );
 
   const viewabilityConfig = useRef({
@@ -440,7 +494,9 @@ export default function OnboardingScreen() {
 
   /** Navigate to the full sign-in screen (Google + email + password). */
   const handleSignIn = () => {
-    console.log("[Onboarding] User tapped 'Get started' → navigating to sign-in");
+    console.log(
+      "[Onboarding] User tapped 'Get started' → navigating to sign-in",
+    );
     posthog?.capture("onboarding_completed", { method: "sign_in" });
     router.push("/(auth)/sign-in");
   };
@@ -477,7 +533,9 @@ export default function OnboardingScreen() {
     const next = i18n.language === "es" ? "en" : "es";
     console.log(`[Onboarding] Language changed to ${next}`);
     posthog?.capture("language_toggled", { language: next });
-    i18n.changeLanguage(next);
+    i18n.changeLanguage(next).catch((error) => {
+      console.error("[i18n] Could not change language:", error);
+    });
   };
 
   return (
@@ -527,19 +585,13 @@ export default function OnboardingScreen() {
             {SLIDES.map((_, i) => (
               <View
                 key={i}
-                style={[
-                  s.dot,
-                  i === activeIndex ? s.dotActive : s.dotInactive,
-                ]}
+                style={[s.dot, i === activeIndex ? s.dotActive : s.dotInactive]}
               />
             ))}
           </View>
 
           <Pressable
-            style={({ pressed }) => [
-              s.button,
-              pressed && s.buttonPressed,
-            ]}
+            style={({ pressed }) => [s.button, pressed && s.buttonPressed]}
             onPress={handleNext}
           >
             <Text style={s.buttonText}>{t("nav.next")}</Text>
@@ -548,7 +600,9 @@ export default function OnboardingScreen() {
           {/* Skip jumps directly to the CTA slide */}
           <Pressable
             onPress={() => {
-              posthog?.capture("onboarding_skipped", { from_slide: activeIndex });
+              posthog?.capture("onboarding_skipped", {
+                from_slide: activeIndex,
+              });
               flatListRef.current?.scrollToIndex({
                 index: SLIDES.length - 1,
                 animated: true,

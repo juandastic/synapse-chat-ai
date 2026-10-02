@@ -90,10 +90,7 @@ export const MessageItem = memo(function MessageItem({
         ) : (
           <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-display prose-p:text-[15px] prose-p:leading-relaxed prose-p:break-words prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-code:text-[14px] prose-pre:bg-muted prose-pre:border prose-pre:border-border">
             <Streamdown
-              rehypePlugins={[
-                defaultRehypePlugins.raw,
-                secureRehypePlugin,
-              ]}
+              rehypePlugins={[defaultRehypePlugins.raw, secureRehypePlugin]}
               isAnimating={isActivelyStreaming}
             >
               {message.content || ""}
@@ -190,10 +187,15 @@ const CopyButton = memo(function CopyButton({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(content).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    navigator.clipboard
+      .writeText(content)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch((error) => {
+        console.warn("[MessageItem] Could not copy message:", error);
+      });
   }, [content]);
 
   return (

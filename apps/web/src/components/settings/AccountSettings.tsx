@@ -57,9 +57,7 @@ export function AccountSettings() {
             <dd className="text-right">{convexUser?.name ?? "—"}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">
-              {isEs ? "Plan" : "Plan"}
-            </dt>
+            <dt className="text-muted-foreground">{isEs ? "Plan" : "Plan"}</dt>
             <dd className="text-right capitalize">
               {convexUser?.plan ?? "free"}
             </dd>
@@ -69,9 +67,7 @@ export function AccountSettings() {
 
       {/* Legal links section */}
       <section className="mt-6 rounded-2xl border border-border/50 bg-card p-5">
-        <h2 className="text-base font-semibold">
-          {isEs ? "Legal" : "Legal"}
-        </h2>
+        <h2 className="text-base font-semibold">{isEs ? "Legal" : "Legal"}</h2>
         <div className="mt-3 flex flex-col gap-2 text-sm">
           <a
             href="/privacy"

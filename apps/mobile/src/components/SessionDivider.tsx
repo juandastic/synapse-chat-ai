@@ -39,7 +39,7 @@ export function SessionDivider({ timestamp }: SessionDividerProps) {
           color: colors.inkMuted,
         },
       }),
-    [colors]
+    [colors],
   );
 
   return (

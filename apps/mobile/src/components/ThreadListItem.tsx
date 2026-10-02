@@ -1,11 +1,18 @@
 import { getRelativeTime } from "../lib/format";
 import { memo, useCallback, useMemo, useRef } from "react";
-import { View, Text, StyleSheet, Pressable, Animated, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Animated,
+  Alert,
+} from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
+import { impactFeedback } from "../lib/haptics";
 
 import { useColors } from "../contexts/ThemeContext";
 import { PersonaIcon } from "./PersonaIcon";
@@ -39,7 +46,7 @@ export const ThreadListItem = memo(function ThreadListItem({
 
   const handleDelete = useCallback(() => {
     swipeableRef.current?.close();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    impactFeedback("medium");
     Alert.alert(
       t("deleteThreadTitle", { title }),
       t("deleteThreadDescription"),
@@ -50,7 +57,7 @@ export const ThreadListItem = memo(function ThreadListItem({
           style: "destructive",
           onPress: () => onDelete(threadId, title),
         },
-      ]
+      ],
     );
   }, [threadId, title, onDelete, t]);
 
@@ -88,11 +95,14 @@ export const ThreadListItem = memo(function ThreadListItem({
           width: 72,
         },
       }),
-    [colors]
+    [colors],
   );
 
   const renderRightActions = useCallback(
-    (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    (
+      _progress: Animated.AnimatedInterpolation<number>,
+      dragX: Animated.AnimatedInterpolation<number>,
+    ) => {
       const scale = dragX.interpolate({
         inputRange: [-80, 0],
         outputRange: [1, 0.5],
@@ -106,7 +116,7 @@ export const ThreadListItem = memo(function ThreadListItem({
         </Pressable>
       );
     },
-    [handleDelete, s, colors]
+    [handleDelete, s, colors],
   );
 
   return (
@@ -125,9 +135,7 @@ export const ThreadListItem = memo(function ThreadListItem({
           <Text style={s.title} numberOfLines={1}>
             {title}
           </Text>
-          <Text style={s.time}>
-            {getRelativeTime(lastMessageAt, t)}
-          </Text>
+          <Text style={s.time}>{getRelativeTime(lastMessageAt, t)}</Text>
         </View>
       </Pressable>
     </Swipeable>

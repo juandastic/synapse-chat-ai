@@ -26,16 +26,40 @@
   },
   "conversations": {
     "regular": [
-      { "role": "user", "text": "Tuve un día terrible. Todo se siente abrumador otra vez." },
-      { "role": "ai", "text": "Lamento escuchar eso. ¿Has intentado respirar profundo o salir a caminar? A veces un cambio de escenario ayuda." },
-      { "role": "user", "text": "Te dije la semana pasada que esto sigue pasando después de reuniones con mi jefe..." },
-      { "role": "ai", "text": "No tengo contexto de conversaciones anteriores. ¿Puedes contarme más sobre lo que pasa con tu jefe?" }
+      {
+        "role": "user",
+        "text": "Tuve un día terrible. Todo se siente abrumador otra vez."
+      },
+      {
+        "role": "ai",
+        "text": "Lamento escuchar eso. ¿Has intentado respirar profundo o salir a caminar? A veces un cambio de escenario ayuda."
+      },
+      {
+        "role": "user",
+        "text": "Te dije la semana pasada que esto sigue pasando después de reuniones con mi jefe..."
+      },
+      {
+        "role": "ai",
+        "text": "No tengo contexto de conversaciones anteriores. ¿Puedes contarme más sobre lo que pasa con tu jefe?"
+      }
     ],
     "synapse": [
-      { "role": "user", "text": "Tuve un día terrible. Todo se siente abrumador otra vez." },
-      { "role": "ai", "text": "Te escucho. Las últimas tres veces que describiste esta sensación de 'todo se derrumba,' fue después de interacciones tensas con David. ¿Pasó algo en la reunión de hoy?" },
-      { "role": "user", "text": "Sí. Descartó mi propuesta frente a todos. Otra vez." },
-      { "role": "ai", "text": "Ese patrón de descarte público ha sido un detonante consistente para ti — se conecta con las dinámicas de autoridad que hemos explorado antes. La última vez, el escaneo corporal te ayudó a pasar del bloqueo de vuelta a tu ventana. ¿Quieres intentar eso ahora, o necesitas primero estar enojado/a?" }
+      {
+        "role": "user",
+        "text": "Tuve un día terrible. Todo se siente abrumador otra vez."
+      },
+      {
+        "role": "ai",
+        "text": "Te escucho. Las últimas tres veces que describiste esta sensación de 'todo se derrumba,' fue después de interacciones tensas con David. ¿Pasó algo en la reunión de hoy?"
+      },
+      {
+        "role": "user",
+        "text": "Sí. Descartó mi propuesta frente a todos. Otra vez."
+      },
+      {
+        "role": "ai",
+        "text": "Ese patrón de descarte público ha sido un detonante consistente para ti — se conecta con las dinámicas de autoridad que hemos explorado antes. La última vez, el escaneo corporal te ayudó a pasar del bloqueo de vuelta a tu ventana. ¿Quieres intentar eso ahora, o necesitas primero estar enojado/a?"
+      }
     ]
   },
   "pipeline": {
@@ -44,10 +68,22 @@
     "description": "Cuatro pasos de conversación a conocimiento estructurado.",
     "step": "Paso {{number}}",
     "steps": [
-      { "title": "Conversa", "desc": "Habla sobre tu día, tus metas, tus preocupaciones. Cada sesión se captura automáticamente." },
-      { "title": "Ingesta", "desc": "Las sesiones se procesan a través de Graphiti, extrayendo entidades y relaciones en Neo4j." },
-      { "title": "Compila", "desc": "Tu grafo de conocimiento se compila e inyecta en futuras sesiones como contexto estructurado." },
-      { "title": "Evoluciona", "desc": "Cada conversación refina el grafo. Mientras más hables, mejor se vuelve." }
+      {
+        "title": "Conversa",
+        "desc": "Habla sobre tu día, tus metas, tus preocupaciones. Cada sesión se captura automáticamente."
+      },
+      {
+        "title": "Ingesta",
+        "desc": "Las sesiones se procesan a través de Graphiti, extrayendo entidades y relaciones en Neo4j."
+      },
+      {
+        "title": "Compila",
+        "desc": "Tu grafo de conocimiento se compila e inyecta en futuras sesiones como contexto estructurado."
+      },
+      {
+        "title": "Evoluciona",
+        "desc": "Cada conversación refina el grafo. Mientras más hables, mejor se vuelve."
+      }
     ]
   },
   "personas": {
@@ -62,10 +98,22 @@
         "detail": {
           "subtitle": "Compañero terapéutico — neuroafirmativo por defecto",
           "theories": [
-            { "name": "Terapia de Aceptación y Compromiso (ACT)", "desc": "Construye flexibilidad psicológica a través de la clarificación de valores, defusión cognitiva y disposición a estar con emociones difíciles en lugar de evitarlas." },
-            { "name": "Terapia Dialéctico Conductual (DBT)", "desc": "Enseña tolerancia al malestar, regulación emocional, efectividad interpersonal y mindfulness — habilidades para navegar la intensidad sin apagarte." },
-            { "name": "Teoría Polivagal", "desc": "Lee los estados de tu sistema nervioso — seguridad/conexión, lucha/huida o bloqueo — y te ayuda a moverte entre ellos sin patologizar ninguna respuesta." },
-            { "name": "Somatic Experiencing", "desc": "Trae conciencia a dónde viven las emociones en tu cuerpo. \"¿Dónde notas eso?\" no es un cliché — es una puerta hacia la regulación." }
+            {
+              "name": "Terapia de Aceptación y Compromiso (ACT)",
+              "desc": "Construye flexibilidad psicológica a través de la clarificación de valores, defusión cognitiva y disposición a estar con emociones difíciles en lugar de evitarlas."
+            },
+            {
+              "name": "Terapia Dialéctico Conductual (DBT)",
+              "desc": "Enseña tolerancia al malestar, regulación emocional, efectividad interpersonal y mindfulness — habilidades para navegar la intensidad sin apagarte."
+            },
+            {
+              "name": "Teoría Polivagal",
+              "desc": "Lee los estados de tu sistema nervioso — seguridad/conexión, lucha/huida o bloqueo — y te ayuda a moverte entre ellos sin patologizar ninguna respuesta."
+            },
+            {
+              "name": "Somatic Experiencing",
+              "desc": "Trae conciencia a dónde viven las emociones en tu cuerpo. \"¿Dónde notas eso?\" no es un cliché — es una puerta hacia la regulación."
+            }
           ],
           "useCases": [
             "Procesar ansiedad, duelo o rabia recurrente con alguien que recuerda el patrón completo",
@@ -84,9 +132,18 @@
         "detail": {
           "subtitle": "Compañero de bienestar — reflexivo, no prescriptivo",
           "theories": [
-            { "name": "Modelo PERMA (Seligman)", "desc": "Explora cinco pilares del florecimiento: emociones Positivas, Engagement (compromiso), Relaciones, Significado y Logro — un mapa de lo que hace que la vida se sienta plena." },
-            { "name": "Autocompasión (Kristin Neff)", "desc": "Practica tres componentes: humanidad compartida (no estás solo/a en esto), mindfulness (notar sin ahogarse) y amabilidad hacia uno mismo (tratarte como tratarías a un amigo)." },
-            { "name": "Reducción de Estrés Basada en Mindfulness (MBSR)", "desc": "Conciencia del momento presente, no-juicio y mente de principiante — convirtiendo la atención en una habilidad, no en una obligación." }
+            {
+              "name": "Modelo PERMA (Seligman)",
+              "desc": "Explora cinco pilares del florecimiento: emociones Positivas, Engagement (compromiso), Relaciones, Significado y Logro — un mapa de lo que hace que la vida se sienta plena."
+            },
+            {
+              "name": "Autocompasión (Kristin Neff)",
+              "desc": "Practica tres componentes: humanidad compartida (no estás solo/a en esto), mindfulness (notar sin ahogarse) y amabilidad hacia uno mismo (tratarte como tratarías a un amigo)."
+            },
+            {
+              "name": "Reducción de Estrés Basada en Mindfulness (MBSR)",
+              "desc": "Conciencia del momento presente, no-juicio y mente de principiante — convirtiendo la atención en una habilidad, no en una obligación."
+            }
           ],
           "useCases": [
             "Check-ins emocionales diarios sin la presión de \"hacer terapia\"",
@@ -105,10 +162,22 @@
         "detail": {
           "subtitle": "Coach de crecimiento — directo, honesto, orientado a la acción",
           "theories": [
-            { "name": "Entrevista Motivacional (Miller y Rollnick)", "desc": "Evoca tu propia motivación en lugar de imponer presión externa. Explora la ambivalencia sin juzgar — porque empujar más fuerte no funciona cuando la resistencia es interna." },
-            { "name": "Intenciones de Implementación (Gollwitzer)", "desc": "Cierra la brecha entre querer y hacer con \"Cuando [situación], voy a [comportamiento]\" — convirtiendo intenciones vagas en respuestas automáticas." },
-            { "name": "Activación Conductual", "desc": "Cuando la motivación es baja, empieza con acciones de bajo esfuerzo y alto valor para generar impulso. El movimiento crea motivación, no al revés." },
-            { "name": "Metas SMART", "desc": "Específicas, Medibles, Alcanzables, Relevantes, con Tiempo definido — un marco que convierte \"quiero mejorar\" en algo que puedes rastrear y lograr." }
+            {
+              "name": "Entrevista Motivacional (Miller y Rollnick)",
+              "desc": "Evoca tu propia motivación en lugar de imponer presión externa. Explora la ambivalencia sin juzgar — porque empujar más fuerte no funciona cuando la resistencia es interna."
+            },
+            {
+              "name": "Intenciones de Implementación (Gollwitzer)",
+              "desc": "Cierra la brecha entre querer y hacer con \"Cuando [situación], voy a [comportamiento]\" — convirtiendo intenciones vagas en respuestas automáticas."
+            },
+            {
+              "name": "Activación Conductual",
+              "desc": "Cuando la motivación es baja, empieza con acciones de bajo esfuerzo y alto valor para generar impulso. El movimiento crea motivación, no al revés."
+            },
+            {
+              "name": "Metas SMART",
+              "desc": "Específicas, Medibles, Alcanzables, Relevantes, con Tiempo definido — un marco que convierte \"quiero mejorar\" en algo que puedes rastrear y lograr."
+            }
           ],
           "useCases": [
             "Establecer y rastrear metas con alguien que recuerda tus compromisos entre sesiones",
@@ -133,10 +202,22 @@
     "title": "Ves todo lo que sabe",
     "description": "El Explorador de Memoria muestra tu grafo de conocimiento completo. Inspecciónalo, corrígelo o elimina de él. Siempre tienes el control.",
     "features": [
-      { "title": "Explora tu grafo", "desc": "Visualización interactiva de cada entidad y relación en tu grafo." },
-      { "title": "Corrige en lenguaje natural", "desc": "\"Dejé TechCorp.\" El grafo se actualiza. Sin formularios, sin menús." },
-      { "title": "Completamente open source", "desc": "Todo el código es público. Ve cómo funciona, haz un fork, contribuye." },
-      { "title": "Exportar a Notion", "desc": "Sincroniza tu grafo con Notion. Revisa sin conexión. Envía correcciones de vuelta." }
+      {
+        "title": "Explora tu grafo",
+        "desc": "Visualización interactiva de cada entidad y relación en tu grafo."
+      },
+      {
+        "title": "Corrige en lenguaje natural",
+        "desc": "\"Dejé TechCorp.\" El grafo se actualiza. Sin formularios, sin menús."
+      },
+      {
+        "title": "Completamente open source",
+        "desc": "Todo el código es público. Ve cómo funciona, haz un fork, contribuye."
+      },
+      {
+        "title": "Exportar a Notion",
+        "desc": "Sincroniza tu grafo con Notion. Revisa sin conexión. Envía correcciones de vuelta."
+      }
     ]
   },
   "pricing": {

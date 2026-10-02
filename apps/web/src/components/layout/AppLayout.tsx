@@ -53,16 +53,20 @@ export function AppLayout() {
   const convexUser = useQuery(api.users.me);
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
   const confirmTerms = useMutation(api.users.confirmTerms);
+  const userId = convexUser?._id;
+  const name = convexUser?.name;
+  const email = user?.primaryEmailAddress?.emailAddress;
+  const plan = usageStatus?.plan ?? "free";
 
   useEffect(() => {
-    if (convexUser && user) {
-      posthog.identify(convexUser._id, {
-        email: user.primaryEmailAddress?.emailAddress,
-        name: convexUser.name,
+    if (userId && user) {
+      posthog.identify(userId, {
+        email,
+        name,
       });
-      posthog.setPersonProperties({ plan: usageStatus?.plan ?? "free" });
+      posthog.setPersonProperties({ plan });
     }
-  }, [convexUser?._id, usageStatus?.plan]);
+  }, [userId, name, email, user, plan]);
 
   // Fire-and-forget on mount. Backend is idempotent (early-returns if the
   // flag is already set). We deliberately don't subscribe to the user doc for
@@ -78,71 +82,78 @@ export function AppLayout() {
       {isDemoUser && <DemoBanner />}
       <MemoryIntroToast />
       <div className="flex min-h-0 flex-1">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm md:hidden"
-          onClick={closeSidebar}
-          onKeyDown={(e) => e.key === "Escape" && closeSidebar()}
-          role="presentation"
-          aria-hidden="true"
-          tabIndex={-1}
-        />
-      )}
+        {/* Mobile overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm md:hidden"
+            onClick={closeSidebar}
+            onKeyDown={(e) => e.key === "Escape" && closeSidebar()}
+            role="presentation"
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+        )}
 
-      {/* Sidebar */}
-      <aside
-        className={`
+        {/* Sidebar */}
+        <aside
+          className={`
           fixed inset-y-0 left-0 z-40 w-72 shrink-0 transform border-r border-border/50 bg-card transition-transform duration-200 ease-in-out
           md:relative md:translate-x-0
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         `}
-      >
-        <Sidebar onCloseMobile={closeSidebar} isDemoUser={isDemoUser} />
-      </aside>
+        >
+          <Sidebar onCloseMobile={closeSidebar} isDemoUser={isDemoUser} />
+        </aside>
 
-      {/* Main content area */}
-      <main className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile header with hamburger */}
-        <div className="flex h-12 shrink-0 items-center border-b border-border/50 px-4 md:hidden">
-          <button
-            onClick={toggleSidebar}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label={ts("toggleSidebar")}
-            aria-expanded={sidebarOpen}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
+        {/* Main content area */}
+        <main className="flex min-w-0 flex-1 flex-col">
+          {/* Mobile header with hamburger */}
+          <div className="flex h-12 shrink-0 items-center border-b border-border/50 px-4 md:hidden">
+            <button
+              onClick={toggleSidebar}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label={ts("toggleSidebar")}
+              aria-expanded={sidebarOpen}
             >
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-          <Link to="/" className="ml-3 flex-1 font-display text-sm font-medium tracking-tight hover:text-foreground transition-colors">
-            Synapse
-          </Link>
-          <button
-            onClick={toggleTheme}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label={theme === "dark" ? tc("switchToLightMode") : tc("switchToDarkMode")}
-          >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
-          </button>
-        </div>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <Link
+              to="/"
+              className="ml-3 flex-1 font-display text-sm font-medium tracking-tight hover:text-foreground transition-colors"
+            >
+              Synapse
+            </Link>
+            <button
+              onClick={toggleTheme}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label={
+                theme === "dark"
+                  ? tc("switchToLightMode")
+                  : tc("switchToDarkMode")
+              }
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </button>
+          </div>
 
-        <Outlet context={isDemoUser} />
-      </main>
+          <Outlet context={isDemoUser} />
+        </main>
       </div>
     </div>
   );

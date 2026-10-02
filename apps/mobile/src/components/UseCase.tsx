@@ -25,7 +25,7 @@ export function UseCase({ text }: { text: string }) {
           color: colors.inkMuted,
         },
       }),
-    [colors]
+    [colors],
   );
 
   return (

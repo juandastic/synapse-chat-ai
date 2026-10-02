@@ -26,10 +26,7 @@ export function useStreamResponse() {
   const { getToken } = useAuth();
 
   return useCallback(
-    async (
-      assistantMessageId: Id<"messages">,
-      sessionId: Id<"sessions">
-    ) => {
+    async (assistantMessageId: Id<"messages">, sessionId: Id<"sessions">) => {
       try {
         const token = await getToken({ template: "convex" });
 
@@ -86,18 +83,21 @@ export function useStreamResponse() {
               sessionId,
               threadId,
               assistantMessageId,
-            })
+            }),
           );
         });
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Stream failed. Please try again.";
+          err instanceof Error
+            ? err.message
+            : "Stream failed. Please try again.";
         console.error("[useStreamResponse] Stream failed:", err);
         captureError(err, { source: "stream_response", thread_id: threadId });
 
         stopStreaming();
 
-        const isNetworkError = message === "Network error" || message === "Request timed out";
+        const isNetworkError =
+          message === "Network error" || message === "Request timed out";
         if (!isNetworkError) {
           Alert.alert("Error", message);
           try {
@@ -109,12 +109,18 @@ export function useStreamResponse() {
           } catch (reportErr) {
             console.error(
               "[useStreamResponse] Failed to report stream failure:",
-              reportErr
+              reportErr,
             );
           }
         }
       }
     },
-    [getToken, threadId, updateStreamedContent, stopStreaming, reportStreamFailure]
+    [
+      getToken,
+      threadId,
+      updateStreamedContent,
+      stopStreaming,
+      reportStreamFailure,
+    ],
   );
 }

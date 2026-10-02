@@ -24,7 +24,7 @@ export function useImagePicker() {
     if (status !== "granted") {
       Alert.alert(
         "Permission required",
-        "Please allow access to your photo library to attach images."
+        "Please allow access to your photo library to attach images.",
       );
       return;
     }
@@ -41,7 +41,10 @@ export function useImagePicker() {
     const newImages: PickedImage[] = [];
     for (const asset of result.assets) {
       if (asset.fileSize && asset.fileSize > MAX_FILE_SIZE) {
-        Alert.alert("File too large", `${asset.fileName ?? "Image"} exceeds 10MB limit`);
+        Alert.alert(
+          "File too large",
+          `${asset.fileName ?? "Image"} exceeds 10MB limit`,
+        );
         continue;
       }
       newImages.push({
@@ -66,5 +69,12 @@ export function useImagePicker() {
     setImages([]);
   }, []);
 
-  return { images, pickImages, removeImage, clearImages, restoreImages: setImages, maxImages: MAX_IMAGES };
+  return {
+    images,
+    pickImages,
+    removeImage,
+    clearImages,
+    restoreImages: setImages,
+    maxImages: MAX_IMAGES,
+  };
 }

@@ -8,7 +8,7 @@ import { useChatContext } from "@/contexts/useChatContext";
 
 const CONVEX_SITE_URL = import.meta.env.VITE_CONVEX_URL.replace(
   ".cloud",
-  ".site"
+  ".site",
 );
 
 export function useStreamResponse() {
@@ -17,10 +17,7 @@ export function useStreamResponse() {
   const { getToken } = useAuth();
 
   return useCallback(
-    async (
-      assistantMessageId: Id<"messages">,
-      sessionId: Id<"sessions">
-    ) => {
+    async (assistantMessageId: Id<"messages">, sessionId: Id<"sessions">) => {
       try {
         const token = await getToken({ template: "convex" });
         const response = await fetch(`${CONVEX_SITE_URL}/chat`, {
@@ -39,9 +36,7 @@ export function useStreamResponse() {
         if (!response.ok) {
           if (response.status === 429) {
             const data = await response.json().catch(() => ({}));
-            throw new Error(
-              data.error || "Usage limit reached"
-            );
+            throw new Error(data.error || "Usage limit reached");
           }
           throw new Error(`HTTP ${response.status}`);
         }
@@ -66,12 +61,15 @@ export function useStreamResponse() {
         }
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Stream failed. Please try again.";
+          err instanceof Error
+            ? err.message
+            : "Stream failed. Please try again.";
         console.error("[useStreamResponse] Stream failed:", err);
 
         stopStreaming();
 
-        const isNetworkError = message === "Failed to fetch" || message === "Load failed";
+        const isNetworkError =
+          message === "Failed to fetch" || message === "Load failed";
         if (!isNetworkError) {
           toast.error(message);
           try {
@@ -83,12 +81,18 @@ export function useStreamResponse() {
           } catch (reportErr) {
             console.error(
               "[useStreamResponse] Failed to report stream failure:",
-              reportErr
+              reportErr,
             );
           }
         }
       }
     },
-    [getToken, threadId, updateStreamedContent, stopStreaming, reportStreamFailure]
+    [
+      getToken,
+      threadId,
+      updateStreamedContent,
+      stopStreaming,
+      reportStreamFailure,
+    ],
   );
 }

@@ -64,7 +64,7 @@ export function PersonaSettings() {
       });
       setView({ mode: "list" });
     },
-    [createPersona]
+    [createPersona],
   );
 
   const handleUpdate = useCallback(
@@ -86,7 +86,7 @@ export function PersonaSettings() {
       });
       setView({ mode: "list" });
     },
-    [updatePersona, view]
+    [updatePersona, view],
   );
 
   /** Open the confirm dialog before deleting */
@@ -94,7 +94,7 @@ export function PersonaSettings() {
     (personaId: Id<"personas">, personaName: string) => {
       setDeleteDialog({ type: "confirm", personaId, personaName });
     },
-    []
+    [],
   );
 
   /** Actually execute the deletion after confirmation */
@@ -120,7 +120,7 @@ export function PersonaSettings() {
         }
       }
     });
-  }, [deleteDialog, removePersona]);
+  }, [deleteDialog, removePersona, t]);
 
   // Show create/edit form
   if (view.mode === "create") {
@@ -162,13 +162,16 @@ export function PersonaSettings() {
 
   // List view
   return (
-    <SettingsShell title={t("personaSettings.title")} onBack={() => navigate("/")}>
+    <SettingsShell
+      title={t("personaSettings.title")}
+      onBack={() => navigate("/")}
+    >
       {/* Create button */}
       <button
         onClick={() => setView({ mode: "create" })}
         className={cn(
           "mb-6 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/50 px-4 py-3 text-sm font-medium text-muted-foreground transition-all",
-          "hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+          "hover:border-primary/30 hover:bg-primary/5 hover:text-primary",
         )}
       >
         <Plus className="h-4 w-4" />
@@ -228,18 +231,20 @@ export function PersonaSettings() {
                     setView({ mode: "edit", personaId: persona._id })
                   }
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  aria-label={t("personaSettings.editAriaLabel", { name: persona.name })}
+                  aria-label={t("personaSettings.editAriaLabel", {
+                    name: persona.name,
+                  })}
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 {!isDemoUser && (
                   <button
-                    onClick={() =>
-                      handleDeleteClick(persona._id, persona.name)
-                    }
+                    onClick={() => handleDeleteClick(persona._id, persona.name)}
                     disabled={deletePending}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                    aria-label={t("personaSettings.deleteAriaLabel", { name: persona.name })}
+                    aria-label={t("personaSettings.deleteAriaLabel", {
+                      name: persona.name,
+                    })}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -256,7 +261,9 @@ export function PersonaSettings() {
         onCancel={() => setDeleteDialog({ type: "closed" })}
         title={
           deleteDialog.type === "confirm"
-            ? t("personaSettings.deleteTitle", { name: deleteDialog.personaName })
+            ? t("personaSettings.deleteTitle", {
+                name: deleteDialog.personaName,
+              })
             : ""
         }
         description={t("personaSettings.deleteDescription")}
@@ -272,9 +279,7 @@ export function PersonaSettings() {
         onConfirm={() => setDeleteDialog({ type: "closed" })}
         onCancel={() => setDeleteDialog({ type: "closed" })}
         title={t("personaSettings.cannotDelete")}
-        description={
-          deleteDialog.type === "error" ? deleteDialog.message : ""
-        }
+        description={deleteDialog.type === "error" ? deleteDialog.message : ""}
         confirmLabel={t("personaSettings.understood")}
         cancelLabel={tc("close")}
         variant="info"

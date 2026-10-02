@@ -55,65 +55,166 @@ export default function PersonasScreen() {
   const [view, setView] = useState<ViewState>({ mode: "list" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const s = useMemo(() => StyleSheet.create({
-    root: { flex: 1, backgroundColor: colors.paper },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 12,
-      paddingBottom: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.rule,
-    },
-    headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-    headerTitle: { flex: 1, fontSize: 18, fontWeight: "700", color: colors.ink, textAlign: "center" },
-    listContent: { padding: 16, gap: 12 },
-    createCard: {
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      padding: 24,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderStyle: "dashed",
-      borderColor: colors.rule,
-    },
-    cardPressed: { backgroundColor: colors.accentLight },
-    createLabel: { fontSize: 14, fontWeight: "600", color: colors.accent },
-    emptyText: { fontSize: 14, color: colors.inkMuted, textAlign: "center", marginTop: 24, lineHeight: 20, paddingHorizontal: 16 },
-    personaCard: {
-      backgroundColor: colors.card,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.rule,
-      padding: 16,
-    },
-    personaRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-    personaInfo: { flex: 1 },
-    nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-    personaName: { fontSize: 15, fontWeight: "600", color: colors.ink, flexShrink: 1 },
-    defaultBadge: { backgroundColor: colors.accentLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-    defaultBadgeText: { fontSize: 10, fontWeight: "600", color: colors.accent },
-    personaDesc: { fontSize: 13, color: colors.inkMuted, marginTop: 2 },
-    personaActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 12 },
-    actionBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.accentLight, alignItems: "center", justifyContent: "center" },
-    // Form
-    formContent: { padding: 16, gap: 4, paddingBottom: 48 },
-    formError: { fontSize: 13, color: colors.error, backgroundColor: colors.errorLight, padding: 12, borderRadius: 8, marginBottom: 8 },
-    fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.ink, marginTop: 12, marginBottom: 4 },
-    optional: { fontWeight: "400", color: colors.inkMuted },
-    textInputField: { fontSize: 15, color: colors.ink, backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.rule, paddingHorizontal: 12, paddingVertical: 10 },
-    promptInput: { minHeight: 160, textAlignVertical: "top", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 13 },
-    charCount: { fontSize: 11, color: colors.inkMuted, textAlign: "right", marginTop: 2 },
-    langRow: { marginBottom: 4 },
-    langChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.rule, marginRight: 8 },
-    langChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-    langChipText: { fontSize: 13, color: colors.inkMuted },
-    langChipTextActive: { color: colors.primaryForeground },
-    submitBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 20 },
-    submitBtnDisabled: { opacity: 0.6 },
-    submitBtnText: { fontSize: 16, fontWeight: "600", color: colors.primaryForeground },
-  }), [colors]);
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        root: { flex: 1, backgroundColor: colors.paper },
+        header: {
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 12,
+          paddingBottom: 10,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.rule,
+        },
+        headerBtn: {
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        headerTitle: {
+          flex: 1,
+          fontSize: 18,
+          fontWeight: "700",
+          color: colors.ink,
+          textAlign: "center",
+        },
+        listContent: { padding: 16, gap: 12 },
+        createCard: {
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          padding: 24,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderStyle: "dashed",
+          borderColor: colors.rule,
+        },
+        cardPressed: { backgroundColor: colors.accentLight },
+        createLabel: { fontSize: 14, fontWeight: "600", color: colors.accent },
+        emptyText: {
+          fontSize: 14,
+          color: colors.inkMuted,
+          textAlign: "center",
+          marginTop: 24,
+          lineHeight: 20,
+          paddingHorizontal: 16,
+        },
+        personaCard: {
+          backgroundColor: colors.card,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          padding: 16,
+        },
+        personaRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+        personaInfo: { flex: 1 },
+        nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+        personaName: {
+          fontSize: 15,
+          fontWeight: "600",
+          color: colors.ink,
+          flexShrink: 1,
+        },
+        defaultBadge: {
+          backgroundColor: colors.accentLight,
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderRadius: 4,
+        },
+        defaultBadgeText: {
+          fontSize: 10,
+          fontWeight: "600",
+          color: colors.accent,
+        },
+        personaDesc: { fontSize: 13, color: colors.inkMuted, marginTop: 2 },
+        personaActions: {
+          flexDirection: "row",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 12,
+        },
+        actionBtn: {
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: colors.accentLight,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        // Form
+        formContent: { padding: 16, gap: 4, paddingBottom: 48 },
+        formError: {
+          fontSize: 13,
+          color: colors.error,
+          backgroundColor: colors.errorLight,
+          padding: 12,
+          borderRadius: 8,
+          marginBottom: 8,
+        },
+        fieldLabel: {
+          fontSize: 13,
+          fontWeight: "600",
+          color: colors.ink,
+          marginTop: 12,
+          marginBottom: 4,
+        },
+        optional: { fontWeight: "400", color: colors.inkMuted },
+        textInputField: {
+          fontSize: 15,
+          color: colors.ink,
+          backgroundColor: colors.card,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+        },
+        promptInput: {
+          minHeight: 160,
+          textAlignVertical: "top",
+          fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+          fontSize: 13,
+        },
+        charCount: {
+          fontSize: 11,
+          color: colors.inkMuted,
+          textAlign: "right",
+          marginTop: 2,
+        },
+        langRow: { marginBottom: 4 },
+        langChip: {
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          marginRight: 8,
+        },
+        langChipActive: {
+          backgroundColor: colors.primary,
+          borderColor: colors.primary,
+        },
+        langChipText: { fontSize: 13, color: colors.inkMuted },
+        langChipTextActive: { color: colors.primaryForeground },
+        submitBtn: {
+          backgroundColor: colors.primary,
+          borderRadius: 12,
+          paddingVertical: 14,
+          alignItems: "center",
+          marginTop: 20,
+        },
+        submitBtnDisabled: { opacity: 0.6 },
+        submitBtnText: {
+          fontSize: 16,
+          fontWeight: "600",
+          color: colors.primaryForeground,
+        },
+      }),
+    [colors],
+  );
 
   const handleDelete = useCallback(
     (persona: Doc<"personas">) => {
@@ -123,29 +224,39 @@ export default function PersonasScreen() {
         [
           { text: t("personaSettings.understood"), style: "cancel" },
           {
-            text: t("personaSettings.deleteTitle", { name: persona.name }).replace("?", ""),
+            text: t("personaSettings.deleteTitle", {
+              name: persona.name,
+            }).replace("?", ""),
             style: "destructive",
             onPress: async () => {
               try {
                 await removePersona({ id: persona._id });
-                posthog?.capture("persona_deleted_mobile", { persona_id: persona._id });
+                posthog?.capture("persona_deleted_mobile", {
+                  persona_id: persona._id,
+                });
               } catch (err) {
                 Alert.alert(
                   t("personaSettings.cannotDelete"),
-                  t("personaSettings.personaInUse")
+                  t("personaSettings.personaInUse"),
                 );
                 captureError(err, { source: "personas", action: "delete" });
               }
             },
           },
-        ]
+        ],
       );
     },
-    [removePersona, t]
+    [removePersona, t, posthog],
   );
 
   const handleSubmit = useCallback(
-    async (data: { name: string; icon: string; language: string; description: string; systemPrompt: string }) => {
+    async (data: {
+      name: string;
+      icon: string;
+      language: string;
+      description: string;
+      systemPrompt: string;
+    }) => {
       if (isSubmitting) return;
       setIsSubmitting(true);
       try {
@@ -157,7 +268,10 @@ export default function PersonasScreen() {
             description: data.description || undefined,
             systemPrompt: data.systemPrompt,
           });
-          posthog?.capture("persona_created_mobile", { name: data.name, language: data.language });
+          posthog?.capture("persona_created_mobile", {
+            name: data.name,
+            language: data.language,
+          });
         } else if (view.mode === "edit") {
           await updatePersona({
             id: view.persona._id,
@@ -167,7 +281,9 @@ export default function PersonasScreen() {
             description: data.description || undefined,
             systemPrompt: data.systemPrompt,
           });
-          posthog?.capture("persona_edited_mobile", { persona_id: view.persona._id });
+          posthog?.capture("persona_edited_mobile", {
+            persona_id: view.persona._id,
+          });
         }
         setView({ mode: "list" });
       } catch (err) {
@@ -177,7 +293,7 @@ export default function PersonasScreen() {
         setIsSubmitting(false);
       }
     },
-    [view, isSubmitting, createPersona, updatePersona, t]
+    [view, isSubmitting, createPersona, updatePersona, t, posthog],
   );
 
   if (view.mode === "create" || view.mode === "edit") {
@@ -185,11 +301,16 @@ export default function PersonasScreen() {
     return (
       <View style={[s.root, { paddingTop: insets.top }]}>
         <View style={s.header}>
-          <Pressable style={s.headerBtn} onPress={() => setView({ mode: "list" })}>
+          <Pressable
+            style={s.headerBtn}
+            onPress={() => setView({ mode: "list" })}
+          >
             <ChevronLeft size={22} color={colors.ink} />
           </Pressable>
           <Text style={s.headerTitle}>
-            {view.mode === "create" ? t("personaSettings.createTitle") : t("personaSettings.editTitle")}
+            {view.mode === "create"
+              ? t("personaSettings.createTitle")
+              : t("personaSettings.editTitle")}
           </Text>
           <View style={s.headerBtn} />
         </View>
@@ -197,7 +318,11 @@ export default function PersonasScreen() {
           initial={initial}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
-          submitLabel={view.mode === "create" ? t("personaSettings.createButton") : t("personaSettings.saveChanges")}
+          submitLabel={
+            view.mode === "create"
+              ? t("personaSettings.createButton")
+              : t("personaSettings.saveChanges")
+          }
           s={s}
           colors={colors}
         />
@@ -245,15 +370,21 @@ export default function PersonasScreen() {
               <PersonaIcon icon={persona.icon} size="md" />
               <View style={s.personaInfo}>
                 <View style={s.nameRow}>
-                  <Text style={s.personaName} numberOfLines={1}>{persona.name}</Text>
+                  <Text style={s.personaName} numberOfLines={1}>
+                    {persona.name}
+                  </Text>
                   {persona.isDefault && (
                     <View style={s.defaultBadge}>
-                      <Text style={s.defaultBadgeText}>{t("personaSettings.default")}</Text>
+                      <Text style={s.defaultBadgeText}>
+                        {t("personaSettings.default")}
+                      </Text>
                     </View>
                   )}
                 </View>
                 {persona.description ? (
-                  <Text style={s.personaDesc} numberOfLines={2}>{persona.description}</Text>
+                  <Text style={s.personaDesc} numberOfLines={2}>
+                    {persona.description}
+                  </Text>
                 ) : null}
               </View>
             </View>
@@ -287,7 +418,13 @@ function PersonaForm({
   colors,
 }: {
   initial?: Doc<"personas">;
-  onSubmit: (data: { name: string; icon: string; language: string; description: string; systemPrompt: string }) => void;
+  onSubmit: (data: {
+    name: string;
+    icon: string;
+    language: string;
+    description: string;
+    systemPrompt: string;
+  }) => void;
   isSubmitting: boolean;
   submitLabel: string;
   s: any;
@@ -302,10 +439,22 @@ function PersonaForm({
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = () => {
-    if (!name.trim()) { setError(t("personaForm.nameRequired")); return; }
-    if (!systemPrompt.trim()) { setError(t("personaForm.promptRequired")); return; }
+    if (!name.trim()) {
+      setError(t("personaForm.nameRequired"));
+      return;
+    }
+    if (!systemPrompt.trim()) {
+      setError(t("personaForm.promptRequired"));
+      return;
+    }
     setError(null);
-    onSubmit({ name: name.trim(), icon, language, description: description.trim(), systemPrompt: systemPrompt.trim() });
+    onSubmit({
+      name: name.trim(),
+      icon,
+      language,
+      description: description.trim(),
+      systemPrompt: systemPrompt.trim(),
+    });
   };
 
   return (
@@ -313,7 +462,10 @@ function PersonaForm({
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView contentContainerStyle={s.formContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={s.formContent}
+        keyboardShouldPersistTaps="handled"
+      >
         {error && <Text style={s.formError}>{error}</Text>}
 
         {/* Icon */}
@@ -333,14 +485,23 @@ function PersonaForm({
 
         {/* Language */}
         <Text style={s.fieldLabel}>{t("personaForm.languageLabel")}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.langRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.langRow}
+        >
           {LANGUAGES.map((lang) => (
             <Pressable
               key={lang.value}
               style={[s.langChip, language === lang.value && s.langChipActive]}
               onPress={() => setLanguage(lang.value)}
             >
-              <Text style={[s.langChipText, language === lang.value && s.langChipTextActive]}>
+              <Text
+                style={[
+                  s.langChipText,
+                  language === lang.value && s.langChipTextActive,
+                ]}
+              >
                 {lang.label}
               </Text>
             </Pressable>
@@ -349,7 +510,8 @@ function PersonaForm({
 
         {/* Description */}
         <Text style={s.fieldLabel}>
-          {t("personaForm.descriptionLabel")} <Text style={s.optional}>{t("personaForm.optional")}</Text>
+          {t("personaForm.descriptionLabel")}{" "}
+          <Text style={s.optional}>{t("personaForm.optional")}</Text>
         </Text>
         <TextInput
           style={[s.textInputField, { minHeight: 60 }]}

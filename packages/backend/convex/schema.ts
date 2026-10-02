@@ -12,7 +12,9 @@ export default defineSchema({
     tokenIdentifier: v.string(),
     name: v.string(),
     /** New turns use this assignment; absent means Gemini through Vertex. */
-    chatModel: v.optional(v.union(...CHAT_MODELS.map((model) => v.literal(model.id)))),
+    chatModel: v.optional(
+      v.union(...CHAT_MODELS.map((model) => v.literal(model.id))),
+    ),
     /** Absent/false enables blind evaluation with no client model controls. */
     modelSelectorEnabled: v.optional(v.boolean()),
     /** Plan tier — undefined defaults to "free" */
@@ -153,10 +155,12 @@ export default defineSchema({
     /** undefined while still streaming */
     completedAt: v.optional(v.number()),
     /** Frozen choice for this turn; absent on historical/mobile messages. */
-    generationTarget: v.optional(v.object({
-      provider: v.union(v.literal("vertex"), v.literal("openrouter")),
-      model: v.string(),
-    })),
+    generationTarget: v.optional(
+      v.object({
+        provider: v.union(v.literal("vertex"), v.literal("openrouter")),
+        model: v.string(),
+      }),
+    ),
     /** Historical beta metadata. New messages derive prompt versions from their session. */
     generationConfig: v.optional(
       v.object({
@@ -178,7 +182,9 @@ export default defineSchema({
     metadata: v.optional(
       v.object({
         model: v.optional(v.string()),
-        provider: v.optional(v.union(v.literal("vertex"), v.literal("openrouter"))),
+        provider: v.optional(
+          v.union(v.literal("vertex"), v.literal("openrouter")),
+        ),
         promptTokens: v.optional(v.number()),
         completionTokens: v.optional(v.number()),
         totalTokens: v.optional(v.number()),

@@ -35,18 +35,21 @@ interface DayStats {
 
 async function getDayStats(
   ctx: QueryCtx | MutationCtx,
-  userId: Doc<"users">["_id"]
+  userId: Doc<"users">["_id"],
 ): Promise<DayStats> {
   const { month, day } = getTodayKey();
 
   const usage = await ctx.db
     .query("monthly_usage")
-    .withIndex("by_user_month", (q) => q.eq("userId", userId).eq("month", month))
+    .withIndex("by_user_month", (q) =>
+      q.eq("userId", userId).eq("month", month),
+    )
     .unique();
 
   if (!usage) return {};
 
-  const dailyStats = usage.dailyStats as Record<string, Record<string, number>> | undefined;
+  const dailyStats = usage.dailyStats as
+    Record<string, Record<string, number>> | undefined;
   const daySlot = dailyStats?.[day];
   if (!daySlot) return {};
 
@@ -74,7 +77,7 @@ function buildLimitMessage(used: number, limit: number): string {
  */
 export async function checkDailyUsage(
   ctx: QueryCtx | MutationCtx,
-  user: Doc<"users">
+  user: Doc<"users">,
 ): Promise<UsageCheckResult> {
   const plan = resolveUserPlan(user);
   const limits = PLAN_LIMITS[plan];

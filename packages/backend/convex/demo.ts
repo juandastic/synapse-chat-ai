@@ -126,7 +126,7 @@ export const seedDemoData = internalMutation({
       const jobs = await ctx.db
         .query("cortex_jobs")
         .withIndex("by_user_status", (q) =>
-          q.eq("userId", userId).eq("status", status)
+          q.eq("userId", userId).eq("status", status),
         )
         .collect();
       for (const job of jobs) {
@@ -139,7 +139,7 @@ export const seedDemoData = internalMutation({
     // -------------------------------------------------------------------------
     const personaMap = new Map<string, Id<"personas">>();
     const personaSeedMap = new Map(
-      SEED_DATA.personas.map((persona) => [persona.localId, persona])
+      SEED_DATA.personas.map((persona) => [persona.localId, persona]),
     );
     for (const p of SEED_DATA.personas) {
       const id = await ctx.db.insert("personas", {

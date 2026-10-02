@@ -18,7 +18,9 @@ export function PricingCard({
   onCtaClick: () => void;
 }) {
   const { t } = useTranslation("landing");
-  const features = t(`pricing.${plan}.features`, { returnObjects: true }) as string[];
+  const features = t(`pricing.${plan}.features`, {
+    returnObjects: true,
+  }) as string[];
   const Icon = PRICING_ICONS[iconIndex];
 
   return (

@@ -31,7 +31,7 @@ export function IconBadge({ icon: Icon }: { icon: LucideIcon }) {
           marginBottom: 20,
         },
       }),
-    [colors]
+    [colors],
   );
 
   return (

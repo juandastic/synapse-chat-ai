@@ -15,10 +15,22 @@
     "title": "Memory engineering,\nnot memorization",
     "description": "Four steps from conversation to structured knowledge.",
     "steps": [
-      { "title": "Converse", "desc": "Talk about your day, your goals, your worries. Every session is captured." },
-      { "title": "Ingest", "desc": "Entities and relationships are extracted into a knowledge graph." },
-      { "title": "Compile", "desc": "Your graph is injected into future sessions as structured context." },
-      { "title": "Evolve", "desc": "Each conversation refines the graph. The more you talk, the better it gets." }
+      {
+        "title": "Converse",
+        "desc": "Talk about your day, your goals, your worries. Every session is captured."
+      },
+      {
+        "title": "Ingest",
+        "desc": "Entities and relationships are extracted into a knowledge graph."
+      },
+      {
+        "title": "Compile",
+        "desc": "Your graph is injected into future sessions as structured context."
+      },
+      {
+        "title": "Evolve",
+        "desc": "Each conversation refines the graph. The more you talk, the better it gets."
+      }
     ]
   },
   "personas": {
@@ -48,7 +60,12 @@
       "name": "Momentum",
       "subtitle": "Growth coach — direct, honest, action-oriented",
       "approach": "Holds you accountable to your goals — and knows what actually derails you. Direct and clear, no fluff. Respects that rest is a strategy, not a failure.",
-      "theories": ["Motivational Interviewing", "Implementation Intentions", "Behavioral Activation", "SMART Goals"],
+      "theories": [
+        "Motivational Interviewing",
+        "Implementation Intentions",
+        "Behavioral Activation",
+        "SMART Goals"
+      ],
       "useCases": [
         "Setting and tracking goals with someone who remembers your commitments",
         "Breaking through procrastination by identifying your specific triggers",

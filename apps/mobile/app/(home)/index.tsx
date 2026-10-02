@@ -18,7 +18,7 @@ import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
 import { Menu, ChevronRight } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
+import { impactFeedback } from "../../src/lib/haptics";
 import { captureError } from "../../src/lib/analytics";
 
 import { useColors } from "../../src/contexts/ThemeContext";
@@ -27,15 +27,45 @@ import { MemoryPulse } from "../../src/components/MemoryPulse";
 import { MemoryIntroBanner } from "../../src/components/MemoryIntroBanner";
 
 const TEMPLATES_EN = [
-  { key: "therapist-en", icon: "compass", nameKey: "personaTemplates.therapist.name", descKey: "personaTemplates.therapist.description" },
-  { key: "wellbeing-en", icon: "leaf", nameKey: "personaTemplates.wellbeing.name", descKey: "personaTemplates.wellbeing.description" },
-  { key: "coach-en", icon: "zap", nameKey: "personaTemplates.coach.name", descKey: "personaTemplates.coach.description" },
+  {
+    key: "therapist-en",
+    icon: "compass",
+    nameKey: "personaTemplates.therapist.name",
+    descKey: "personaTemplates.therapist.description",
+  },
+  {
+    key: "wellbeing-en",
+    icon: "leaf",
+    nameKey: "personaTemplates.wellbeing.name",
+    descKey: "personaTemplates.wellbeing.description",
+  },
+  {
+    key: "coach-en",
+    icon: "zap",
+    nameKey: "personaTemplates.coach.name",
+    descKey: "personaTemplates.coach.description",
+  },
 ] as const;
 
 const TEMPLATES_ES = [
-  { key: "therapist-es", icon: "compass", nameKey: "personaTemplates.therapist.name", descKey: "personaTemplates.therapist.description" },
-  { key: "wellbeing-es", icon: "leaf", nameKey: "personaTemplates.wellbeing.name", descKey: "personaTemplates.wellbeing.description" },
-  { key: "coach-es", icon: "zap", nameKey: "personaTemplates.coach.name", descKey: "personaTemplates.coach.description" },
+  {
+    key: "therapist-es",
+    icon: "compass",
+    nameKey: "personaTemplates.therapist.name",
+    descKey: "personaTemplates.therapist.description",
+  },
+  {
+    key: "wellbeing-es",
+    icon: "leaf",
+    nameKey: "personaTemplates.wellbeing.name",
+    descKey: "personaTemplates.wellbeing.description",
+  },
+  {
+    key: "coach-es",
+    icon: "zap",
+    nameKey: "personaTemplates.coach.name",
+    descKey: "personaTemplates.coach.description",
+  },
 ] as const;
 
 export default function PersonaSelectorScreen() {
@@ -50,11 +80,14 @@ export default function PersonaSelectorScreen() {
   const recentThreads = useMemo(() => {
     if (!rawThreads || rawThreads.length === 0) return null;
     const personaMap = new Map(
-      (personas ?? []).map((p) => [p._id, { name: p.name, icon: p.icon }])
+      (personas ?? []).map((p) => [p._id, { name: p.name, icon: p.icon }]),
     );
     return rawThreads.slice(0, 3).map((thread) => ({
       ...thread,
-      persona: personaMap.get(thread.personaId) ?? { name: "Unknown", icon: "❓" },
+      persona: personaMap.get(thread.personaId) ?? {
+        name: "Unknown",
+        icon: "❓",
+      },
     }));
   }, [rawThreads, personas]);
   const createFromTemplate = useMutation(api.personas.createFromTemplate);
@@ -70,8 +103,20 @@ export default function PersonaSelectorScreen() {
 
   // Build a unified list: custom personas + un-adopted templates (same visual)
   type GridItem =
-    | { kind: "persona"; id: string; icon: string; name: string; description?: string }
-    | { kind: "template"; key: string; icon: string; name: string; description: string };
+    | {
+        kind: "persona";
+        id: string;
+        icon: string;
+        name: string;
+        description?: string;
+      }
+    | {
+        kind: "template";
+        key: string;
+        icon: string;
+        name: string;
+        description: string;
+      };
 
   const gridItems = useMemo<GridItem[]>(() => {
     if (!personas) return [];
@@ -102,133 +147,144 @@ export default function PersonaSelectorScreen() {
     return items;
   }, [personas, allTemplates, t]);
 
-  const s = useMemo(() => StyleSheet.create({
-    root: {
-      flex: 1,
-      backgroundColor: colors.paper,
-    },
-    header: {
-      paddingHorizontal: 12,
-      paddingBottom: 4,
-    },
-    menuButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    scrollContent: {
-      paddingHorizontal: 16,
-      paddingBottom: 32,
-    },
-    listHeader: {
-      alignItems: "center",
-      marginBottom: 24,
-      paddingTop: 16,
-    },
-    logoCircle: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: colors.accentLight,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 16,
-    },
-    logoText: {
-      fontSize: 28,
-      fontWeight: "700",
-      color: colors.accent,
-    },
-    title: {
-      fontSize: 22,
-      fontWeight: "700",
-      color: colors.ink,
-      textAlign: "center",
-      letterSpacing: -0.3,
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 14,
-      color: colors.inkMuted,
-      textAlign: "center",
-      lineHeight: 20,
-      paddingHorizontal: 16,
-    },
-    grid: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 12,
-    },
-    card: {
-      width: "48%",
-      flexGrow: 1,
-      alignItems: "center",
-      backgroundColor: colors.card,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.rule,
-      padding: 20,
-      gap: 8,
-    },
-    // cardTemplate removed — unified grid, no visual distinction
-    cardPressed: {
-      backgroundColor: colors.accentLight,
-      transform: [{ scale: 0.97 }],
-    },
-    cardName: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: colors.ink,
-      textAlign: "center",
-    },
-    cardDesc: {
-      fontSize: 12,
-      color: colors.inkMuted,
-      textAlign: "center",
-      lineHeight: 16,
-    },
-    // divider styles removed — unified grid
-    pendingRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      paddingTop: 24,
-    },
-    pendingText: {
-      fontSize: 14,
-      color: colors.inkMuted,
-    },
-    skeletonCard: {
-      width: "48%",
-      flexGrow: 1,
-      height: 140,
-      borderRadius: 16,
-      backgroundColor: colors.accentLight,
-    },
-  }), [colors]);
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
+          flex: 1,
+          backgroundColor: colors.paper,
+        },
+        header: {
+          paddingHorizontal: 12,
+          paddingBottom: 4,
+        },
+        menuButton: {
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        scrollContent: {
+          paddingHorizontal: 16,
+          paddingBottom: 32,
+        },
+        listHeader: {
+          alignItems: "center",
+          marginBottom: 24,
+          paddingTop: 16,
+        },
+        logoCircle: {
+          width: 64,
+          height: 64,
+          borderRadius: 32,
+          backgroundColor: colors.accentLight,
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 16,
+        },
+        logoText: {
+          fontSize: 28,
+          fontWeight: "700",
+          color: colors.accent,
+        },
+        title: {
+          fontSize: 22,
+          fontWeight: "700",
+          color: colors.ink,
+          textAlign: "center",
+          letterSpacing: -0.3,
+          marginBottom: 8,
+        },
+        subtitle: {
+          fontSize: 14,
+          color: colors.inkMuted,
+          textAlign: "center",
+          lineHeight: 20,
+          paddingHorizontal: 16,
+        },
+        grid: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 12,
+        },
+        card: {
+          width: "48%",
+          flexGrow: 1,
+          alignItems: "center",
+          backgroundColor: colors.card,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: colors.rule,
+          padding: 20,
+          gap: 8,
+        },
+        // cardTemplate removed — unified grid, no visual distinction
+        cardPressed: {
+          backgroundColor: colors.accentLight,
+          transform: [{ scale: 0.97 }],
+        },
+        cardName: {
+          fontSize: 14,
+          fontWeight: "600",
+          color: colors.ink,
+          textAlign: "center",
+        },
+        cardDesc: {
+          fontSize: 12,
+          color: colors.inkMuted,
+          textAlign: "center",
+          lineHeight: 16,
+        },
+        // divider styles removed — unified grid
+        pendingRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          paddingTop: 24,
+        },
+        pendingText: {
+          fontSize: 14,
+          color: colors.inkMuted,
+        },
+        skeletonCard: {
+          width: "48%",
+          flexGrow: 1,
+          height: 140,
+          borderRadius: 16,
+          backgroundColor: colors.accentLight,
+        },
+      }),
+    [colors],
+  );
 
   const handleSelectPersona = useCallback(
     async (personaId: Id<"personas">, personaName?: string) => {
       if (pendingRef.current) return;
       pendingRef.current = true;
       setIsPending(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactFeedback("light");
       try {
-        posthog?.capture("persona_selected", { persona_id: personaId, ...(personaName ? { persona_name: personaName } : {}), type: "custom" });
+        posthog?.capture("persona_selected", {
+          persona_id: personaId,
+          ...(personaName ? { persona_name: personaName } : {}),
+          type: "custom",
+        });
         const threadId = await createThread({ personaId });
         router.push(`/(home)/${threadId}` as never);
       } catch (err) {
         console.error("[PersonaSelector] Failed to create thread:", err);
-        captureError(err, { source: "persona_selector", action: "create_thread" });
+        captureError(err, {
+          source: "persona_selector",
+          action: "create_thread",
+        });
       } finally {
         pendingRef.current = false;
         setIsPending(false);
       }
     },
-    [createThread, router, posthog]
+    [createThread, router, posthog],
   );
 
   const handleSelectTemplate = useCallback(
@@ -236,30 +292,36 @@ export default function PersonaSelectorScreen() {
       if (pendingRef.current) return;
       pendingRef.current = true;
       setIsPending(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactFeedback("light");
       try {
-        posthog?.capture("persona_selected", { persona_name: templateKey, type: "template" });
+        posthog?.capture("persona_selected", {
+          persona_name: templateKey,
+          type: "template",
+        });
         const personaId = await createFromTemplate({ templateKey });
         const threadId = await createThread({ personaId });
         router.push(`/(home)/${threadId}` as never);
       } catch (err) {
         console.error("[PersonaSelector] Failed to create from template:", err);
-        captureError(err, { source: "persona_selector", action: "create_from_template" });
+        captureError(err, {
+          source: "persona_selector",
+          action: "create_from_template",
+        });
       } finally {
         pendingRef.current = false;
         setIsPending(false);
       }
     },
-    [createFromTemplate, createThread, router, posthog]
+    [createFromTemplate, createThread, router, posthog],
   );
 
   const hasRecentThreads = recentThreads && recentThreads.length > 0;
 
   // Context-aware greeting and subtitle
   const greeting = hasRecentThreads
-    ? (user?.firstName
-        ? t("personaSelector.greetingWithName", { name: user.firstName })
-        : t("personaSelector.greetingReturning"))
+    ? user?.firstName
+      ? t("personaSelector.greetingWithName", { name: user.firstName })
+      : t("personaSelector.greetingReturning")
     : t("personaSelector.greetingNew");
 
   const subtitle = hasRecentThreads
@@ -298,14 +360,23 @@ export default function PersonaSelectorScreen() {
             colors={colors}
             t={t}
             ts={ts}
-            onNavigate={(threadId) => router.push(`/(home)/${threadId}` as never)}
+            onNavigate={(threadId) =>
+              router.push(`/(home)/${threadId}` as never)
+            }
             onViewAll={() => navigation.dispatch(DrawerActions.openDrawer())}
           />
         )}
 
         {/* Section label for persona grid (returning users only) */}
         {hasRecentThreads && gridItems.length > 0 && (
-          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.ink, marginBottom: 12 }}>
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "600",
+              color: colors.ink,
+              marginBottom: 12,
+            }}
+          >
             {t("personaSelector.newConversation")}
           </Text>
         )}
@@ -336,7 +407,9 @@ export default function PersonaSelectorScreen() {
                 <PersonaIcon icon={item.icon} size="lg" />
                 <Text style={s.cardName}>{item.name}</Text>
                 {item.description ? (
-                  <Text style={s.cardDesc} numberOfLines={3}>{item.description}</Text>
+                  <Text style={s.cardDesc} numberOfLines={3}>
+                    {item.description}
+                  </Text>
                 ) : null}
               </Pressable>
             ))}
@@ -386,7 +459,14 @@ function RecentThreads({
 }) {
   return (
     <View style={{ marginBottom: 24 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
         <Text style={{ fontSize: 14, fontWeight: "600", color: colors.ink }}>
           {t("personaSelector.recentThreads")}
         </Text>
@@ -394,7 +474,9 @@ function RecentThreads({
           onPress={onViewAll}
           style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
         >
-          <Text style={{ fontSize: 12, fontWeight: "500", color: colors.inkMuted }}>
+          <Text
+            style={{ fontSize: 12, fontWeight: "500", color: colors.inkMuted }}
+          >
             {t("personaSelector.viewAll")}
           </Text>
           <ChevronRight size={14} color={colors.inkMuted} />
@@ -419,10 +501,20 @@ function RecentThreads({
         >
           <PersonaIcon icon={thread.persona.icon} size="sm" />
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ fontSize: 14, fontWeight: "500", color: colors.ink }} numberOfLines={1}>
+            <Text
+              style={{ fontSize: 14, fontWeight: "500", color: colors.ink }}
+              numberOfLines={1}
+            >
               {thread.title}
             </Text>
-            <Text style={{ fontSize: 11, color: colors.inkMuted, opacity: 0.6, marginTop: 2 }}>
+            <Text
+              style={{
+                fontSize: 11,
+                color: colors.inkMuted,
+                opacity: 0.6,
+                marginTop: 2,
+              }}
+            >
               {getRelativeTime(thread.lastMessageAt, ts)}
             </Text>
           </View>

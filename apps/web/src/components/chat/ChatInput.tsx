@@ -10,7 +10,11 @@ import {
 } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@synapse/backend/api";
-import { CHAT_MODELS, DEFAULT_CHAT_MODEL, getChatModel } from "@synapse/backend/chatModels";
+import {
+  CHAT_MODELS,
+  DEFAULT_CHAT_MODEL,
+  getChatModel,
+} from "@synapse/backend/chatModels";
 import { cn } from "@/lib/utils";
 import { Send, ImagePlus, X, Loader2 } from "lucide-react";
 import { useChatContext } from "@/contexts/useChatContext";
@@ -40,6 +44,11 @@ export function ChatInput() {
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewUrls = useRef(new Set<string>());
+  const releasePreview = useCallback((url: string) => {
+    URL.revokeObjectURL(url);
+    previewUrls.current.delete(url);
+  }, []);
 
   const { isGenerating, threadId, startStreaming } = useChatContext();
   const sendMessage = useMutation(api.messages.send);
@@ -49,11 +58,21 @@ export function ChatInput() {
   const uploadFile = useUploadFile(api.r2);
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
-  const capabilities = useQuery(api.messages.getModelCapabilities, { threadId });
+  const capabilities = useQuery(api.messages.getModelCapabilities, {
+    threadId,
+  });
   const selectedModel = getChatModel(selectedModelId);
   const needsVision = images.length > 0 || capabilities?.hasImages === true;
   const incompatibleModel = needsVision && !selectedModel.images;
   const { t } = useTranslation("chat");
+
+  // Usage limits
+  const msgLimit = usageStatus?.dailyMessages;
+  const isUnlimited = msgLimit?.limit === -1;
+  const isAtLimit =
+    !isUnlimited && msgLimit != null && msgLimit.used >= msgLimit.limit;
+  const usagePercent =
+    !isUnlimited && msgLimit ? msgLimit.used / msgLimit.limit : 0;
 
   const handleSelectModel = async (model: string) => {
     setIsSavingModel(true);
@@ -61,7 +80,9 @@ export function ChatInput() {
     try {
       await saveChatModel({ model });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("modelSelector.saveFailed"));
+      setError(
+        err instanceof Error ? err.message : t("modelSelector.saveFailed"),
+      );
     } finally {
       setIsSavingModel(false);
     }
@@ -69,10 +90,11 @@ export function ChatInput() {
 
   // Cleanup on unmount only (not on every images change)
   useEffect(() => {
+    const urls = previewUrls.current;
     return () => {
-      images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.clear();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -108,9 +130,11 @@ export function ChatInput() {
           continue;
         }
 
+        const previewUrl = URL.createObjectURL(file);
+        previewUrls.current.add(previewUrl);
         validImages.push({
           file,
-          previewUrl: URL.createObjectURL(file),
+          previewUrl,
           id: `${Date.now()}-${validImages.length}-${file.name}`,
         });
       }
@@ -123,18 +147,18 @@ export function ChatInput() {
         setImages((prev) => {
           const remaining = MAX_IMAGES - prev.length;
           if (remaining <= 0) {
-            validImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+            validImages.forEach((img) => releasePreview(img.previewUrl));
             return prev;
           }
           const toAdd = validImages.slice(0, remaining);
           validImages
             .slice(remaining)
-            .forEach((img) => URL.revokeObjectURL(img.previewUrl));
+            .forEach((img) => releasePreview(img.previewUrl));
           return [...prev, ...toAdd];
         });
       }
     },
-    [t],
+    [t, releasePreview],
   );
 
   const handleAddImages = useCallback(
@@ -149,22 +173,32 @@ export function ChatInput() {
     [processAndAddImages],
   );
 
-  const handleRemoveImage = useCallback((id: string) => {
-    setImages((prev) => {
-      const removed = prev.find((img) => img.id === id);
-      if (removed) {
-        URL.revokeObjectURL(removed.previewUrl);
-      }
-      return prev.filter((img) => img.id !== id);
-    });
-  }, []);
+  const handleRemoveImage = useCallback(
+    (id: string) => {
+      setImages((prev) => {
+        const removed = prev.find((img) => img.id === id);
+        if (removed) {
+          releasePreview(removed.previewUrl);
+        }
+        return prev.filter((img) => img.id !== id);
+      });
+    },
+    [releasePreview],
+  );
 
   const handleSubmit = useCallback(async () => {
     const trimmedContent = content.trim();
     const hasImages = images.length > 0;
 
     if (!trimmedContent && !hasImages) return;
-    if (isSubmitting || isSavingModel || isGenerating || incompatibleModel) return;
+    if (
+      isSubmitting ||
+      isSavingModel ||
+      isGenerating ||
+      isAtLimit ||
+      incompatibleModel
+    )
+      return;
 
     setIsSubmitting(true);
     setError(null);
@@ -188,14 +222,13 @@ export function ChatInput() {
         setIsUploading(false);
       }
 
-      savedImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-
       const result = await sendMessage({
         threadId,
         content: trimmedContent,
         ...(imageKeys && imageKeys.length > 0 ? { imageKeys } : {}),
       });
 
+      savedImages.forEach((img) => releasePreview(img.previewUrl));
       startStreaming(result.assistantMessageId);
       void streamResponse(result.assistantMessageId, result.sessionId);
     } catch (err) {
@@ -216,7 +249,9 @@ export function ChatInput() {
     isSubmitting,
     isSavingModel,
     isGenerating,
+    isAtLimit,
     incompatibleModel,
+    releasePreview,
     sendMessage,
     threadId,
     uploadFile,
@@ -228,7 +263,7 @@ export function ChatInput() {
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (!isMobileViewport && e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        handleSubmit();
+        void handleSubmit();
       }
     },
     [handleSubmit, isMobileViewport],
@@ -297,17 +332,11 @@ export function ChatInput() {
     [processAndAddImages],
   );
 
-  // Usage limits
-  const msgLimit = usageStatus?.dailyMessages;
-  const isUnlimited = msgLimit?.limit === -1;
-  const isAtLimit =
-    !isUnlimited && msgLimit != null && msgLimit.used >= msgLimit.limit;
-  const usagePercent =
-    !isUnlimited && msgLimit ? msgLimit.used / msgLimit.limit : 0;
-
   const isDisabled = isSubmitting || isSavingModel || isGenerating || isAtLimit;
   const canSubmit =
-    (content.trim().length > 0 || images.length > 0) && !isDisabled && !incompatibleModel;
+    (content.trim().length > 0 || images.length > 0) &&
+    !isDisabled &&
+    !incompatibleModel;
   const canAttach = images.length < MAX_IMAGES && !isDisabled;
 
   return (
@@ -413,13 +442,26 @@ export function ChatInput() {
                 disabled={isDisabled}
                 className="h-9 max-w-[210px] rounded-lg border-0 bg-transparent px-2 text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
               >
-                <option value={DEFAULT_CHAT_MODEL.id} className="bg-popover text-popover-foreground">
+                <option
+                  value={DEFAULT_CHAT_MODEL.id}
+                  className="bg-popover text-popover-foreground"
+                >
                   Gemini · {t("modelSelector.default")}
                 </option>
-                <optgroup label="OpenRouter" className="bg-popover text-popover-foreground">
-                  {CHAT_MODELS.filter((model) => model.provider === "openrouter").map((model) => (
-                    <option key={model.id} value={model.id} disabled={needsVision && !model.images}>
-                      {model.name} · {model.reasoning === "high" ? "High" : "Thinking"}
+                <optgroup
+                  label="OpenRouter"
+                  className="bg-popover text-popover-foreground"
+                >
+                  {CHAT_MODELS.filter(
+                    (model) => model.provider === "openrouter",
+                  ).map((model) => (
+                    <option
+                      key={model.id}
+                      value={model.id}
+                      disabled={needsVision && !model.images}
+                    >
+                      {model.name} ·{" "}
+                      {model.reasoning === "high" ? "High" : "Thinking"}
                     </option>
                   ))}
                 </optgroup>
@@ -461,7 +503,13 @@ export function ChatInput() {
         </p>
       )}
       {chatSettings?.modelSelectorEnabled && incompatibleModel && (
-        <p className={cn("mt-2 text-center text-xs", incompatibleModel ? "text-destructive" : "text-muted-foreground")} role={incompatibleModel ? "alert" : undefined}>
+        <p
+          className={cn(
+            "mt-2 text-center text-xs",
+            incompatibleModel ? "text-destructive" : "text-muted-foreground",
+          )}
+          role={incompatibleModel ? "alert" : undefined}
+        >
           {t("modelSelector.imagesNotice")}
         </p>
       )}

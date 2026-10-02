@@ -37,7 +37,10 @@ export function formatMessageTime(timestamp: number, locale?: string): string {
   });
 }
 
-export function getRelativeTime(timestamp: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
+export function getRelativeTime(
+  timestamp: number,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
   const now = Date.now();
   const diffMs = now - timestamp;
   const diffSec = Math.floor(diffMs / 1000);

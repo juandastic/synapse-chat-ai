@@ -8,10 +8,7 @@ import {
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import { getOrCreateUser } from "./users";
-import {
-  createPromptSnapshot,
-  PromptSnapshot,
-} from "./prompts";
+import { createPromptSnapshot, PromptSnapshot } from "./prompts";
 
 // =============================================================================
 // Configuration

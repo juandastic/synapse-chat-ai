@@ -30,13 +30,13 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
   const [theme, setTheme] = useState<Theme>(
-    systemScheme === "dark" ? "dark" : "light"
+    systemScheme === "dark" ? "dark" : "light",
   );
   const [loaded, setLoaded] = useState(false);
 
   // Load saved preference on mount
   useEffect(() => {
-    (async () => {
+    void (async () => {
       try {
         const saved = await SecureStore.getItemAsync(STORAGE_KEY);
         if (saved === "light" || saved === "dark") {
@@ -61,7 +61,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({ theme, colors, toggleTheme }),
-    [theme, colors, toggleTheme]
+    [theme, colors, toggleTheme],
   );
 
   // Don't render until we've loaded the saved preference to avoid flash

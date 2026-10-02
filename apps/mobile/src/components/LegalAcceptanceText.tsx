@@ -1,5 +1,11 @@
 import { useMemo } from "react";
-import { Text, Linking, StyleSheet, type StyleProp, type TextStyle } from "react-native";
+import {
+  Text,
+  Linking,
+  StyleSheet,
+  type StyleProp,
+  type TextStyle,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { useColors } from "../contexts/ThemeContext";
@@ -36,7 +42,7 @@ export function LegalAcceptanceText({ style }: Props) {
           textDecorationLine: "underline",
         },
       }),
-    [colors]
+    [colors],
   );
 
   const terms = (
@@ -53,9 +59,15 @@ export function LegalAcceptanceText({ style }: Props) {
   return (
     <Text style={[s.note, style]}>
       {isEs ? (
-        <>Al registrarte, debes tener al menos 13 años y aceptas los {terms} y la {privacy}.</>
+        <>
+          Al registrarte, debes tener al menos 13 años y aceptas los {terms} y
+          la {privacy}.
+        </>
       ) : (
-        <>By signing up, you must be at least 13 years old and you agree to the {terms} and {privacy}.</>
+        <>
+          By signing up, you must be at least 13 years old and you agree to the{" "}
+          {terms} and {privacy}.
+        </>
       )}
     </Text>
   );

@@ -53,12 +53,16 @@ export default function LandingPage() {
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<number | null>(null);
-  const [contactModalPlan, setContactModalPlan] = useState<"pro" | "therapeutic" | null>(null);
+  const [contactModalPlan, setContactModalPlan] = useState<
+    "pro" | "therapeutic" | null
+  >(null);
   const { t, i18n } = useTranslation("landing");
 
   const toggleLanguage = useCallback(() => {
     const newLang = i18n.language === "es" ? "en" : "es";
-    i18n.changeLanguage(newLang);
+    i18n.changeLanguage(newLang).catch((error) => {
+      console.error("[i18n] Could not change language:", error);
+    });
     posthog.capture("language_toggled", { language: newLang });
   }, [i18n]);
 
@@ -66,9 +70,14 @@ export default function LandingPage() {
     regular: Array<{ role: string; text: string }>;
     synapse: Array<{ role: string; text: string }>;
   };
-  const pipelineSteps = t("pipeline.steps", { returnObjects: true }) as Array<{ title: string; desc: string }>;
+  const pipelineSteps = t("pipeline.steps", { returnObjects: true }) as Array<{
+    title: string;
+    desc: string;
+  }>;
   const personas = t("personas.list", { returnObjects: true }) as PersonaItem[];
-  const transparencyFeatures = t("transparency.features", { returnObjects: true }) as Array<{ title: string; desc: string }>;
+  const transparencyFeatures = t("transparency.features", {
+    returnObjects: true,
+  }) as Array<{ title: string; desc: string }>;
 
   const handleTryDemo = async () => {
     if (!signIn || !setActive || !DEMO_EMAIL || !DEMO_PASSWORD) return;
@@ -150,7 +159,11 @@ export default function LandingPage() {
             href="#pricing"
             className="hidden sm:inline-flex text-xs font-medium transition-opacity hover:opacity-70"
             style={{ color: color.inkMuted }}
-            onClick={() => posthog.capture("landing_cta_clicked", { location: "nav_pricing" })}
+            onClick={() =>
+              posthog.capture("landing_cta_clicked", {
+                location: "nav_pricing",
+              })
+            }
           >
             {t("nav.pricing")}
           </a>
@@ -159,7 +172,9 @@ export default function LandingPage() {
             onClick={toggleLanguage}
             className="flex h-8 items-center gap-1 rounded-full px-2 text-xs font-semibold transition-opacity hover:opacity-70"
             style={{ color: color.inkMuted }}
-            aria-label={i18n.language === "en" ? "Cambiar a Español" : "Switch to English"}
+            aria-label={
+              i18n.language === "en" ? "Cambiar a Español" : "Switch to English"
+            }
           >
             <Globe className="h-3.5 w-3.5" />
             {i18n.language === "en" ? "ES" : "EN"}
@@ -228,7 +243,11 @@ export default function LandingPage() {
               <button
                 className="group inline-flex items-center gap-2.5 rounded-full px-8 py-3 text-sm font-medium shadow-sm transition-opacity hover:opacity-85"
                 style={{ background: color.ink, color: color.paper }}
-                onClick={() => posthog.capture("landing_cta_clicked", { location: "hero_get_started" })}
+                onClick={() =>
+                  posthog.capture("landing_cta_clicked", {
+                    location: "hero_get_started",
+                  })
+                }
               >
                 {t("hero.getStarted")}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -238,12 +257,17 @@ export default function LandingPage() {
             {DEMO_AVAILABLE && (
               <button
                 onClick={() => {
-                  posthog.capture("landing_cta_clicked", { location: "hero_try_demo" });
-                  handleTryDemo();
+                  posthog.capture("landing_cta_clicked", {
+                    location: "hero_try_demo",
+                  });
+                  void handleTryDemo();
                 }}
                 disabled={demoLoading}
                 className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm transition-opacity hover:opacity-70 disabled:opacity-50"
-                style={{ border: `1px solid ${color.rule}`, color: color.inkMuted }}
+                style={{
+                  border: `1px solid ${color.rule}`,
+                  color: color.inkMuted,
+                }}
               >
                 {demoLoading ? "..." : t("hero.experienceDemo")}
               </button>
@@ -373,7 +397,10 @@ export default function LandingPage() {
 
                   {isSynapse && (
                     <div className="px-4 pb-3 flex items-center gap-1">
-                      <Sparkles className="h-3 w-3" style={{ color: color.accent }} />
+                      <Sparkles
+                        className="h-3 w-3"
+                        style={{ color: color.accent }}
+                      />
                       <span
                         className="text-[10px]"
                         style={{ color: `${color.accent}99` }}
@@ -420,45 +447,48 @@ export default function LandingPage() {
           {pipelineSteps.map((s, i) => {
             const Icon = PIPELINE_ICONS[i];
             return (
-            <Reveal key={i} delay={i * 0.08}>
-              <div
-                className="rounded-xl p-5 transition-colors"
-                style={{ border: `1px solid ${color.rule}` }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.borderColor = color.accent)
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.borderColor = color.rule)
-                }
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className="flex h-9 w-9 items-center justify-center rounded-lg"
-                    style={{ background: color.accentLight }}
-                  >
-                    <Icon className="h-4 w-4" style={{ color: color.accent }} />
+              <Reveal key={i} delay={i * 0.08}>
+                <div
+                  className="rounded-xl p-5 transition-colors"
+                  style={{ border: `1px solid ${color.rule}` }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.borderColor = color.accent)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.borderColor = color.rule)
+                  }
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div
+                      className="flex h-9 w-9 items-center justify-center rounded-lg"
+                      style={{ background: color.accentLight }}
+                    >
+                      <Icon
+                        className="h-4 w-4"
+                        style={{ color: color.accent }}
+                      />
+                    </div>
+                    <span
+                      className="text-[10px] font-semibold"
+                      style={{ color: color.inkDim }}
+                    >
+                      {t("pipeline.step", { number: PIPELINE_STEP_NUMBERS[i] })}
+                    </span>
                   </div>
-                  <span
-                    className="text-[10px] font-semibold"
-                    style={{ color: color.inkDim }}
+                  <h3
+                    className="text-base font-semibold"
+                    style={{ fontFamily: "'Fraunces', Georgia, serif" }}
                   >
-                    {t("pipeline.step", { number: PIPELINE_STEP_NUMBERS[i] })}
-                  </span>
+                    {s.title}
+                  </h3>
+                  <p
+                    className="mt-2 text-xs leading-relaxed"
+                    style={{ color: color.inkMuted }}
+                  >
+                    {s.desc}
+                  </p>
                 </div>
-                <h3
-                  className="text-base font-semibold"
-                  style={{ fontFamily: "'Fraunces', Georgia, serif" }}
-                >
-                  {s.title}
-                </h3>
-                <p
-                  className="mt-2 text-xs leading-relaxed"
-                  style={{ color: color.inkMuted }}
-                >
-                  {s.desc}
-                </p>
-              </div>
-            </Reveal>
+              </Reveal>
             );
           })}
         </div>
@@ -495,54 +525,57 @@ export default function LandingPage() {
           {personas.map((p, i) => {
             const Icon = PERSONA_ICONS[i];
             return (
-            <Reveal key={i} delay={i * 0.08} className="flex">
-              <button
-                className="flex flex-1 flex-col rounded-xl p-6 transition-all text-left cursor-pointer"
-                style={{
-                  border: `1px solid ${color.rule}`,
-                  background: color.accentLight,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = color.accent;
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = `0 4px 12px ${color.accent}20`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = color.rule;
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-                onClick={() => {
-                  posthog.capture("persona_detail_viewed", { persona: p.name });
-                  setSelectedPersona(i);
-                }}
-              >
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-full"
-                  style={{ background: `${color.accent}15` }}
+              <Reveal key={i} delay={i * 0.08} className="flex">
+                <button
+                  className="flex flex-1 flex-col rounded-xl p-6 transition-all text-left cursor-pointer"
+                  style={{
+                    border: `1px solid ${color.rule}`,
+                    background: color.accentLight,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = color.accent;
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = `0 4px 12px ${color.accent}20`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = color.rule;
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                  onClick={() => {
+                    posthog.capture("persona_detail_viewed", {
+                      persona: p.name,
+                    });
+                    setSelectedPersona(i);
+                  }}
                 >
-                  <Icon className="h-5 w-5" style={{ color: color.accent }} />
-                </div>
-                <h3
-                  className="mt-3 text-base font-semibold"
-                  style={{ fontFamily: "'Fraunces', Georgia, serif" }}
-                >
-                  {p.name}
-                </h3>
-                <p
-                  className="mt-2 text-xs leading-relaxed"
-                  style={{ color: color.inkMuted }}
-                >
-                  {p.desc}
-                </p>
-                <span
-                  className="mt-3 inline-flex items-center gap-1 text-xs font-medium"
-                  style={{ color: color.accent }}
-                >
-                  {t("personas.modal.learnMore")} <ArrowRight className="h-3 w-3" />
-                </span>
-              </button>
-            </Reveal>
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-full"
+                    style={{ background: `${color.accent}15` }}
+                  >
+                    <Icon className="h-5 w-5" style={{ color: color.accent }} />
+                  </div>
+                  <h3
+                    className="mt-3 text-base font-semibold"
+                    style={{ fontFamily: "'Fraunces', Georgia, serif" }}
+                  >
+                    {p.name}
+                  </h3>
+                  <p
+                    className="mt-2 text-xs leading-relaxed"
+                    style={{ color: color.inkMuted }}
+                  >
+                    {p.desc}
+                  </p>
+                  <span
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-medium"
+                    style={{ color: color.accent }}
+                  >
+                    {t("personas.modal.learnMore")}{" "}
+                    <ArrowRight className="h-3 w-3" />
+                  </span>
+                </button>
+              </Reveal>
             );
           })}
         </div>
@@ -579,31 +612,31 @@ export default function LandingPage() {
           {transparencyFeatures.map((f, i) => {
             const Icon = TRANSPARENCY_ICONS[i];
             return (
-            <Reveal key={i} delay={i * 0.06}>
-              <div
-                className="flex items-start gap-3 rounded-lg p-4"
-                style={{ border: `1px solid ${color.rule}` }}
-              >
-                <Icon
-                  className="h-4 w-4 mt-0.5 shrink-0"
-                  style={{ color: color.accent }}
-                />
-                <div>
-                  <h4
-                    className="text-sm font-semibold"
-                    style={{ fontFamily: "'Fraunces', Georgia, serif" }}
-                  >
-                    {f.title}
-                  </h4>
-                  <p
-                    className="mt-1 text-xs leading-relaxed"
-                    style={{ color: color.inkMuted }}
-                  >
-                    {f.desc}
-                  </p>
+              <Reveal key={i} delay={i * 0.06}>
+                <div
+                  className="flex items-start gap-3 rounded-lg p-4"
+                  style={{ border: `1px solid ${color.rule}` }}
+                >
+                  <Icon
+                    className="h-4 w-4 mt-0.5 shrink-0"
+                    style={{ color: color.accent }}
+                  />
+                  <div>
+                    <h4
+                      className="text-sm font-semibold"
+                      style={{ fontFamily: "'Fraunces', Georgia, serif" }}
+                    >
+                      {f.title}
+                    </h4>
+                    <p
+                      className="mt-1 text-xs leading-relaxed"
+                      style={{ color: color.inkMuted }}
+                    >
+                      {f.desc}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </Reveal>
+              </Reveal>
             );
           })}
         </div>
@@ -614,7 +647,10 @@ export default function LandingPage() {
       {/* ============================================================ */}
       {/*  Pricing                                                     */}
       {/* ============================================================ */}
-      <section id="pricing" className="relative z-10 mx-auto max-w-4xl px-6 py-16 md:py-24 scroll-mt-20">
+      <section
+        id="pricing"
+        className="relative z-10 mx-auto max-w-4xl px-6 py-16 md:py-24 scroll-mt-20"
+      >
         <Reveal>
           <p
             className="mb-3 text-xs font-semibold uppercase tracking-[0.2em]"
@@ -640,7 +676,9 @@ export default function LandingPage() {
           <PricingCard
             plan="free"
             iconIndex={0}
-            onCtaClick={() => posthog.capture("pricing_plan_selected", { plan: "free" })}
+            onCtaClick={() =>
+              posthog.capture("pricing_plan_selected", { plan: "free" })
+            }
           />
           <PricingCard
             plan="pro"
@@ -670,7 +708,10 @@ export default function LandingPage() {
         style={{ borderTop: `1px solid ${color.rule}` }}
       >
         <Reveal>
-          <div className="mx-auto mb-6 h-14 w-14" style={{ color: color.accent }}>
+          <div
+            className="mx-auto mb-6 h-14 w-14"
+            style={{ color: color.accent }}
+          >
             <Logo />
           </div>
         </Reveal>
@@ -701,7 +742,11 @@ export default function LandingPage() {
               <button
                 className="group inline-flex items-center gap-2.5 rounded-full px-8 py-3 text-sm font-medium shadow-sm transition-opacity hover:opacity-85"
                 style={{ background: color.ink, color: color.paper }}
-                onClick={() => posthog.capture("landing_cta_clicked", { location: "cta_begin" })}
+                onClick={() =>
+                  posthog.capture("landing_cta_clicked", {
+                    location: "cta_begin",
+                  })
+                }
               >
                 {t("cta.begin")}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -711,8 +756,10 @@ export default function LandingPage() {
             {DEMO_AVAILABLE && (
               <button
                 onClick={() => {
-                  posthog.capture("landing_cta_clicked", { location: "cta_try_demo" });
-                  handleTryDemo();
+                  posthog.capture("landing_cta_clicked", {
+                    location: "cta_try_demo",
+                  });
+                  void handleTryDemo();
                 }}
                 disabled={demoLoading}
                 className="text-sm transition-opacity hover:opacity-70 disabled:opacity-50"
