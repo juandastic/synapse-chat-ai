@@ -847,6 +847,32 @@ Synapse uses a **hybrid approach** to inject user knowledge into the AI's contex
 
 ---
 
+## Chat model selection on web
+
+The selector beside the attachment button chooses the model for the next turn.
+Gemini remains the default. OpenRouter choices are GPT-6.1 Sol, Claude Sonnet 5.5,
+DeepSeek V4 Pro 0813, Qwen3.7 Max and Kimi K2.6. The first three use high reasoning;
+Qwen and Kimi use thinking. New chats start with Gemini, and retries preserve the
+original turn's model. Mobile requests can continue omitting the model.
+
+Convex freezes the choice on the assistant message, authorizes the streaming
+request, and forwards it to Cortex. Both providers receive the same persona,
+session history and compiled memories. Cortex performs GraphRAG before selecting
+the generation service. OpenRouter failures do not fall back to Gemini. Gemini's
+existing Flash fallback and cache path remain available.
+
+Set `OPEN_ROUTER_API_KEY` in Cortex, never in frontend environment variables.
+Deploy the Cortex extension before enabling these web choices. OpenRouter does
+not use Gemini cache IDs or Google Search grounding. DeepSeek and Qwen are
+unavailable when the active context contains images; images are never discarded.
+Incompatible retries are rejected before replacing the previous response.
+Provider, effective model, token usage, cost and latency are persisted per answer.
+
+The catalog is in `packages/backend/convex/chatModels.ts`; Cortex's matching
+reasoning and image capabilities are in `app/services/openrouter_generation.py`.
+Run `npm run test --workspace=@synapse/backend` for model, authorization, retry
+and streaming regression tests.
+
 ## License
 
 MIT

@@ -7,9 +7,10 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getOrCreateUser, getCurrentUser } from "./users";
-import { getOrCreateActiveSession, touchSession } from "./sessions";
+import { getOrCreateActiveSession, touchSession, SESSION_STALE_THRESHOLD_MS } from "./sessions";
 import { checkDailyUsage } from "./usageLimits";
 import { r2 } from "./r2";
+import { getChatModel } from "./chatModels";
 
 // =============================================================================
 // Configuration
@@ -58,6 +59,23 @@ export const getImageUrl = query({
   },
 });
 
+/** Inspect the full active-session history, including images outside the visible page. */
+export const getModelCapabilities = query({
+  args: { threadId: v.id("threads") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const thread = await ctx.db.get(args.threadId);
+    if (!user || !thread || thread.userId !== user._id) return { hasImages: false };
+    const session = await ctx.db.query("sessions")
+      .withIndex("by_thread_status", (q) => q.eq("threadId", args.threadId).eq("status", "active"))
+      .first();
+    if (!session || Date.now() - session.lastMessageAt > SESSION_STALE_THRESHOLD_MS) return { hasImages: false };
+    const history = await ctx.db.query("messages")
+      .withIndex("by_session", (q) => q.eq("sessionId", session._id)).collect();
+    return { hasImages: history.some((message) => (message.imageKeys?.length ?? 0) > 0) };
+  },
+});
+
 // =============================================================================
 // Internal Queries
 // =============================================================================
@@ -76,6 +94,31 @@ export const getBySession = internalQuery({
   },
 });
 
+/** Authorize the stream and resolve the persisted choice, never a client override. */
+export const getGenerationTarget = internalQuery({
+  args: {
+    sessionId: v.id("sessions"),
+    threadId: v.id("threads"),
+    assistantMessageId: v.id("messages"),
+    tokenIdentifier: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const message = await ctx.db.get(args.assistantMessageId);
+    const thread = await ctx.db.get(args.threadId);
+    const session = await ctx.db.get(args.sessionId);
+    const user = thread ? await ctx.db.get(thread.userId) : null;
+    if (!message || !thread || !session || !user ||
+      user.tokenIdentifier !== args.tokenIdentifier ||
+      session.userId !== user._id || session.threadId !== thread._id ||
+      message.threadId !== thread._id || message.sessionId !== session._id ||
+      message.role !== "assistant" || message.completedAt !== undefined) {
+      throw new Error("Invalid generation request");
+    }
+    const model = getChatModel(message.generationTarget?.model);
+    return { provider: model.provider, model: model.id };
+  },
+});
+
 // =============================================================================
 // Public Mutations
 // =============================================================================
@@ -90,8 +133,10 @@ export const send = mutation({
     threadId: v.id("threads"),
     content: v.string(),
     imageKeys: v.optional(v.array(v.string())),
+    model: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const selectedModel = getChatModel(args.model);
     const content = args.content.trim();
     const hasImages = args.imageKeys && args.imageKeys.length > 0;
 
@@ -127,6 +172,13 @@ export const send = mutation({
     }
 
     const session = await getOrCreateActiveSession(ctx, thread, user);
+    if (!selectedModel.images) {
+      const history = await ctx.db.query("messages")
+        .withIndex("by_session", (q) => q.eq("sessionId", session._id)).collect();
+      if (hasImages || history.some((message) => (message.imageKeys?.length ?? 0) > 0)) {
+        throw new Error("This model does not support images in the conversation. Choose a model with vision.");
+      }
+    }
     const promptMode = session.promptMode ?? "legacy";
 
     const userMessageId = await ctx.db.insert("messages", {
@@ -145,6 +197,7 @@ export const send = mutation({
       role: "assistant",
       content: "",
       type: "text",
+      generationTarget: { provider: selectedModel.provider, model: selectedModel.id },
     });
 
     await touchSession(ctx, session);
@@ -413,6 +466,7 @@ export const reportStreamFailure = mutation({
 export const resend = mutation({
   args: {
     userMessageId: v.id("messages"),
+    model: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getOrCreateUser(ctx);
@@ -466,6 +520,16 @@ export const resend = mutation({
       .order("asc")
       .first();
 
+    const selectedModel = getChatModel(args.model ?? nextMessage?.generationTarget?.model);
+    // Reject an incompatible retry before deleting the existing response.
+    if (!selectedModel.images) {
+      const history = await ctx.db.query("messages")
+        .withIndex("by_session", (q) => q.eq("sessionId", session._id)).collect();
+      if (history.some((message) => (message.imageKeys?.length ?? 0) > 0)) {
+        throw new Error("This model does not support images in the conversation. Choose a model with vision.");
+      }
+    }
+
     if (nextMessage && nextMessage.role === "assistant") {
       if (nextMessage.completedAt === undefined) {
         throw new Error("Cannot retry while the response is still generating");
@@ -479,6 +543,7 @@ export const resend = mutation({
       role: "assistant",
       content: "",
       type: "text",
+      generationTarget: { provider: selectedModel.provider, model: selectedModel.id },
     });
 
     if (session.status === "closed") {
@@ -517,6 +582,7 @@ export const finalizeGeneration = internalMutation({
     content: v.string(),
     metadata: v.object({
       model: v.optional(v.string()),
+      provider: v.optional(v.union(v.literal("vertex"), v.literal("openrouter"))),
       promptTokens: v.optional(v.number()),
       completionTokens: v.optional(v.number()),
       totalTokens: v.optional(v.number()),

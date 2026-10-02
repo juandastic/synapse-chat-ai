@@ -147,6 +147,11 @@ export default defineSchema({
     type: v.union(v.literal("text"), v.literal("error")),
     /** undefined while still streaming */
     completedAt: v.optional(v.number()),
+    /** Frozen choice for this turn; absent on historical/mobile messages. */
+    generationTarget: v.optional(v.object({
+      provider: v.union(v.literal("vertex"), v.literal("openrouter")),
+      model: v.string(),
+    })),
     /** Historical beta metadata. New messages derive prompt versions from their session. */
     generationConfig: v.optional(
       v.object({
@@ -168,6 +173,7 @@ export default defineSchema({
     metadata: v.optional(
       v.object({
         model: v.optional(v.string()),
+        provider: v.optional(v.union(v.literal("vertex"), v.literal("openrouter"))),
         promptTokens: v.optional(v.number()),
         completionTokens: v.optional(v.number()),
         totalTokens: v.optional(v.number()),

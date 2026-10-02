@@ -79,5 +79,11 @@
     "startConversation": "Inicia tu conversación",
     "emptyStateDescription": "Comparte lo que tienes en mente y lo exploraremos juntos.",
     "scrollToBottom": "Ir al final"
+  },
+  "modelSelector": {
+    "label": "Modelo de respuesta",
+    "nextTurn": "Modelo para el próximo mensaje",
+    "default": "Predeterminado",
+    "imagesNotice": "Este contexto contiene imágenes. DeepSeek y Qwen requieren un chat sin imágenes."
   }
 }

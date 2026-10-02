@@ -9,7 +9,6 @@ import { PromptMode } from "./prompts";
 // Configuration
 // =============================================================================
 
-const DEFAULT_MODEL = "gemini-3.1-pro-preview";
 const FALLBACK_MODEL = "gemini-3-flash-preview";
 const CORTEX_CHAT_COMPLETIONS_URL = `${CORTEX_API_BASE_URL}/v1/chat/completions`;
 
@@ -18,6 +17,7 @@ const CORTEX_CHAT_COMPLETIONS_URL = `${CORTEX_API_BASE_URL}/v1/chat/completions`
 // =============================================================================
 
 interface StreamChunk {
+  model?: string;
   error?: { message?: string; code?: number };
   choices?: Array<{
     delta?: {
@@ -33,6 +33,7 @@ interface StreamChunk {
     total_tokens?: number;
     thoughts_tokens?: number | null;
     cached_tokens?: number | null;
+    cost?: number | null;
     rag_enabled?: boolean;
     rag_nodes?: number | null;
     rag_edges?: number | null;
@@ -112,6 +113,18 @@ http.route({
     const { sessionId, threadId, assistantMessageId } = body;
     if (!sessionId || !threadId || !assistantMessageId) {
       return new Response("Missing required fields", { status: 400, headers });
+    }
+
+    let target;
+    try {
+      target = await ctx.runQuery(internal.messages.getGenerationTarget, {
+        sessionId: sessionId as never,
+        threadId: threadId as never,
+        assistantMessageId: assistantMessageId as never,
+        tokenIdentifier: identity.tokenIdentifier,
+      });
+    } catch {
+      return new Response("Invalid generation request", { status: 403, headers });
     }
 
     // ── Prepare context (Node.js action — resolves R2 image URLs) ────────
@@ -207,7 +220,7 @@ http.route({
       let content = "";
       let usage: StreamChunk["usage"];
       let finishReason = "stop";
-      let modelUsed = DEFAULT_MODEL;
+      let modelUsed: string = target.model;
       let usedFallback = false;
       let clientDisconnected = false;
 
@@ -224,6 +237,7 @@ http.route({
           },
           body: JSON.stringify({
             model,
+            provider: target.provider,
             // Send system_instruction and compilation as separate fields so
             // the server can leverage an active Gemini cache for the
             // compilation (~75% cheaper on repeated tokens) and fall back
@@ -235,7 +249,7 @@ http.route({
             // The server uses it via cached_content on this request; if it
             // has expired server-side, Cortex falls back to inlining the
             // compilation from the same body and retries transparently.
-            ...(cacheName !== undefined && { cache_name: cacheName }),
+            ...(target.provider === "vertex" && cacheName !== undefined && { cache_name: cacheName }),
             messages: apiMessages,
             stream: true,
             user_id: userId,
@@ -283,6 +297,7 @@ http.route({
 
               try {
                 const chunk: StreamChunk = JSON.parse(data);
+                if (chunk.model) modelUsed = chunk.model;
 
                 if (chunk.error) {
                   throw new Error(
@@ -336,10 +351,9 @@ http.route({
 
       try {
         try {
-          usage = await attemptStream(DEFAULT_MODEL);
-          modelUsed = DEFAULT_MODEL;
+          usage = await attemptStream(target.model);
         } catch (primaryError) {
-          if (content.length > 0) {
+          if (content.length > 0 || target.provider === "openrouter") {
             // Already streamed bytes — can't retry, re-throw to error handler
             throw primaryError;
           }
@@ -371,6 +385,8 @@ http.route({
           content,
           metadata: {
             model: modelUsed,
+            provider: target.provider,
+            cost: usage?.cost ?? undefined,
             usedFallback,
             promptTokens: usage?.prompt_tokens,
             completionTokens: usage?.completion_tokens,
@@ -534,6 +550,7 @@ http.route({
             content,
             metadata: {
               model: modelUsed,
+              provider: target.provider,
               usedFallback,
               latencyMs,
               finishReason: "error",

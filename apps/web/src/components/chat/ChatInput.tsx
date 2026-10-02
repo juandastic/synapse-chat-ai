@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@synapse/backend/api";
+import { CHAT_MODELS, DEFAULT_CHAT_MODEL, getChatModel } from "@synapse/backend/chatModels";
 import { cn } from "@/lib/utils";
 import { Send, ImagePlus, X, Loader2 } from "lucide-react";
 import { useChatContext } from "@/contexts/useChatContext";
@@ -30,6 +31,7 @@ interface ImagePreview {
 
 export function ChatInput() {
   const [content, setContent] = useState("");
+  const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_CHAT_MODEL.id);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +46,10 @@ export function ChatInput() {
   const uploadFile = useUploadFile(api.r2);
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
+  const capabilities = useQuery(api.messages.getModelCapabilities, { threadId });
+  const selectedModel = getChatModel(selectedModelId);
+  const needsVision = images.length > 0 || capabilities?.hasImages === true;
+  const incompatibleModel = needsVision && !selectedModel.images;
   const { t } = useTranslation("chat");
 
   // Cleanup on unmount only (not on every images change)
@@ -143,7 +149,7 @@ export function ChatInput() {
     const hasImages = images.length > 0;
 
     if (!trimmedContent && !hasImages) return;
-    if (isSubmitting || isGenerating) return;
+    if (isSubmitting || isGenerating || incompatibleModel) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -171,6 +177,7 @@ export function ChatInput() {
 
       const result = await sendMessage({
         threadId,
+        model: selectedModelId,
         content: trimmedContent,
         ...(imageKeys && imageKeys.length > 0 ? { imageKeys } : {}),
       });
@@ -194,6 +201,8 @@ export function ChatInput() {
     images,
     isSubmitting,
     isGenerating,
+    incompatibleModel,
+    selectedModelId,
     sendMessage,
     threadId,
     uploadFile,
@@ -284,7 +293,7 @@ export function ChatInput() {
 
   const isDisabled = isSubmitting || isGenerating || isAtLimit;
   const canSubmit =
-    (content.trim().length > 0 || images.length > 0) && !isDisabled;
+    (content.trim().length > 0 || images.length > 0) && !isDisabled && !incompatibleModel;
   const canAttach = images.length < MAX_IMAGES && !isDisabled;
 
   return (
@@ -381,6 +390,26 @@ export function ChatInput() {
               <ImagePlus className="h-5 w-5" />
             </button>
 
+            <select
+              aria-label={t("modelSelector.label")}
+              title={t("modelSelector.nextTurn")}
+              value={selectedModelId}
+              onChange={(event) => setSelectedModelId(event.target.value)}
+              disabled={isDisabled}
+              className="h-9 max-w-[210px] rounded-lg border-0 bg-transparent px-2 text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            >
+              <option value={DEFAULT_CHAT_MODEL.id} className="bg-popover text-popover-foreground">
+                Gemini · {t("modelSelector.default")}
+              </option>
+              <optgroup label="OpenRouter" className="bg-popover text-popover-foreground">
+                {CHAT_MODELS.filter((model) => model.provider === "openrouter").map((model) => (
+                  <option key={model.id} value={model.id} disabled={needsVision && !model.images}>
+                    {model.name} · {model.reasoning === "high" ? "High" : "Thinking"}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+
             {images.length > 0 && (
               <span className="text-xs text-muted-foreground/60">
                 {images.length}/{MAX_IMAGES}
@@ -413,6 +442,11 @@ export function ChatInput() {
       {error && (
         <p className="mt-2 text-center text-xs text-destructive" role="alert">
           {error}
+        </p>
+      )}
+      {needsVision && (
+        <p className={cn("mt-2 text-center text-xs", incompatibleModel ? "text-destructive" : "text-muted-foreground")} role={incompatibleModel ? "alert" : undefined}>
+          {t("modelSelector.imagesNotice")}
         </p>
       )}
 

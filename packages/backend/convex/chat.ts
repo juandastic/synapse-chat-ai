@@ -7,6 +7,7 @@ import { Doc } from "./_generated/dataModel";
 import { r2 } from "./r2";
 import { CompilationMetadata } from "./cortexConfig";
 import { PromptMode, renderSystemPrompt } from "./prompts";
+import { getChatModel } from "./chatModels";
 
 // =============================================================================
 // Types
@@ -111,6 +112,10 @@ export const prepareContext = internalAction({
     const filteredHistory = history.filter(
       (m) => m._id !== args.assistantMessageId
     );
+    if (!getChatModel(assistantMessage.generationTarget?.model).images &&
+      filteredHistory.some((message) => (message.imageKeys?.length ?? 0) > 0)) {
+      throw new Error("This model does not support images in the conversation. Choose a model with vision.");
+    }
 
     // Only user/assistant turns — system is passed as its own field.
     const apiMessages: ApiMessage[] = [];

@@ -5,19 +5,22 @@
   "type": "module",
   "exports": {
     "./api": "./convex/_generated/api.js",
-    "./dataModel": "./convex/_generated/dataModel.d.ts"
+    "./dataModel": "./convex/_generated/dataModel.d.ts",
+    "./chatModels": "./convex/chatModels.ts"
   },
   "scripts": {
+    "test": "tsx --test tests/*.test.ts",
     "dev": "npx convex dev --env-file ../../.env.local",
     "deploy": "npx convex deploy"
   },
   "dependencies": {
-    "convex": "^1.32.0",
     "@convex-dev/r2": "^0.9.1",
+    "convex": "^1.32.0",
     "posthog-node": "^5.28.4"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   }
 }
