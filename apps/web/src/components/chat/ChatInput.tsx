@@ -11,7 +11,7 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@synapse/backend/api";
 import { cn } from "@/lib/utils";
-import { Send, ImagePlus, X, Loader2, Sparkles } from "lucide-react";
+import { Send, ImagePlus, X, Loader2 } from "lucide-react";
 import { useChatContext } from "@/contexts/useChatContext";
 import { useUploadFile } from "@convex-dev/r2/react";
 import { useStreamResponse } from "@/hooks/useStreamResponse";
@@ -28,16 +28,7 @@ interface ImagePreview {
   id: string;
 }
 
-type PromptMode = "legacy" | "structured";
-
-interface ChatInputProps {
-  promptState: {
-    promptMode: PromptMode;
-    canChangePromptMode: boolean;
-  };
-}
-
-export function ChatInput({ promptState }: ChatInputProps) {
+export function ChatInput() {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -45,10 +36,6 @@ export function ChatInput({ promptState }: ChatInputProps) {
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const [isSwitchingPromptMode, setIsSwitchingPromptMode] = useState(false);
-  const [localPromptMode, setLocalPromptMode] = useState<PromptMode | null>(
-    null,
-  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -57,12 +44,7 @@ export function ChatInput({ promptState }: ChatInputProps) {
   const uploadFile = useUploadFile(api.r2);
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
-  const setPromptModeForEmptySession = useMutation(
-    api.sessions.setPromptModeForEmptySession,
-  );
   const { t } = useTranslation("chat");
-
-  const promptMode: PromptMode = localPromptMode ?? promptState.promptMode;
 
   // Cleanup on unmount only (not on every images change)
   useEffect(() => {
@@ -71,10 +53,6 @@ export function ChatInput({ promptState }: ChatInputProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    setLocalPromptMode(null);
-  }, [threadId]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 768px)");
@@ -165,7 +143,7 @@ export function ChatInput({ promptState }: ChatInputProps) {
     const hasImages = images.length > 0;
 
     if (!trimmedContent && !hasImages) return;
-    if (isSubmitting || isGenerating || isSwitchingPromptMode) return;
+    if (isSubmitting || isGenerating) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -216,50 +194,11 @@ export function ChatInput({ promptState }: ChatInputProps) {
     images,
     isSubmitting,
     isGenerating,
-    isSwitchingPromptMode,
     sendMessage,
     threadId,
     uploadFile,
     startStreaming,
     streamResponse,
-  ]);
-
-  const handlePromptModeToggle = useCallback(async () => {
-    if (
-      !promptState.canChangePromptMode ||
-      isSubmitting ||
-      isGenerating ||
-      isSwitchingPromptMode
-    ) {
-      return;
-    }
-
-    const previousMode = promptMode;
-    const nextMode: PromptMode =
-      previousMode === "structured" ? "legacy" : "structured";
-
-    setLocalPromptMode(nextMode);
-    setIsSwitchingPromptMode(true);
-    setError(null);
-    try {
-      await setPromptModeForEmptySession({ threadId, promptMode: nextMode });
-      setLocalPromptMode(null);
-    } catch (err) {
-      setLocalPromptMode(null);
-      setError(t("chatInput.promptModeUpdateFailed"));
-      console.error("[ChatInput] Failed to update prompt mode:", err);
-    } finally {
-      setIsSwitchingPromptMode(false);
-    }
-  }, [
-    promptState.canChangePromptMode,
-    isSubmitting,
-    isGenerating,
-    isSwitchingPromptMode,
-    promptMode,
-    setPromptModeForEmptySession,
-    threadId,
-    t,
   ]);
 
   const handleKeyDown = useCallback(
@@ -343,16 +282,10 @@ export function ChatInput({ promptState }: ChatInputProps) {
   const usagePercent =
     !isUnlimited && msgLimit ? msgLimit.used / msgLimit.limit : 0;
 
-  const isDisabled =
-    isSubmitting || isGenerating || isSwitchingPromptMode || isAtLimit;
+  const isDisabled = isSubmitting || isGenerating || isAtLimit;
   const canSubmit =
     (content.trim().length > 0 || images.length > 0) && !isDisabled;
   const canAttach = images.length < MAX_IMAGES && !isDisabled;
-  const canChangePromptMode =
-    promptState.canChangePromptMode &&
-    !isSubmitting &&
-    !isGenerating &&
-    !isSwitchingPromptMode;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-4">
@@ -453,45 +386,6 @@ export function ChatInput({ promptState }: ChatInputProps) {
                 {images.length}/{MAX_IMAGES}
               </span>
             )}
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={promptMode === "structured"}
-              onClick={handlePromptModeToggle}
-              disabled={!canChangePromptMode}
-              aria-busy={isSwitchingPromptMode}
-              className={cn(
-                "ml-1 inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-                promptMode === "structured"
-                  ? "border-violet-400/40 bg-violet-500/10 text-violet-600 dark:text-violet-300"
-                  : "border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground",
-                !canChangePromptMode && "cursor-not-allowed opacity-50",
-              )}
-              title={
-                !canChangePromptMode
-                  ? t("chatInput.promptModeLockedDescription")
-                  : promptMode === "structured"
-                    ? t("chatInput.structuredVoiceOnDescription")
-                    : t("chatInput.structuredVoiceOffDescription")
-              }
-            >
-              {isSwitchingPromptMode ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="h-3.5 w-3.5" />
-              )}
-              <span>{t("chatInput.structuredVoiceBeta")}</span>
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full",
-                  promptMode === "structured"
-                    ? "bg-violet-500"
-                    : "bg-muted-foreground/40",
-                )}
-              />
-            </button>
           </div>
 
           <button

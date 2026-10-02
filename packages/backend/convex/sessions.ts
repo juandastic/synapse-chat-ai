@@ -11,8 +11,6 @@ import { getOrCreateUser } from "./users";
 import {
   createPromptSnapshot,
   PromptSnapshot,
-  PromptMode,
-  promptModeValidator,
 } from "./prompts";
 
 // =============================================================================
@@ -46,11 +44,9 @@ export const get = internalQuery({
 
 function buildPromptSnapshotForPersona(
   persona: Doc<"personas">,
-  promptMode: PromptMode,
   customInstructions?: string,
 ): PromptSnapshot {
   return createPromptSnapshot({
-    promptMode,
     legacyPersonaPrompt: persona.systemPrompt,
     structuredRolePrompt: persona.structuredRolePrompt,
     language: persona.language,
@@ -62,14 +58,12 @@ async function createActiveSession(
   ctx: MutationCtx,
   thread: Doc<"threads">,
   user: Doc<"users">,
-  promptMode: PromptMode,
 ): Promise<Doc<"sessions">> {
   const persona = await ctx.db.get(thread.personaId);
   if (!persona) throw new Error("Persona not found for thread");
 
   const promptSnapshot = buildPromptSnapshotForPersona(
     persona,
-    promptMode,
     user.customInstructions,
   );
   const now = Date.now();
@@ -78,16 +72,10 @@ async function createActiveSession(
     userId: user._id,
     threadId: thread._id,
     status: "active",
-    promptMode,
+    promptMode: "structured",
     promptSnapshot,
     startedAt: now,
     lastMessageAt: now,
-  });
-
-  await ctx.db.patch(thread._id, {
-    activeSessionId: sessionId,
-    activePromptMode: promptMode,
-    activePromptModeLockedAt: undefined,
   });
 
   await ctx.scheduler.runAfter(0, internal.cortex.hydrate, {
@@ -172,8 +160,7 @@ export async function getOrCreateActiveSession(
     });
   }
 
-  const promptMode = user.preferredPromptMode ?? "legacy";
-  const newSession = await createActiveSession(ctx, thread, user, promptMode);
+  const newSession = await createActiveSession(ctx, thread, user);
 
   console.log("[sessions.getOrCreateActiveSession] Created new session", {
     sessionId: newSession._id,
@@ -207,16 +194,10 @@ export async function touchSession(
   await ctx.db.patch(session._id, {
     lastMessageAt: now,
     closerJobId,
-    promptModeLockedAt: session.promptModeLockedAt ?? now,
   });
 
   await ctx.db.patch(session.threadId, {
     lastMessageAt: now,
-    activeSessionId: session._id,
-    activePromptMode: session.promptSnapshot
-      ? (session.promptMode ?? "legacy")
-      : "legacy",
-    activePromptModeLockedAt: session.promptModeLockedAt ?? now,
   });
 
   console.log("[sessions.touchSession] Activity recorded", {
@@ -284,11 +265,6 @@ export const autoClose = internalMutation({
       endedAt: now,
       closerJobId: undefined,
     });
-    await ctx.db.patch(session.threadId, {
-      activeSessionId: undefined,
-      activePromptMode: undefined,
-      activePromptModeLockedAt: undefined,
-    });
 
     // Enqueue Cortex ingest job to persist learnings and prepare next session
     await ctx.runMutation(internal.cortexJobs.enqueueIngest, {
@@ -352,10 +328,8 @@ export const createDraftSession = internalMutation({
     }
 
     const user = await ctx.db.get(args.userId);
-    const promptMode = user?.preferredPromptMode ?? "legacy";
     const promptSnapshot = buildPromptSnapshotForPersona(
       persona,
-      promptMode,
       user?.customInstructions,
     );
 
@@ -365,15 +339,10 @@ export const createDraftSession = internalMutation({
       userId: args.userId,
       threadId: args.threadId,
       status: "active",
-      promptMode,
+      promptMode: "structured",
       promptSnapshot,
       startedAt: now,
       lastMessageAt: now,
-    });
-    await ctx.db.patch(args.threadId, {
-      activeSessionId: sessionId,
-      activePromptMode: promptMode,
-      activePromptModeLockedAt: undefined,
     });
 
     console.log("[sessions.createDraftSession] Created draft session", {
@@ -449,98 +418,6 @@ export const updateStatus = internalMutation({
 // Public Mutations
 // =============================================================================
 
-/** Select the personality mode for a new, still-empty session. */
-export const setPromptModeForEmptySession = mutation({
-  args: {
-    threadId: v.id("threads"),
-    promptMode: promptModeValidator,
-  },
-  handler: async (ctx, args) => {
-    const user = await getOrCreateUser(ctx);
-    const thread = await ctx.db.get(args.threadId);
-    if (!thread || thread.userId !== user._id) {
-      throw new Error("Thread not found");
-    }
-
-    const activeSession = await ctx.db
-      .query("sessions")
-      .withIndex("by_thread_status", (q) =>
-        q.eq("threadId", args.threadId).eq("status", "active"),
-      )
-      .first();
-
-    if (!activeSession) {
-      await ctx.db.patch(user._id, { preferredPromptMode: args.promptMode });
-      const newSession = await createActiveSession(
-        ctx,
-        thread,
-        user,
-        args.promptMode,
-      );
-      return {
-        promptMode: args.promptMode,
-        sessionId: newSession._id,
-      };
-    }
-
-    const currentMode: PromptMode = activeSession.promptSnapshot
-      ? (activeSession.promptMode ?? "legacy")
-      : "legacy";
-    if (currentMode === args.promptMode) {
-      return {
-        promptMode: args.promptMode,
-        sessionId: activeSession._id,
-      };
-    }
-
-    const firstMessage = await ctx.db
-      .query("messages")
-      .withIndex("by_session", (q) => q.eq("sessionId", activeSession._id))
-      .first();
-
-    if (activeSession.promptModeLockedAt !== undefined || firstMessage) {
-      throw new Error(
-        "Personality can only be changed before the first message of a new session",
-      );
-    }
-
-    await ctx.db.patch(user._id, { preferredPromptMode: args.promptMode });
-    const persona = await ctx.db.get(thread.personaId);
-    if (!persona) throw new Error("Persona not found for thread");
-    const promptSnapshot = buildPromptSnapshotForPersona(
-      persona,
-      args.promptMode,
-      user.customInstructions,
-    );
-    await ctx.db.patch(activeSession._id, {
-      promptMode: args.promptMode,
-      promptSnapshot,
-      cachedSystemPrompt: undefined,
-    });
-    await ctx.db.patch(args.threadId, {
-      activeSessionId: activeSession._id,
-      activePromptMode: args.promptMode,
-      activePromptModeLockedAt: undefined,
-    });
-
-    await ctx.scheduler.runAfter(0, internal.analytics.capture, {
-      distinctId: user._id,
-      event: "prompt mode switched",
-      properties: {
-        thread_id: args.threadId,
-        session_id: activeSession._id,
-        previous_prompt_mode: currentMode,
-        prompt_mode: args.promptMode,
-      },
-    });
-
-    return {
-      promptMode: args.promptMode,
-      sessionId: activeSession._id,
-    };
-  },
-});
-
 /**
  * Force-close the active session for a thread and enqueue Cortex ingest.
  *
@@ -603,11 +480,6 @@ export const forceClose = mutation({
       status: "closed",
       endedAt: Date.now(),
       closerJobId: undefined,
-    });
-    await ctx.db.patch(args.threadId, {
-      activeSessionId: undefined,
-      activePromptMode: undefined,
-      activePromptModeLockedAt: undefined,
     });
 
     const ingestEnqueued = latestMessage !== null;

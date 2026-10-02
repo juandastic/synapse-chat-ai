@@ -222,7 +222,7 @@ export default function ChatScreen() {
             personaIcon={thread.persona.icon}
             personaName={thread.persona.name}
           />
-          <ChatInput threadId={threadId} promptState={thread.promptState} />
+          <ChatInput threadId={threadId} />
         </KeyboardAvoidingView>
       </BottomSheetModalProvider>
     </ChatProvider>

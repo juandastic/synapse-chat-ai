@@ -1,11 +1,7 @@
 import { v } from "convex/values";
 
+// Legacy remains supported only for frozen historical sessions.
 export type PromptMode = "legacy" | "structured";
-
-export const promptModeValidator = v.union(
-  v.literal("legacy"),
-  v.literal("structured"),
-);
 
 export const PRODUCT_CONTRACT_VERSION = "product-contract-v1.0.0";
 export const SYNAPSE_VOICE_VERSION = "synapse-voice-v1.0.0";
@@ -88,32 +84,19 @@ const SYNAPSE_PERSONALITIES: Record<string, string> = {
 };
 
 export interface PromptSnapshotInput {
-  promptMode: PromptMode;
   legacyPersonaPrompt: string;
   structuredRolePrompt?: string;
   language: string;
   customInstructions?: string;
 }
 
+/** New sessions always use Synapse Voice and the product contract. */
 export function createPromptSnapshot({
-  promptMode,
   legacyPersonaPrompt,
   structuredRolePrompt,
   language,
   customInstructions,
 }: PromptSnapshotInput): PromptSnapshot {
-  if (promptMode === "legacy") {
-    return {
-      formatVersion: LEGACY_PROMPT_FORMAT_VERSION,
-      personaPrompt: legacyPersonaPrompt.trim(),
-      personaSource: "legacy",
-      language,
-      ...(customInstructions?.trim()
-        ? { customInstructions: customInstructions.trim() }
-        : {}),
-    };
-  }
-
   const hasDedicatedRolePrompt = !!structuredRolePrompt?.trim();
   return {
     formatVersion: STRUCTURED_PROMPT_FORMAT_VERSION,

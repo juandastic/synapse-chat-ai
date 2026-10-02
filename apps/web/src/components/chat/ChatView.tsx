@@ -191,7 +191,7 @@ function ChatViewInner({ threadId }: { threadId: Id<"threads"> }) {
 
         {/* Input area */}
         <div className="shrink-0 border-t border-border/50 bg-background/80 backdrop-blur-sm">
-          <ChatInput promptState={thread.promptState} />
+          <ChatInput />
           <p className="px-4 pb-2 pt-0.5 text-center text-[10px] text-muted-foreground/70">
             <AIDisclaimer />
           </p>

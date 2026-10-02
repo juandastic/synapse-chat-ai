@@ -171,7 +171,6 @@ export const seedDemoData = internalMutation({
       }
 
       const promptSnapshot = createPromptSnapshot({
-        promptMode: "legacy",
         legacyPersonaPrompt: personaSeed.systemPrompt,
         language: personaSeed.language,
         customInstructions: SEED_DATA.user.customInstructions,
@@ -189,7 +188,7 @@ export const seedDemoData = internalMutation({
           userId,
           threadId,
           status: "closed",
-          promptMode: "legacy",
+          promptMode: "structured",
           promptSnapshot,
           startedAt: s.startedAt,
           endedAt: s.endedAt,

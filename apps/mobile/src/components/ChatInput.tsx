@@ -14,7 +14,7 @@ import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
-import { Send, ImagePlus, Pencil, X, Sparkles } from "lucide-react-native";
+import { Send, ImagePlus, Pencil, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { captureError } from "../lib/analytics";
@@ -29,27 +29,17 @@ import {
   useImageUpload,
 } from "../hooks/useImageUpload";
 
-type PromptMode = "legacy" | "structured";
-
 interface ChatInputProps {
   threadId: Id<"threads">;
-  promptState?: {
-    promptMode: PromptMode;
-    canChangePromptMode: boolean;
-  };
 }
 
-export function ChatInput({ threadId, promptState }: ChatInputProps) {
+export function ChatInput({ threadId }: ChatInputProps) {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isSwitchingPromptMode, setIsSwitchingPromptMode] = useState(false);
-  const [localPromptMode, setLocalPromptMode] = useState<PromptMode | null>(
-    null,
-  );
   const [error, setError] = useState<string | null>(null);
   const textInputRef = useRef<TextInput>(null);
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
 
   const {
     isGenerating,
@@ -61,18 +51,12 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
   const editLastMessageAndResend = useMutation(
     api.messages.editLastMessageAndResend,
   );
-  const setPromptModeForEmptySession = useMutation(
-    api.sessions.setPromptModeForEmptySession,
-  );
   const uploadImage = useImageUpload();
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
   const posthog = usePostHog();
   const { t, i18n } = useTranslation("chat");
   const insets = useSafeAreaInsets();
-
-  const promptMode: PromptMode =
-    localPromptMode ?? promptState?.promptMode ?? "legacy";
 
   const {
     images,
@@ -94,16 +78,12 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
     return () => clearTimeout(focusTimer);
   }, [editingMessage, clearImages]);
 
-  useEffect(() => {
-    setLocalPromptMode(null);
-  }, [threadId]);
-
   const handleSubmit = useCallback(async () => {
     const trimmedContent = content.trim();
     const hasImages = images.length > 0;
 
     if (!trimmedContent && !hasImages) return;
-    if (isSubmitting || isGenerating || isSwitchingPromptMode) return;
+    if (isSubmitting || isGenerating) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -231,7 +211,6 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
     images,
     isSubmitting,
     isGenerating,
-    isSwitchingPromptMode,
     editingMessage,
     sendMessage,
     editLastMessageAndResend,
@@ -253,51 +232,6 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
     cancelEditing();
   }, [cancelEditing, clearImages]);
 
-  const handlePromptModeToggle = useCallback(async () => {
-    if (
-      !promptState?.canChangePromptMode ||
-      isSubmitting ||
-      isGenerating ||
-      isSwitchingPromptMode
-    ) {
-      return;
-    }
-
-    const previousMode = promptMode;
-    const nextMode: PromptMode =
-      previousMode === "structured" ? "legacy" : "structured";
-
-    setLocalPromptMode(nextMode);
-    setIsSwitchingPromptMode(true);
-    setError(null);
-    void Haptics.selectionAsync();
-
-    try {
-      await setPromptModeForEmptySession({ threadId, promptMode: nextMode });
-      setLocalPromptMode(null);
-    } catch (err) {
-      setLocalPromptMode(null);
-      setError(t("chatInput.promptModeUpdateFailed"));
-      captureError(err, {
-        source: "chat_input",
-        action: "set_prompt_mode",
-        thread_id: threadId,
-        prompt_mode: nextMode,
-      });
-    } finally {
-      setIsSwitchingPromptMode(false);
-    }
-  }, [
-    promptState?.canChangePromptMode,
-    isSubmitting,
-    isGenerating,
-    isSwitchingPromptMode,
-    promptMode,
-    setPromptModeForEmptySession,
-    threadId,
-    t,
-  ]);
-
   // Usage limits
   const msgLimit = usageStatus?.dailyMessages;
   const isUnlimited = msgLimit?.limit === -1;
@@ -306,18 +240,12 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
   const usagePercent =
     !isUnlimited && msgLimit ? msgLimit.used / msgLimit.limit : 0;
 
-  const isDisabled =
-    isSubmitting || isGenerating || isSwitchingPromptMode || isAtLimit;
+  const isDisabled = isSubmitting || isGenerating || isAtLimit;
   const canSubmit =
     (content.trim().length > 0 || images.length > 0) &&
     !isDisabled;
   const canAttach =
     !editingMessage && images.length < maxImages && !isDisabled;
-  const canChangePromptMode =
-    promptState?.canChangePromptMode === true &&
-    !isSubmitting &&
-    !isGenerating &&
-    !isSwitchingPromptMode;
 
   const s = useMemo(
     () =>
@@ -393,58 +321,6 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
           paddingHorizontal: 4,
           paddingVertical: 4,
         },
-        promptModeRow: {
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: 8,
-          paddingBottom: 8,
-        },
-        promptModeButton: {
-          minHeight: 34,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 6,
-          borderWidth: 1,
-          borderRadius: 10,
-          paddingHorizontal: 10,
-          paddingVertical: 7,
-        },
-        promptModeButtonActive: {
-          borderColor:
-            theme === "dark"
-              ? "rgba(196, 181, 253, 0.4)"
-              : "rgba(124, 58, 237, 0.35)",
-          backgroundColor:
-            theme === "dark"
-              ? "rgba(139, 92, 246, 0.14)"
-              : "rgba(139, 92, 246, 0.1)",
-        },
-        promptModeButtonInactive: {
-          borderColor: colors.rule,
-          backgroundColor: "transparent",
-        },
-        promptModeButtonDisabled: {
-          opacity: 0.5,
-        },
-        promptModeText: {
-          fontSize: 12,
-          fontWeight: "600",
-          color: colors.inkMuted,
-        },
-        promptModeTextActive: {
-          color: theme === "dark" ? "#c4b5fd" : "#7c3aed",
-        },
-        promptModeDot: {
-          width: 6,
-          height: 6,
-          borderRadius: 3,
-          backgroundColor: colors.inkMuted,
-          opacity: 0.45,
-        },
-        promptModeDotActive: {
-          backgroundColor: theme === "dark" ? "#a78bfa" : "#7c3aed",
-          opacity: 1,
-        },
         attachButton: {
           width: 36,
           height: 36,
@@ -507,7 +383,7 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
           opacity: 0.7,
         },
       }),
-    [colors, theme],
+    [colors],
   );
 
   return (
@@ -617,68 +493,6 @@ export function ChatInput({ threadId, promptState }: ChatInputProps) {
             )}
           </Pressable>
         </View>
-
-        {promptState && (
-          <View style={s.promptModeRow}>
-            <Pressable
-              style={[
-                s.promptModeButton,
-                promptMode === "structured"
-                  ? s.promptModeButtonActive
-                  : s.promptModeButtonInactive,
-                !canChangePromptMode && s.promptModeButtonDisabled,
-              ]}
-              onPress={handlePromptModeToggle}
-              disabled={!canChangePromptMode}
-              accessibilityRole="switch"
-              accessibilityLabel={t("chatInput.structuredVoiceBeta")}
-              accessibilityHint={
-                !promptState.canChangePromptMode
-                  ? t("chatInput.promptModeLockedDescription")
-                  : promptMode === "structured"
-                    ? t("chatInput.structuredVoiceOnDescription")
-                    : t("chatInput.structuredVoiceOffDescription")
-              }
-              accessibilityState={{
-                checked: promptMode === "structured",
-                disabled: !canChangePromptMode,
-                busy: isSwitchingPromptMode,
-              }}
-            >
-              {isSwitchingPromptMode ? (
-                <ActivityIndicator
-                  size="small"
-                  color={theme === "dark" ? "#c4b5fd" : "#7c3aed"}
-                />
-              ) : (
-                <Sparkles
-                  size={15}
-                  color={
-                    promptMode === "structured"
-                      ? theme === "dark"
-                        ? "#c4b5fd"
-                        : "#7c3aed"
-                      : colors.inkMuted
-                  }
-                />
-              )}
-              <Text
-                style={[
-                  s.promptModeText,
-                  promptMode === "structured" && s.promptModeTextActive,
-                ]}
-              >
-                {t("chatInput.structuredVoiceBeta")}
-              </Text>
-              <View
-                style={[
-                  s.promptModeDot,
-                  promptMode === "structured" && s.promptModeDotActive,
-                ]}
-              />
-            </Pressable>
-          </View>
-        )}
       </View>
 
       {/* Error */}

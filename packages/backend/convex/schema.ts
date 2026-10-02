@@ -16,7 +16,7 @@ export default defineSchema({
     ),
     /** Applied to all personas as extra system prompt context */
     customInstructions: v.optional(v.string()),
-    /** Default mode used when a new session is created */
+    /** Deprecated experiment preference, retained for stored documents only. */
     preferredPromptMode: v.optional(
       v.union(v.literal("legacy"), v.literal("structured")),
     ),
@@ -55,7 +55,7 @@ export default defineSchema({
     personaId: v.id("personas"),
     title: v.string(),
     lastMessageAt: v.number(), // used for sidebar sorting
-    /** Lightweight mirror used by the chat UI without reading the prompt snapshot */
+    /** Deprecated experiment mirrors, retained for stored documents only. */
     activeSessionId: v.optional(v.id("sessions")),
     activePromptMode: v.optional(
       v.union(v.literal("legacy"), v.literal("structured")),
@@ -85,7 +85,7 @@ export default defineSchema({
     promptMode: v.optional(
       v.union(v.literal("legacy"), v.literal("structured")),
     ),
-    /** Set by the first send; prompt selection stays locked if messages are deleted */
+    /** Deprecated experiment lock, retained for stored documents only. */
     promptModeLockedAt: v.optional(v.number()),
     /** Cortex-compiled user knowledge — undefined before first ingest */
     cachedUserKnowledge: v.optional(v.string()),
