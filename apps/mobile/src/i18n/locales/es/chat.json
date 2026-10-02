@@ -57,7 +57,18 @@
     "fileSizeExceeded": "{{filename}} excede el límite de 10MB",
     "imageReadFailed": "No se pudo leer la imagen seleccionada. Selecciónala de nuevo.",
     "imageUploadFailed": "No se pudo subir la imagen. Revisa tu conexión e inténtalo de nuevo.",
-    "sendFailed": "No se pudo enviar el mensaje. Inténtalo de nuevo."
+    "sendFailed": "No se pudo enviar el mensaje. Inténtalo de nuevo.",
+    "chooseModel": "Elegir modelo. Actual: {{model}}",
+    "modelTitle": "Modelo para el próximo mensaje",
+    "closeModelSelector": "Cerrar lista de modelos",
+    "modelContextHint": "Todos usan el mismo contexto y tus recuerdos. La elección se aplica al próximo mensaje.",
+    "modelDefault": "Predeterminado",
+    "reasoningHigh": "Razonamiento alto",
+    "reasoningThinking": "Thinking activado",
+    "modelTextOnly": "No disponible: esta conversación contiene imágenes.",
+    "modelCheckingImages": "Comprobando imágenes del contexto…",
+    "modelImageMismatch": "Elige un modelo compatible con imágenes para enviar.",
+    "modelEditingHint": "La edición conserva el modelo original."
   },
   "messageItem": {
     "error": "Error",

@@ -13,6 +13,7 @@ import { useMutation, useQuery } from "convex/react";
 import { usePostHog } from "posthog-react-native";
 import { useTranslation } from "react-i18next";
 import { api } from "@synapse/backend/api";
+import { CHAT_MODELS, DEFAULT_CHAT_MODEL } from "@synapse/backend/chatModels";
 import { Id } from "@synapse/backend/dataModel";
 import { Send, ImagePlus, Pencil, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,6 +24,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useChatContext } from "../contexts/useChatContext";
 import { useStreamResponse } from "../hooks/useStreamResponse";
 import { useImagePicker, PickedImage } from "../hooks/useImagePicker";
+import { ChatModelSelector } from "./ChatModelSelector";
 import {
   getImageUploadErrorTelemetry,
   ImageUploadError,
@@ -38,6 +40,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_CHAT_MODEL.id);
   const textInputRef = useRef<TextInput>(null);
   const { colors } = useTheme();
 
@@ -46,6 +49,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
     startStreaming,
     editingMessage,
     cancelEditing,
+    messages,
   } = useChatContext();
   const sendMessage = useMutation(api.messages.send);
   const editLastMessageAndResend = useMutation(
@@ -54,6 +58,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const uploadImage = useImageUpload();
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
+  const modelCapabilities = useQuery(api.messages.getModelCapabilities, { threadId });
   const posthog = usePostHog();
   const { t, i18n } = useTranslation("chat");
   const insets = useSafeAreaInsets();
@@ -66,6 +71,23 @@ export function ChatInput({ threadId }: ChatInputProps) {
     restoreImages,
     maxImages,
   } = useImagePicker();
+
+  useEffect(() => {
+    setSelectedModelId(DEFAULT_CHAT_MODEL.id);
+  }, [threadId]);
+
+  // Editing regenerates the existing pair with its persisted generation target.
+  const editingIndex = editingMessage
+    ? messages?.findIndex((message) => message._id === editingMessage._id) ?? -1
+    : -1;
+  const editingAssistant = editingIndex >= 0 ? messages?.[editingIndex + 1] : undefined;
+  const activeModelId = editingMessage
+    ? editingAssistant?.generationTarget?.model ?? DEFAULT_CHAT_MODEL.id
+    : selectedModelId;
+  const activeModel = CHAT_MODELS.find((model) => model.id === activeModelId) ?? DEFAULT_CHAT_MODEL;
+  const contextHasImages = modelCapabilities?.hasImages === true || images.length > 0;
+  const modelUnavailable = !editingMessage && !activeModel.images &&
+    (contextHasImages || modelCapabilities === undefined);
 
   useEffect(() => {
     if (!editingMessage) return;
@@ -83,7 +105,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
     const hasImages = images.length > 0;
 
     if (!trimmedContent && !hasImages) return;
-    if (isSubmitting || isGenerating) return;
+    if (isSubmitting || isGenerating || modelUnavailable) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -161,6 +183,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
         : await sendMessage({
             threadId,
             content: trimmedContent,
+            model: selectedModelId,
             ...(imageKeys && imageKeys.length > 0 ? { imageKeys } : {}),
           });
 
@@ -211,6 +234,8 @@ export function ChatInput({ threadId }: ChatInputProps) {
     images,
     isSubmitting,
     isGenerating,
+    modelUnavailable,
+    selectedModelId,
     editingMessage,
     sendMessage,
     editLastMessageAndResend,
@@ -243,7 +268,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const isDisabled = isSubmitting || isGenerating || isAtLimit;
   const canSubmit =
     (content.trim().length > 0 || images.length > 0) &&
-    !isDisabled;
+    !isDisabled && !modelUnavailable;
   const canAttach =
     !editingMessage && images.length < maxImages && !isDisabled;
 
@@ -320,6 +345,19 @@ export function ChatInput({ threadId }: ChatInputProps) {
           alignItems: "flex-end",
           paddingHorizontal: 4,
           paddingVertical: 4,
+        },
+        modelRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          paddingRight: 12,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.rule,
+        },
+        modelHint: {
+          flex: 1,
+          fontSize: 11,
+          lineHeight: 15,
+          color: colors.inkMuted,
         },
         attachButton: {
           width: 36,
@@ -492,6 +530,25 @@ export function ChatInput({ threadId }: ChatInputProps) {
               />
             )}
           </Pressable>
+        </View>
+        <View style={s.modelRow}>
+          <ChatModelSelector
+            key={threadId}
+            modelId={activeModelId}
+            onSelect={setSelectedModelId}
+            hasImages={contextHasImages}
+            capabilitiesLoading={modelCapabilities === undefined}
+            disabled={isDisabled || !!editingMessage}
+          />
+          {(editingMessage || modelUnavailable) && (
+            <Text style={s.modelHint}>
+              {t(editingMessage
+                ? "chatInput.modelEditingHint"
+                : contextHasImages
+                  ? "chatInput.modelImageMismatch"
+                  : "chatInput.modelCheckingImages")}
+            </Text>
+          )}
         </View>
       </View>
 

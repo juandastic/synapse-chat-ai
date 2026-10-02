@@ -78,7 +78,8 @@ export function useStreamResponse() {
             reject(new Error("Request timed out"));
           };
 
-          xhr.timeout = 120000; // 2 minute timeout
+          // Cortex allows 300s for reasoning; leave time for context preparation.
+          xhr.timeout = 330000;
 
           xhr.send(
             JSON.stringify({
