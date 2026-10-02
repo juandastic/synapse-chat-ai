@@ -31,7 +31,7 @@ interface ImagePreview {
 
 export function ChatInput() {
   const [content, setContent] = useState("");
-  const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_CHAT_MODEL.id);
+  const [isSavingModel, setIsSavingModel] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +43,9 @@ export function ChatInput() {
 
   const { isGenerating, threadId, startStreaming } = useChatContext();
   const sendMessage = useMutation(api.messages.send);
+  const saveChatModel = useMutation(api.users.setChatModel);
+  const chatSettings = useQuery(api.users.getChatSettings);
+  const selectedModelId = chatSettings?.model ?? DEFAULT_CHAT_MODEL.id;
   const uploadFile = useUploadFile(api.r2);
   const streamResponse = useStreamResponse();
   const usageStatus = useQuery(api.usageLimits.getUsageStatus);
@@ -51,6 +54,18 @@ export function ChatInput() {
   const needsVision = images.length > 0 || capabilities?.hasImages === true;
   const incompatibleModel = needsVision && !selectedModel.images;
   const { t } = useTranslation("chat");
+
+  const handleSelectModel = async (model: string) => {
+    setIsSavingModel(true);
+    setError(null);
+    try {
+      await saveChatModel({ model });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("modelSelector.saveFailed"));
+    } finally {
+      setIsSavingModel(false);
+    }
+  };
 
   // Cleanup on unmount only (not on every images change)
   useEffect(() => {
@@ -149,7 +164,7 @@ export function ChatInput() {
     const hasImages = images.length > 0;
 
     if (!trimmedContent && !hasImages) return;
-    if (isSubmitting || isGenerating || incompatibleModel) return;
+    if (isSubmitting || isSavingModel || isGenerating || incompatibleModel) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -177,7 +192,6 @@ export function ChatInput() {
 
       const result = await sendMessage({
         threadId,
-        model: selectedModelId,
         content: trimmedContent,
         ...(imageKeys && imageKeys.length > 0 ? { imageKeys } : {}),
       });
@@ -200,9 +214,9 @@ export function ChatInput() {
     content,
     images,
     isSubmitting,
+    isSavingModel,
     isGenerating,
     incompatibleModel,
-    selectedModelId,
     sendMessage,
     threadId,
     uploadFile,
@@ -291,7 +305,7 @@ export function ChatInput() {
   const usagePercent =
     !isUnlimited && msgLimit ? msgLimit.used / msgLimit.limit : 0;
 
-  const isDisabled = isSubmitting || isGenerating || isAtLimit;
+  const isDisabled = isSubmitting || isSavingModel || isGenerating || isAtLimit;
   const canSubmit =
     (content.trim().length > 0 || images.length > 0) && !isDisabled && !incompatibleModel;
   const canAttach = images.length < MAX_IMAGES && !isDisabled;
@@ -390,25 +404,27 @@ export function ChatInput() {
               <ImagePlus className="h-5 w-5" />
             </button>
 
-            <select
-              aria-label={t("modelSelector.label")}
-              title={t("modelSelector.nextTurn")}
-              value={selectedModelId}
-              onChange={(event) => setSelectedModelId(event.target.value)}
-              disabled={isDisabled}
-              className="h-9 max-w-[210px] rounded-lg border-0 bg-transparent px-2 text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-            >
-              <option value={DEFAULT_CHAT_MODEL.id} className="bg-popover text-popover-foreground">
-                Gemini · {t("modelSelector.default")}
-              </option>
-              <optgroup label="OpenRouter" className="bg-popover text-popover-foreground">
-                {CHAT_MODELS.filter((model) => model.provider === "openrouter").map((model) => (
-                  <option key={model.id} value={model.id} disabled={needsVision && !model.images}>
-                    {model.name} · {model.reasoning === "high" ? "High" : "Thinking"}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
+            {chatSettings?.modelSelectorEnabled && (
+              <select
+                aria-label={t("modelSelector.label")}
+                title={t("modelSelector.nextTurn")}
+                value={selectedModelId}
+                onChange={(event) => void handleSelectModel(event.target.value)}
+                disabled={isDisabled}
+                className="h-9 max-w-[210px] rounded-lg border-0 bg-transparent px-2 text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              >
+                <option value={DEFAULT_CHAT_MODEL.id} className="bg-popover text-popover-foreground">
+                  Gemini · {t("modelSelector.default")}
+                </option>
+                <optgroup label="OpenRouter" className="bg-popover text-popover-foreground">
+                  {CHAT_MODELS.filter((model) => model.provider === "openrouter").map((model) => (
+                    <option key={model.id} value={model.id} disabled={needsVision && !model.images}>
+                      {model.name} · {model.reasoning === "high" ? "High" : "Thinking"}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            )}
 
             {images.length > 0 && (
               <span className="text-xs text-muted-foreground/60">
@@ -444,7 +460,7 @@ export function ChatInput() {
           {error}
         </p>
       )}
-      {needsVision && (
+      {chatSettings?.modelSelectorEnabled && incompatibleModel && (
         <p className={cn("mt-2 text-center text-xs", incompatibleModel ? "text-destructive" : "text-muted-foreground")} role={incompatibleModel ? "alert" : undefined}>
           {t("modelSelector.imagesNotice")}
         </p>

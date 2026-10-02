@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { promptSnapshotValidator } from "./prompts";
+import { CHAT_MODELS } from "./chatModels";
 
 export default defineSchema({
   // ===========================================================================
@@ -10,6 +11,10 @@ export default defineSchema({
   users: defineTable({
     tokenIdentifier: v.string(),
     name: v.string(),
+    /** New turns use this assignment; absent means Gemini through Vertex. */
+    chatModel: v.optional(v.union(...CHAT_MODELS.map((model) => v.literal(model.id)))),
+    /** Absent/false enables blind evaluation with no client model controls. */
+    modelSelectorEnabled: v.optional(v.boolean()),
     /** Plan tier — undefined defaults to "free" */
     plan: v.optional(
       v.union(v.literal("unlimited"), v.literal("pro"), v.literal("free")),

@@ -59,16 +59,17 @@
     "imageUploadFailed": "No se pudo subir la imagen. Revisa tu conexión e inténtalo de nuevo.",
     "sendFailed": "No se pudo enviar el mensaje. Inténtalo de nuevo.",
     "chooseModel": "Elegir modelo. Actual: {{model}}",
-    "modelTitle": "Modelo para el próximo mensaje",
+    "modelTitle": "Modelo del chat",
     "closeModelSelector": "Cerrar lista de modelos",
-    "modelContextHint": "Todos usan el mismo contexto y tus recuerdos. La elección se aplica al próximo mensaje.",
+    "modelContextHint": "Todos usan el mismo contexto y tus recuerdos. La elección se guarda para los próximos mensajes en todos tus dispositivos.",
     "modelDefault": "Predeterminado",
     "reasoningHigh": "Razonamiento alto",
     "reasoningThinking": "Thinking activado",
     "modelTextOnly": "No disponible: esta conversación contiene imágenes.",
     "modelCheckingImages": "Comprobando imágenes del contexto…",
     "modelImageMismatch": "Elige un modelo compatible con imágenes para enviar.",
-    "modelEditingHint": "La edición conserva el modelo original."
+    "modelEditingHint": "La edición conserva el modelo original.",
+    "modelSaveFailed": "No se pudo guardar el modelo. Inténtalo de nuevo."
   },
   "messageItem": {
     "error": "Error",

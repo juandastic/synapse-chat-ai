@@ -11,6 +11,24 @@ import { getOrCreateActiveSession, touchSession, SESSION_STALE_THRESHOLD_MS } fr
 import { checkDailyUsage } from "./usageLimits";
 import { r2 } from "./r2";
 import { getChatModel } from "./chatModels";
+import { Doc } from "./_generated/dataModel";
+
+/** Only metadata consumed by the chat UI crosses the public query boundary. */
+export function publicMessage(message: Doc<"messages">) {
+  const { generationTarget: _target, metadata, ...visible } = message;
+  if (!metadata) return visible;
+  const {
+    ragEnabled, ragNodes, ragEdges,
+    groundingUsed, groundingSources, groundingSearchEntryPoint,
+  } = metadata;
+  return {
+    ...visible,
+    metadata: {
+      ragEnabled, ragNodes, ragEdges,
+      groundingUsed, groundingSources, groundingSearchEntryPoint,
+    },
+  };
+}
 
 // =============================================================================
 // Configuration
@@ -45,7 +63,7 @@ export const list = query({
       .order("desc")
       .take(limit);
 
-    return messages.reverse(); // chronological order
+    return messages.reverse().map(publicMessage); // chronological order
   },
 });
 
@@ -133,10 +151,8 @@ export const send = mutation({
     threadId: v.id("threads"),
     content: v.string(),
     imageKeys: v.optional(v.array(v.string())),
-    model: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const selectedModel = getChatModel(args.model);
     const content = args.content.trim();
     const hasImages = args.imageKeys && args.imageKeys.length > 0;
 
@@ -150,6 +166,7 @@ export const send = mutation({
     }
 
     const user = await getOrCreateUser(ctx);
+    const selectedModel = getChatModel(user.chatModel);
 
     // Usage limit check — blocks before any DB writes
     const usageCheck = await checkDailyUsage(ctx, user);
@@ -210,6 +227,8 @@ export const send = mutation({
       assistantMessageId,
       contentLength: content.length,
       imageCount: args.imageKeys?.length ?? 0,
+      model: selectedModel.id,
+      provider: selectedModel.provider,
       promptMode,
     });
 
@@ -466,7 +485,6 @@ export const reportStreamFailure = mutation({
 export const resend = mutation({
   args: {
     userMessageId: v.id("messages"),
-    model: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getOrCreateUser(ctx);
@@ -520,7 +538,8 @@ export const resend = mutation({
       .order("asc")
       .first();
 
-    const selectedModel = getChatModel(args.model ?? nextMessage?.generationTarget?.model);
+    // A retry belongs to its original experiment, even if the user assignment changed.
+    const selectedModel = getChatModel(nextMessage?.generationTarget?.model);
     // Reject an incompatible retry before deleting the existing response.
     if (!selectedModel.images) {
       const history = await ctx.db.query("messages")

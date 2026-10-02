@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { cn, formatMessageTime } from "@/lib/utils";
 import { Doc } from "@synapse/backend/dataModel";
 import { api } from "@synapse/backend/api";
-import { CHAT_MODELS } from "@synapse/backend/chatModels";
 import { secureRehypePlugin } from "@/lib/markdown-security";
 import { useChatContext } from "@/contexts/useChatContext";
 import { useStreamResponse } from "@/hooks/useStreamResponse";
@@ -136,14 +135,6 @@ export const MessageItem = memo(function MessageItem({
               />
             </svg>
             <span>{t("messageItem.error")}</span>
-          </div>
-        )}
-
-        {!isUser && message.generationTarget && (
-          <div className="mt-2 text-[11px] text-muted-foreground" data-testid="response-model">
-            {CHAT_MODELS.find((model) => model.id === (message.metadata?.model ?? message.generationTarget?.model))?.name
-              ?? message.metadata?.model ?? message.generationTarget.model}
-            {message.generationTarget.provider === "openrouter" && " · OpenRouter"}
           </div>
         )}
 

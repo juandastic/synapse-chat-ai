@@ -8,6 +8,14 @@ import {
   MutationCtx,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Doc } from "./_generated/dataModel";
+import { getChatModel } from "./chatModels";
+
+function publicUser(user: Doc<"users"> | null) {
+  if (!user) return null;
+  const { chatModel: _model, modelSelectorEnabled: _selector, ...profile } = user;
+  return profile;
+}
 
 // =============================================================================
 // Configuration
@@ -151,7 +159,19 @@ export const getByToken = internalQuery({
 export const me = query({
   args: {},
   handler: async (ctx) => {
-    return getCurrentUser(ctx);
+    return publicUser(await getCurrentUser(ctx));
+  },
+});
+
+/** Expose the assignment only when the owner is allowed to select a model. */
+export const getChatSettings = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (user?.modelSelectorEnabled !== true) {
+      return { modelSelectorEnabled: false, model: null };
+    }
+    return { modelSelectorEnabled: true, model: getChatModel(user.chatModel).id };
   },
 });
 
@@ -167,7 +187,7 @@ export const me = query({
 export const ensureUser = mutation({
   args: {},
   handler: async (ctx) => {
-    return getOrCreateUser(ctx);
+    return publicUser(await getOrCreateUser(ctx));
   },
 });
 
@@ -210,7 +230,7 @@ export const updateProfile = mutation({
       },
     });
 
-    return ctx.db.get(user._id);
+    return publicUser(await ctx.db.get(user._id));
   },
 });
 
@@ -224,9 +244,9 @@ export const confirmTerms = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     const user = await getOrCreateUser(ctx);
-    if (user.termsConfirmedAt) return user;
+    if (user.termsConfirmedAt) return publicUser(user);
     await ctx.db.patch(user._id, { termsConfirmedAt: Date.now() });
-    return ctx.db.get(user._id);
+    return publicUser(await ctx.db.get(user._id));
   },
 });
 
@@ -238,9 +258,42 @@ export const setMemoryIntroSeen = mutation({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;
-    if (user.memoryIntroSeenAt) return user;
+    if (user.memoryIntroSeenAt) return publicUser(user);
     await ctx.db.patch(user._id, { memoryIntroSeenAt: Date.now() });
-    return ctx.db.get(user._id);
+    return publicUser(await ctx.db.get(user._id));
+  },
+});
+
+/** A manual selection persists across threads, devices, and future turns. */
+export const setChatModel = mutation({
+  args: { model: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUser(ctx);
+    if (user.modelSelectorEnabled !== true) throw new Error("Model selector is disabled");
+    const model = getChatModel(args.model);
+    await ctx.db.patch(user._id, { chatModel: model.id });
+  },
+});
+
+/** Admin-only function runnable from the Convex dashboard, never the client API. */
+export const setUserChatConfig = internalMutation({
+  args: {
+    userId: v.id("users"),
+    chatModel: v.optional(v.string()),
+    modelSelectorEnabled: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User not found");
+    await ctx.db.patch(user._id, {
+      ...(args.chatModel !== undefined ? { chatModel: getChatModel(args.chatModel).id } : {}),
+      ...(args.modelSelectorEnabled !== undefined ? { modelSelectorEnabled: args.modelSelectorEnabled } : {}),
+    });
+    console.log("[users.setUserChatConfig] Chat configuration updated", {
+      userId: user._id,
+      chatModel: args.chatModel ?? user.chatModel ?? getChatModel().id,
+      modelSelectorEnabled: args.modelSelectorEnabled ?? user.modelSelectorEnabled ?? false,
+    });
   },
 });
 

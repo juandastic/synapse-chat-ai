@@ -82,8 +82,9 @@
   },
   "modelSelector": {
     "label": "Response model",
-    "nextTurn": "Model for the next message",
+    "nextTurn": "Saved for future messages on all your devices",
     "default": "Default",
-    "imagesNotice": "This context contains images. DeepSeek and Qwen require a chat without images."
+    "imagesNotice": "Choose a model that supports images.",
+    "saveFailed": "Could not save the model. Try again."
   }
 }

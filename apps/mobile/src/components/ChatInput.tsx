@@ -40,7 +40,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_CHAT_MODEL.id);
+  const [isSavingModel, setIsSavingModel] = useState(false);
   const textInputRef = useRef<TextInput>(null);
   const { colors } = useTheme();
 
@@ -49,9 +49,11 @@ export function ChatInput({ threadId }: ChatInputProps) {
     startStreaming,
     editingMessage,
     cancelEditing,
-    messages,
   } = useChatContext();
   const sendMessage = useMutation(api.messages.send);
+  const saveChatModel = useMutation(api.users.setChatModel);
+  const chatSettings = useQuery(api.users.getChatSettings);
+  const selectedModelId = chatSettings?.model ?? DEFAULT_CHAT_MODEL.id;
   const editLastMessageAndResend = useMutation(
     api.messages.editLastMessageAndResend,
   );
@@ -72,22 +74,22 @@ export function ChatInput({ threadId }: ChatInputProps) {
     maxImages,
   } = useImagePicker();
 
-  useEffect(() => {
-    setSelectedModelId(DEFAULT_CHAT_MODEL.id);
-  }, [threadId]);
-
-  // Editing regenerates the existing pair with its persisted generation target.
-  const editingIndex = editingMessage
-    ? messages?.findIndex((message) => message._id === editingMessage._id) ?? -1
-    : -1;
-  const editingAssistant = editingIndex >= 0 ? messages?.[editingIndex + 1] : undefined;
-  const activeModelId = editingMessage
-    ? editingAssistant?.generationTarget?.model ?? DEFAULT_CHAT_MODEL.id
-    : selectedModelId;
-  const activeModel = CHAT_MODELS.find((model) => model.id === activeModelId) ?? DEFAULT_CHAT_MODEL;
+  const activeModel = CHAT_MODELS.find((model) => model.id === selectedModelId) ?? DEFAULT_CHAT_MODEL;
   const contextHasImages = modelCapabilities?.hasImages === true || images.length > 0;
   const modelUnavailable = !editingMessage && !activeModel.images &&
     (contextHasImages || modelCapabilities === undefined);
+
+  const handleSelectModel = async (model: string) => {
+    setIsSavingModel(true);
+    setError(null);
+    try {
+      await saveChatModel({ model });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("chatInput.modelSaveFailed"));
+    } finally {
+      setIsSavingModel(false);
+    }
+  };
 
   useEffect(() => {
     if (!editingMessage) return;
@@ -105,7 +107,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
     const hasImages = images.length > 0;
 
     if (!trimmedContent && !hasImages) return;
-    if (isSubmitting || isGenerating || modelUnavailable) return;
+    if (isSubmitting || isSavingModel || isGenerating || modelUnavailable) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -183,7 +185,6 @@ export function ChatInput({ threadId }: ChatInputProps) {
         : await sendMessage({
             threadId,
             content: trimmedContent,
-            model: selectedModelId,
             ...(imageKeys && imageKeys.length > 0 ? { imageKeys } : {}),
           });
 
@@ -233,9 +234,9 @@ export function ChatInput({ threadId }: ChatInputProps) {
     content,
     images,
     isSubmitting,
+    isSavingModel,
     isGenerating,
     modelUnavailable,
-    selectedModelId,
     editingMessage,
     sendMessage,
     editLastMessageAndResend,
@@ -265,7 +266,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const usagePercent =
     !isUnlimited && msgLimit ? msgLimit.used / msgLimit.limit : 0;
 
-  const isDisabled = isSubmitting || isGenerating || isAtLimit;
+  const isDisabled = isSubmitting || isSavingModel || isGenerating || isAtLimit;
   const canSubmit =
     (content.trim().length > 0 || images.length > 0) &&
     !isDisabled && !modelUnavailable;
@@ -531,25 +532,29 @@ export function ChatInput({ threadId }: ChatInputProps) {
             )}
           </Pressable>
         </View>
-        <View style={s.modelRow}>
-          <ChatModelSelector
-            key={threadId}
-            modelId={activeModelId}
-            onSelect={setSelectedModelId}
-            hasImages={contextHasImages}
-            capabilitiesLoading={modelCapabilities === undefined}
-            disabled={isDisabled || !!editingMessage}
-          />
-          {(editingMessage || modelUnavailable) && (
-            <Text style={s.modelHint}>
-              {t(editingMessage
-                ? "chatInput.modelEditingHint"
-                : contextHasImages
-                  ? "chatInput.modelImageMismatch"
-                  : "chatInput.modelCheckingImages")}
-            </Text>
-          )}
-        </View>
+        {chatSettings?.modelSelectorEnabled && (
+          <View style={s.modelRow}>
+            {!editingMessage && (
+              <ChatModelSelector
+                key={threadId}
+                modelId={selectedModelId}
+                onSelect={(model) => void handleSelectModel(model)}
+                hasImages={contextHasImages}
+                capabilitiesLoading={modelCapabilities === undefined}
+                disabled={isDisabled}
+              />
+            )}
+            {(editingMessage || modelUnavailable) && (
+              <Text style={s.modelHint}>
+                {t(editingMessage
+                  ? "chatInput.modelEditingHint"
+                  : contextHasImages
+                    ? "chatInput.modelImageMismatch"
+                    : "chatInput.modelCheckingImages")}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Error */}

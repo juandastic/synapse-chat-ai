@@ -82,8 +82,9 @@
   },
   "modelSelector": {
     "label": "Modelo de respuesta",
-    "nextTurn": "Modelo para el próximo mensaje",
+    "nextTurn": "Se guarda para los próximos mensajes en todos tus dispositivos",
     "default": "Predeterminado",
-    "imagesNotice": "Este contexto contiene imágenes. DeepSeek y Qwen requieren un chat sin imágenes."
+    "imagesNotice": "Elige un modelo compatible con imágenes.",
+    "saveFailed": "No se pudo guardar el modelo. Inténtalo de nuevo."
   }
 }

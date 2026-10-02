@@ -19,7 +19,6 @@ import {
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import type { Doc } from "@synapse/backend/dataModel";
-import { CHAT_MODELS } from "@synapse/backend/chatModels";
 import Markdown from "react-native-markdown-display";
 import type { ASTNode, RenderRules } from "react-native-markdown-display";
 import { MoreHorizontal } from "lucide-react-native";
@@ -110,10 +109,6 @@ export const MessageItem = memo(function MessageItem({
     isUser && message.imageKeys !== undefined && message.imageKeys.length > 0;
   const { t, i18n } = useTranslation("chat");
   const [assistantContentWidth, setAssistantContentWidth] = useState(0);
-  const effectiveModelId = message.metadata?.model ?? message.generationTarget?.model;
-  const modelLabel = CHAT_MODELS.find((model) => model.id === effectiveModelId)?.name
-    ?? effectiveModelId;
-  const provider = message.metadata?.provider ?? message.generationTarget?.provider;
 
   const handleActionsPress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -270,14 +265,6 @@ export const MessageItem = memo(function MessageItem({
           color: colors.inkMuted,
           textAlign: "left",
         },
-        modelLabel: {
-          fontSize: 11,
-          lineHeight: 16,
-          color: colors.inkMuted,
-          marginBottom: 3,
-          paddingHorizontal: 4,
-          maxWidth: "85%",
-        },
         metaRow: {
           minHeight: 28,
           flexDirection: "row",
@@ -390,12 +377,6 @@ export const MessageItem = memo(function MessageItem({
 
   return (
     <View style={[s.row, isUser ? s.rowUser : s.rowAssistant]}>
-      {!isUser && modelLabel && (
-        <Text style={s.modelLabel}>
-          {modelLabel}{provider === "openrouter" ? " · OpenRouter" : ""}
-        </Text>
-      )}
-
       {isUser ? (
         <Pressable
           onLongPress={handleActionsPress}

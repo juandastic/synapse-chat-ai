@@ -59,16 +59,17 @@
     "imageUploadFailed": "The image could not be uploaded. Check your connection and try again.",
     "sendFailed": "The message could not be sent. Please try again.",
     "chooseModel": "Choose model. Current: {{model}}",
-    "modelTitle": "Model for the next message",
+    "modelTitle": "Chat model",
     "closeModelSelector": "Close model list",
-    "modelContextHint": "All models use the same context and your memories. Your choice applies to the next message.",
+    "modelContextHint": "All models use the same context and your memories. Your choice is saved for future messages on all your devices.",
     "modelDefault": "Default",
     "reasoningHigh": "High reasoning",
     "reasoningThinking": "Thinking enabled",
     "modelTextOnly": "Unavailable: this conversation contains images.",
     "modelCheckingImages": "Checking context images…",
     "modelImageMismatch": "Choose a model that supports images to send.",
-    "modelEditingHint": "Editing keeps the original model."
+    "modelEditingHint": "Editing keeps the original model.",
+    "modelSaveFailed": "Could not save the model. Try again."
   },
   "messageItem": {
     "error": "Error",

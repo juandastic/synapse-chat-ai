@@ -847,34 +847,56 @@ Synapse uses a **hybrid approach** to inject user knowledge into the AI's contex
 
 ---
 
-## Chat model selection on web and mobile
+## User-level chat model configuration
 
-The selector beside the attachment button chooses the model for the next turn.
-Gemini remains the default. OpenRouter choices are GPT-6.1 Sol, Claude Sonnet 5.5,
-DeepSeek V4 Pro 0813, Qwen3.7 Max and Kimi K2.6. The first three use high reasoning;
-Qwen and Kimi use thinking. New chats start with Gemini, and retries preserve the
-original turn's model. On mobile, the model chip below the input opens a model
-list. Editing keeps the original turn's model, shown on the disabled chip; the
-composer choice applies only to new turns. Each assistant answer displays its
-effective model. Mobile changes use existing native components and support OTA.
+Convex's `users.chatModel` assigns the model for new turns across web and mobile.
+If the field is absent, Gemini 3.1 Pro remains the default through Vertex.
+The active catalog also offers GPT-6.1 Sol, Claude Sonnet 5.5, Qwen3.8 Max 0902,
+and Kimi K2.6 through OpenRouter. All choices support images. Sol, Sonnet and
+Qwen use high reasoning; Kimi uses thinking. Removed model IDs are not accepted.
 
-Convex freezes the choice on the assistant message, authorizes the streaming
-request, and forwards it to Cortex. Both providers receive the same persona,
-session history and compiled memories. Cortex performs GraphRAG before selecting
-the generation service. OpenRouter failures do not fall back to Gemini. Gemini's
-existing Flash fallback and cache path remain available.
+`users.modelSelectorEnabled` defaults to false. With it disabled, the user sees
+no selector or response model labels, and the public profile/settings/message
+queries do not reveal the assignment or generation identity. The assignment
+and per-response model/provider/usage remain in Convex and server logs.
+With it enabled, the selector appears near the input. Selecting a model saves
+`users.chatModel`, updates other open clients, and applies to future messages
+across all threads and devices. The client cannot enable its own selector.
+Response model labels stay hidden even when the selector is enabled.
+
+Edit the two fields in the Convex users table, or run the internal dashboard
+mutation `users:setUserChatConfig` with:
+
+```json
+{
+  "userId": "<user document ID>",
+  "chatModel": "anthropic/claude-sonnet-5.5",
+  "modelSelectorEnabled": false
+}
+```
+
+Omitted mutation fields keep their existing values. Available assignment IDs:
+`gemini-3.1-pro-preview`, `openai/gpt-6.1-sol`,
+`anthropic/claude-sonnet-5.5`, `qwen/qwen3.8-max-0902`,
+`moonshotai/kimi-k2.6`.
+
+Convex freezes the model on each assistant placeholder and authorizes the
+streaming request against that saved target. Changing the user's assignment
+does not change a turn already created. Retries and edits preserve the original
+turn's target. Both providers receive the same persona, session history and
+compiled memories. Cortex performs GraphRAG before selecting the generator.
+OpenRouter failures do not fall back to Gemini. Gemini's existing Vertex cache
+and fallback behavior remain unchanged.
 
 Set `OPEN_ROUTER_API_KEY` in Cortex, never in frontend environment variables.
-Deploy the Cortex extension before enabling these choices. OpenRouter does
-not use Gemini cache IDs or Google Search grounding. DeepSeek and Qwen are
-unavailable when the active context contains images; images are never discarded.
-Incompatible retries are rejected before replacing the previous response.
-Provider, effective model, token usage, cost and latency are persisted per answer.
+Update Cortex before assigning the new Qwen model. OpenRouter does not receive
+Gemini cache IDs or use Google Search grounding. Memory processing, embeddings
+and ingestion keep their existing Google clients.
 
 The catalog is in `packages/backend/convex/chatModels.ts`; Cortex's matching
 reasoning and image capabilities are in `app/services/openrouter_generation.py`.
-Run `npm run test --workspace=@synapse/backend` for model, authorization, retry
-and streaming regression tests.
+Run `npm run test --workspace=@synapse/backend` for assignment, authorization,
+privacy, retry and streaming regression tests.
 
 ## License
 
