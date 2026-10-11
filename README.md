@@ -853,9 +853,14 @@ Synapse uses a **hybrid approach** to inject user knowledge into the AI's contex
 
 Convex's `users.chatModel` assigns the model for new turns across web and mobile.
 If the field is absent, Gemini 3.1 Pro remains the default through Vertex.
-The active catalog also offers GPT-6.1 Sol, Claude Sonnet 5.5, Qwen3.8 Max 0902,
+The active catalog also offers GPT-6.1 Sol, Claude Sonnet 5.5, Qwen3.8 27B,
 and Kimi K2.6 through OpenRouter. All choices support images. Sol, Sonnet and
-Qwen use high reasoning; Kimi uses thinking. Removed model IDs are not accepted.
+Qwen use high reasoning; Kimi uses thinking. Removed model IDs are not selectable.
+Qwen3.8 27B is pinned to OpenRouter's `deepinfra/bf16` endpoint with provider
+fallback disabled, so evaluation uses a consistent provider and precision.
+This tests the open model's behavior; Mac performance and quantized local
+inference still need separate validation. If DeepInfra is unavailable, the
+request reports the error instead of switching providers.
 
 `users.modelSelectorEnabled` defaults to false. With it disabled, the user sees
 no selector or response model labels, and the public profile/settings/message
@@ -879,7 +884,7 @@ mutation `users:setUserChatConfig` with:
 
 Omitted mutation fields keep their existing values. Available assignment IDs:
 `gemini-3.1-pro-preview`, `openai/gpt-6.1-sol`,
-`anthropic/claude-sonnet-5.5`, `qwen/qwen3.8-max-0902`,
+`anthropic/claude-sonnet-5.5`, `qwen/qwen3.8-27b`,
 `moonshotai/kimi-k2.6`.
 
 Convex freezes the model on each assistant placeholder and authorizes the
@@ -889,6 +894,11 @@ turn's target. Both providers receive the same persona, session history and
 compiled memories. Cortex performs GraphRAG before selecting the generator.
 OpenRouter failures do not fall back to Gemini. Gemini's existing Vertex cache
 and fallback behavior remain unchanged.
+
+Stored `qwen/qwen3.8-max-0902` user assignments resolve to 27B for new turns and
+in the selector. The schema retains that legacy ID for existing documents.
+Already-created Max turns, retries and edits keep Max; Cortex retains its
+legacy generation configuration for those turns.
 
 Set `OPEN_ROUTER_API_KEY` in Cortex, never in frontend environment variables.
 Update Cortex before assigning the new Qwen model. OpenRouter does not receive

@@ -87,14 +87,14 @@ describe("message lifecycle", () => {
   });
 
   it("redacts provider, cost and errors from public messages while retaining recall and citations", async () => {
-    const f = await chatFixture({ chatModel: "qwen/qwen3.8-max-0902" });
+    const f = await chatFixture({ chatModel: "qwen/qwen3.8-27b" });
     const turn = await f.send();
     await f.t.mutation(internal.messages.finalizeGeneration, {
       id: turn.assistantMessageId,
       content: "answer",
       completedAt: Date.now(),
       metadata: {
-        model: "qwen/qwen3.8-max-0902",
+        model: "qwen/qwen3.8-27b",
         provider: "openrouter",
         cost: 0.1,
         ragEnabled: true,
@@ -116,7 +116,7 @@ describe("message lifecycle", () => {
       groundingSources: [{ title: "Source" }],
     });
     const stored = await f.t.run((ctx) => ctx.db.get(turn.assistantMessageId));
-    expect(stored?.generationTarget?.model).toBe("qwen/qwen3.8-max-0902");
+    expect(stored?.generationTarget?.model).toBe("qwen/qwen3.8-27b");
     expect(stored?.metadata?.cost).toBe(0.1);
   });
 

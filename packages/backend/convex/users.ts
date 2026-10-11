@@ -9,7 +9,7 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
-import { getChatModel } from "./chatModels";
+import { getAssignedChatModel, getChatModel } from "./chatModels";
 
 function publicUser(user: Doc<"users"> | null) {
   if (!user) return null;
@@ -177,7 +177,7 @@ export const getChatSettings = query({
     }
     return {
       modelSelectorEnabled: true,
-      model: getChatModel(user.chatModel).id,
+      model: getAssignedChatModel(user.chatModel).id,
     };
   },
 });

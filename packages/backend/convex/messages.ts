@@ -14,7 +14,7 @@ import {
 } from "./sessions";
 import { checkDailyUsage } from "./usageLimits";
 import { r2 } from "./r2";
-import { getChatModel } from "./chatModels";
+import { getAssignedChatModel, getSavedChatModel } from "./chatModels";
 import { Doc } from "./_generated/dataModel";
 
 /** Only metadata consumed by the chat UI crosses the public query boundary. */
@@ -166,7 +166,7 @@ export const getGenerationTarget = internalQuery({
     ) {
       throw new Error("Invalid generation request");
     }
-    const model = getChatModel(message.generationTarget?.model);
+    const model = getSavedChatModel(message.generationTarget?.model);
     return { provider: model.provider, model: model.id };
   },
 });
@@ -200,7 +200,7 @@ export const send = mutation({
     }
 
     const user = await getOrCreateUser(ctx);
-    const selectedModel = getChatModel(user.chatModel);
+    const selectedModel = getAssignedChatModel(user.chatModel);
 
     // Usage limit check — blocks before any DB writes
     const usageCheck = await checkDailyUsage(ctx, user);
@@ -583,7 +583,9 @@ export const resend = mutation({
       .first();
 
     // A retry belongs to its original experiment, even if the user assignment changed.
-    const selectedModel = getChatModel(nextMessage?.generationTarget?.model);
+    const selectedModel = getSavedChatModel(
+      nextMessage?.generationTarget?.model,
+    );
     // Reject an incompatible retry before deleting the existing response.
     if (!selectedModel.images) {
       const history = await ctx.db

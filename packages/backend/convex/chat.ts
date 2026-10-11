@@ -7,7 +7,7 @@ import { Doc } from "./_generated/dataModel";
 import { r2 } from "./r2";
 import { CompilationMetadata } from "./cortexConfig";
 import { PromptMode, renderSystemPrompt } from "./prompts";
-import { getChatModel } from "./chatModels";
+import { getSavedChatModel } from "./chatModels";
 
 // =============================================================================
 // Types
@@ -115,7 +115,7 @@ export const prepareContext = internalAction({
       (m) => m._id !== args.assistantMessageId,
     );
     if (
-      !getChatModel(assistantMessage.generationTarget?.model).images &&
+      !getSavedChatModel(assistantMessage.generationTarget?.model).images &&
       filteredHistory.some((message) => (message.imageKeys?.length ?? 0) > 0)
     ) {
       throw new Error(
