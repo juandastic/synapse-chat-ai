@@ -1,8 +1,8 @@
 /** Assignable chat choices. Google and memory processing keep their Vertex clients. */
 export const CHAT_MODELS = [
   {
-    id: "gemini-3.1-pro-preview",
-    name: "Gemini",
+    id: "gemini-4-argon",
+    name: "Gemini 4 Argon",
     provider: "vertex",
     reasoning: "default",
     images: true,
@@ -37,9 +37,16 @@ export const CHAT_MODELS = [
   },
 ] as const;
 
-export const DEFAULT_CHAT_MODEL = CHAT_MODELS[0];
+/** Keep users without an explicit assignment on their existing Gemini version. */
+export const DEFAULT_CHAT_MODEL = {
+  id: "gemini-3.1-pro-preview",
+  name: "Gemini 3.1 Pro",
+  provider: "vertex",
+  reasoning: "default",
+  images: true,
+} as const;
 
-/** Stored Max assignments move to 27B; existing turns keep their original model. */
+/** Preserve Gemini 3.1 assignments and historical turns; Max assignments move to 27B. */
 export const LEGACY_CHAT_MODELS = [
   {
     id: "qwen/qwen3.8-max-0902",
@@ -48,10 +55,14 @@ export const LEGACY_CHAT_MODELS = [
     reasoning: "high",
     images: true,
   },
+  DEFAULT_CHAT_MODEL,
 ] as const;
 
 export function getChatModel(id: string = DEFAULT_CHAT_MODEL.id) {
-  const model = CHAT_MODELS.find((entry) => entry.id === id);
+  // Released clients can still submit their existing Gemini 3.1 choice.
+  const model =
+    CHAT_MODELS.find((entry) => entry.id === id) ??
+    (id === DEFAULT_CHAT_MODEL.id ? DEFAULT_CHAT_MODEL : undefined);
   if (!model) throw new Error("Unsupported chat model");
   return model;
 }

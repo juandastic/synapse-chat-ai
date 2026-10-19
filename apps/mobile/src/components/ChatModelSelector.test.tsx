@@ -32,8 +32,22 @@ const props = {
 };
 
 it("opens model choices, persists a choice and closes the selector", async () => {
-  await render(<ChatModelSelector {...props} />);
+  const view = await render(<ChatModelSelector {...props} />);
+  expect(screen.getByText("Gemini 3.1 Pro")).toBeTruthy();
+  expect(props.onSelect).not.toHaveBeenCalled();
   expect(screen.queryByRole("radio", { name: /Kimi/ })).toBeNull();
+  await fireEvent.press(
+    screen.getByRole("button", { name: "chatInput.chooseModel" }),
+  );
+  const argon = screen.getByRole("radio", { name: /Gemini 4 Argon/ });
+  expect(argon.props.accessibilityState.checked).toBe(false);
+  expect(screen.queryByRole("radio", { name: /Gemini 3.1 Pro/ })).toBeNull();
+  await fireEvent.press(argon);
+  expect(props.onSelect).toHaveBeenCalledWith("gemini-4-argon");
+  expect(screen.queryByRole("radio", { name: /Gemini 4 Argon/ })).toBeNull();
+  await view.rerender(
+    <ChatModelSelector {...props} modelId="gemini-4-argon" />,
+  );
   await fireEvent.press(
     screen.getByRole("button", { name: "chatInput.chooseModel" }),
   );

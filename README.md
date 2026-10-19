@@ -852,7 +852,11 @@ Synapse uses a **hybrid approach** to inject user knowledge into the AI's contex
 ## User-level chat model configuration
 
 Convex's `users.chatModel` assigns the model for new turns across web and mobile.
-If the field is absent, Gemini 3.1 Pro remains the default through Vertex.
+The selector offers Gemini 4 Argon (`gemini-4-argon`) through Vertex.
+Existing Gemini 3.1 assignments and users without an explicit assignment keep
+`gemini-3.1-pro-preview` until they select another model. Argon is saved directly
+when selected; existing turns, retries and edits keep their original model.
+Released clients keep their existing catalog until the web/mobile app is updated.
 The active catalog also offers GPT-6.1 Sol, Claude Sonnet 5.5, Qwen3.8 27B,
 and Kimi K2.6 through OpenRouter. All choices support images. Sol, Sonnet and
 Qwen use high reasoning; Kimi uses thinking. Removed model IDs are not selectable.
@@ -883,7 +887,7 @@ mutation `users:setUserChatConfig` with:
 ```
 
 Omitted mutation fields keep their existing values. Available assignment IDs:
-`gemini-3.1-pro-preview`, `openai/gpt-6.1-sol`,
+`gemini-4-argon`, `openai/gpt-6.1-sol`,
 `anthropic/claude-sonnet-5.5`, `qwen/qwen3.8-27b`,
 `moonshotai/kimi-k2.6`.
 
@@ -892,8 +896,9 @@ streaming request against that saved target. Changing the user's assignment
 does not change a turn already created. Retries and edits preserve the original
 turn's target. Both providers receive the same persona, session history and
 compiled memories. Cortex performs GraphRAG before selecting the generator.
-OpenRouter failures do not fall back to Gemini. Gemini's existing Vertex cache
-and fallback behavior remain unchanged.
+OpenRouter failures do not fall back to Gemini. Gemini retains its Flash fallback.
+Argon uses implicit caching; Cortex ignores explicit cache IDs for Argon and
+includes the compilation in the existing prompt format.
 
 Stored `qwen/qwen3.8-max-0902` user assignments resolve to 27B for new turns and
 in the selector. The schema retains that legacy ID for existing documents.

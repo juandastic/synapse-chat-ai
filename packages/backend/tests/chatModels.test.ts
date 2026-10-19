@@ -9,6 +9,11 @@ import { api, internal, chatFixture } from "./helpers";
 describe("model assignment and blind evaluation", () => {
   it("defaults historical turns to Gemini and rejects unapproved IDs", () => {
     expect(getChatModel()).toEqual(DEFAULT_CHAT_MODEL);
+    expect(getChatModel().id).toBe("gemini-3.1-pro-preview");
+    expect(CHAT_MODELS.map((model) => model.id)).toContain("gemini-4-argon");
+    expect(CHAT_MODELS.map((model) => model.id)).not.toContain(
+      "gemini-3.1-pro-preview",
+    );
     expect(getChatModel("qwen/qwen3.8-27b").reasoning).toBe("high");
     for (const id of [
       "openrouter/auto",
@@ -53,47 +58,61 @@ describe("model assignment and blind evaluation", () => {
     },
   );
 
-  it("preserves Max on existing turns, retries and edits after the catalog changes", async () => {
-    const f = await chatFixture({ chatModel: "qwen/qwen3.8-27b" });
-    const turn = await f.send();
-    const originalTarget = {
-      provider: "openrouter" as const,
+  it.each([
+    {
       model: "qwen/qwen3.8-max-0902",
-    };
-    await f.t.run((ctx) =>
-      ctx.db.patch(turn.assistantMessageId, {
-        generationTarget: originalTarget,
-      }),
-    );
-    expect(
-      await f.t.query(internal.messages.getGenerationTarget, {
-        sessionId: turn.sessionId,
-        assistantMessageId: turn.assistantMessageId,
-        threadId: f.threadId,
-        tokenIdentifier: "issuer|owner",
-      }),
-    ).toEqual(originalTarget);
-    await f.finish(turn.assistantMessageId);
-    const retry = await f.owner.mutation(api.messages.resend, {
-      userMessageId: turn.userMessageId,
-    });
-    expect(
-      (await f.t.run((ctx) => ctx.db.get(retry.assistantMessageId)))
-        ?.generationTarget,
-    ).toEqual(originalTarget);
-    await f.finish(retry.assistantMessageId);
-    const edited = await f.owner.mutation(
-      api.messages.editLastMessageAndResend,
-      {
-        messageId: turn.userMessageId,
-        content: "Edited question",
-      },
-    );
-    expect(
-      (await f.t.run((ctx) => ctx.db.get(edited.assistantMessageId)))
-        ?.generationTarget,
-    ).toEqual(originalTarget);
-  });
+      provider: "openrouter" as const,
+      assignment: "qwen/qwen3.8-27b" as const,
+    },
+    {
+      model: "gemini-3.1-pro-preview",
+      provider: "vertex" as const,
+      assignment: "gemini-4-argon" as const,
+    },
+  ])(
+    "preserves $model on existing turns, retries and edits after the catalog changes",
+    async ({ model, provider, assignment }) => {
+      const f = await chatFixture({ chatModel: assignment });
+      const turn = await f.send();
+      const originalTarget = {
+        provider,
+        model,
+      };
+      await f.t.run((ctx) =>
+        ctx.db.patch(turn.assistantMessageId, {
+          generationTarget: originalTarget,
+        }),
+      );
+      expect(
+        await f.t.query(internal.messages.getGenerationTarget, {
+          sessionId: turn.sessionId,
+          assistantMessageId: turn.assistantMessageId,
+          threadId: f.threadId,
+          tokenIdentifier: "issuer|owner",
+        }),
+      ).toEqual(originalTarget);
+      await f.finish(turn.assistantMessageId);
+      const retry = await f.owner.mutation(api.messages.resend, {
+        userMessageId: turn.userMessageId,
+      });
+      expect(
+        (await f.t.run((ctx) => ctx.db.get(retry.assistantMessageId)))
+          ?.generationTarget,
+      ).toEqual(originalTarget);
+      await f.finish(retry.assistantMessageId);
+      const edited = await f.owner.mutation(
+        api.messages.editLastMessageAndResend,
+        {
+          messageId: turn.userMessageId,
+          content: "Edited question",
+        },
+      );
+      expect(
+        (await f.t.run((ctx) => ctx.db.get(edited.assistantMessageId)))
+          ?.generationTarget,
+      ).toEqual(originalTarget);
+    },
+  );
 
   it.each([undefined, false, true])(
     "freezes the saved model when selector visibility is %s",
@@ -170,13 +189,26 @@ describe("model assignment and blind evaluation", () => {
   });
 
   it("persists a visible selection, rejects unsupported choices, and preserves partial admin updates", async () => {
-    const f = await chatFixture({ modelSelectorEnabled: true });
-    await f.owner.mutation(api.users.setChatModel, {
-      model: "moonshotai/kimi-k2.6",
+    const f = await chatFixture({
+      chatModel: "gemini-3.1-pro-preview",
+      modelSelectorEnabled: true,
     });
     expect(await f.owner.query(api.users.getChatSettings, {})).toEqual({
       modelSelectorEnabled: true,
-      model: "moonshotai/kimi-k2.6",
+      model: "gemini-3.1-pro-preview",
+    });
+    const previous = await f.send();
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(previous.assistantMessageId)))
+        ?.generationTarget?.model,
+    ).toBe("gemini-3.1-pro-preview");
+    await f.finish(previous.assistantMessageId);
+    await f.owner.mutation(api.users.setChatModel, {
+      model: "gemini-4-argon",
+    });
+    expect(await f.owner.query(api.users.getChatSettings, {})).toEqual({
+      modelSelectorEnabled: true,
+      model: "gemini-4-argon",
     });
     await expect(
       f.owner.mutation(api.users.setChatModel, { model: "openrouter/auto" }),
@@ -186,12 +218,12 @@ describe("model assignment and blind evaluation", () => {
       modelSelectorEnabled: false,
     });
     expect((await f.t.run((ctx) => ctx.db.get(f.userId)))?.chatModel).toBe(
-      "moonshotai/kimi-k2.6",
+      "gemini-4-argon",
     );
     const turn = await f.send("What is in this photo?", ["photo.png"]);
     expect(
       (await f.t.run((ctx) => ctx.db.get(turn.assistantMessageId)))
         ?.generationTarget?.model,
-    ).toBe("moonshotai/kimi-k2.6");
+    ).toBe("gemini-4-argon");
   });
 });

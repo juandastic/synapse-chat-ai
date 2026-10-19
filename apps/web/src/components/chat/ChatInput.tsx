@@ -442,12 +442,22 @@ export function ChatInput() {
                 disabled={isDisabled}
                 className="h-9 max-w-[210px] rounded-lg border-0 bg-transparent px-2 text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
               >
-                <option
-                  value={DEFAULT_CHAT_MODEL.id}
-                  className="bg-popover text-popover-foreground"
-                >
-                  Gemini · {t("modelSelector.default")}
-                </option>
+                {selectedModelId === DEFAULT_CHAT_MODEL.id && (
+                  <option value={DEFAULT_CHAT_MODEL.id} disabled>
+                    {DEFAULT_CHAT_MODEL.name}
+                  </option>
+                )}
+                {CHAT_MODELS.filter((model) => model.provider === "vertex").map(
+                  (model) => (
+                    <option
+                      key={model.id}
+                      value={model.id}
+                      className="bg-popover text-popover-foreground"
+                    >
+                      {model.name}
+                    </option>
+                  ),
+                )}
                 <optgroup
                   label="OpenRouter"
                   className="bg-popover text-popover-foreground"

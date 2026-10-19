@@ -10,7 +10,7 @@ vi.mock("posthog-node", () => ({
 }));
 
 async function runStream(
-  model: "gemini-3.1-pro-preview" | "openai/gpt-6.1-sol",
+  model: "gemini-3.1-pro-preview" | "gemini-4-argon" | "openai/gpt-6.1-sol",
   responses: Array<string | Uint8Array[]>,
 ) {
   vi.stubEnv("SYNAPSE_CORTEX_API_SECRET", "test-secret");
@@ -93,22 +93,35 @@ it("Gemini preserves its Flash fallback and cached-content request", async () =>
   });
 });
 
-it("OpenRouter output persists effective model, provider, cost and RAG usage", async () => {
-  const result = await runStream("openai/gpt-6.1-sol", [
-    'data: {"model":"openai/gpt-6.1-sol","choices":[{"delta":{"content":"Answer"}}]}\n\n' +
-      'data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"cost":0.01,"rag_enabled":true,"rag_nodes":3,"thoughts_tokens":42}}\n\n' +
-      "data: [DONE]\n\n",
-  ]);
-  expect(result.text).toBe("Answer");
-  expect(result.message?.metadata).toMatchObject({
-    provider: "openrouter",
-    model: "openai/gpt-6.1-sol",
-    cost: 0.01,
-    ragNodes: 3,
-    thoughtsTokens: 42,
-    usedFallback: false,
-  });
-});
+it.each([
+  { model: "openai/gpt-6.1-sol" as const, provider: "openrouter" },
+  { model: "gemini-4-argon" as const, provider: "vertex" },
+])(
+  "$model output persists its model, provider, cost and RAG usage",
+  async ({ model, provider }) => {
+    const result = await runStream(model, [
+      `data: {"model":"${model}","choices":[{"delta":{"content":"Answer"}}]}\n\n` +
+        'data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"cost":0.01,"rag_enabled":true,"rag_nodes":3,"thoughts_tokens":42}}\n\n' +
+        "data: [DONE]\n\n",
+    ]);
+    expect(result.requests).toHaveLength(1);
+    expect(result.requests[0]).toMatchObject({
+      model,
+      provider,
+      compilation: "Memory",
+    });
+    expect(result.message?.generationTarget).toEqual({ model, provider });
+    expect(result.text).toBe("Answer");
+    expect(result.message?.metadata).toMatchObject({
+      provider,
+      model,
+      cost: 0.01,
+      ragNodes: 3,
+      thoughtsTokens: 42,
+      usedFallback: false,
+    });
+  },
+);
 
 it("parses fragmented SSE and UTF-8 then records usage once", async () => {
   const bytes = new TextEncoder().encode(success.replace("Hello", "Hola 👋"));

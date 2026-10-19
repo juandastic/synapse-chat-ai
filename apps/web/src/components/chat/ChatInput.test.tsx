@@ -166,10 +166,19 @@ it("keeps blind model assignments hidden and visible selections persist", async 
   expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   f.settings.modelSelectorEnabled = true;
   view.rerender(<ChatInput />);
-  await user.selectOptions(
-    screen.getByRole("combobox"),
-    "moonshotai/kimi-k2.6",
-  );
+  const selector = screen.getByRole("combobox");
+  expect(selector).toHaveValue("gemini-3.1-pro-preview");
+  expect(screen.getByRole("option", { name: "Gemini 3.1 Pro" })).toBeDisabled();
+  expect(f.saveModel).not.toHaveBeenCalled();
+  await user.selectOptions(selector, "gemini-4-argon");
+  expect(f.saveModel).toHaveBeenCalledWith({ model: "gemini-4-argon" });
+  f.settings.model = "gemini-4-argon";
+  view.rerender(<ChatInput />);
+  expect(selector).toHaveValue("gemini-4-argon");
+  expect(
+    screen.queryByRole("option", { name: "Gemini 3.1 Pro" }),
+  ).not.toBeInTheDocument();
+  await user.selectOptions(selector, "moonshotai/kimi-k2.6");
   expect(f.saveModel).toHaveBeenCalledWith({ model: "moonshotai/kimi-k2.6" });
 });
 

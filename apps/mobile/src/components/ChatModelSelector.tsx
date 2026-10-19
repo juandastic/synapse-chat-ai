@@ -159,7 +159,7 @@ export function ChatModelSelector({
               const isSelected = selected.id === model.id;
               const detail =
                 model.provider === "vertex"
-                  ? t("chatInput.modelDefault")
+                  ? "Google"
                   : `OpenRouter · ${t(model.reasoning === "high" ? "chatInput.reasoningHigh" : "chatInput.reasoningThinking")}`;
               return (
                 <Pressable
