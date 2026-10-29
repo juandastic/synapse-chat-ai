@@ -74,6 +74,9 @@
   "messageItem": {
     "error": "Error",
     "copyMessage": "Copy message",
+    "copyFullMessage": "Copy entire message",
+    "copyFailedTitle": "Couldn't copy the message",
+    "copyFailedDescription": "Try again to copy the entire message.",
     "copyAsMarkdown": "Copy as Markdown",
     "moreActions": "Message actions",
     "copied": "Copied",

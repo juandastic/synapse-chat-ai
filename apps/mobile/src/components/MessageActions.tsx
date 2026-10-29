@@ -81,10 +81,18 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
   ]);
 
   const handleCopy = useCallback(async () => {
-    await Clipboard.setStringAsync(message.content);
-    successFeedback();
-    onClose();
-  }, [message.content, onClose]);
+    try {
+      await Clipboard.setStringAsync(message.content);
+      successFeedback();
+      onClose();
+    } catch (err) {
+      captureError(err, { source: "message_copy" });
+      Alert.alert(
+        t("messageItem.copyFailedTitle"),
+        t("messageItem.copyFailedDescription"),
+      );
+    }
+  }, [message.content, onClose, t]);
 
   const handleEdit = useCallback(() => {
     if (!editableMessage || isGenerating) return;
@@ -194,7 +202,7 @@ export function MessageActions({ message, onClose }: MessageActionsProps) {
       {message.content.length > 0 && (
         <ActionRow
           icon={Copy}
-          label={t("messageItem.copy")}
+          label={t("messageItem.copyFullMessage")}
           onPress={handleCopy}
           colors={colors}
           s={s}
@@ -280,6 +288,9 @@ function ActionRow({
       ]}
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
     >
       <Icon size={20} color={destructive ? colors.error : colors.ink} />
       <Text style={[s.actionLabel, destructive && s.actionLabelDestructive]}>
