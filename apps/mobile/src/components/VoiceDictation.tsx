@@ -42,6 +42,14 @@ async function resetAudioMode() {
   }
 }
 
+function deleteRecording(file: File | null) {
+  try {
+    if (file?.exists) file.delete();
+  } catch {
+    /* Cache cleanup must not lose a transcript. */
+  }
+}
+
 export function VoiceDictation({
   disabled,
   onTranscript,
@@ -75,13 +83,22 @@ export function VoiceDictation({
     setStatus(next);
   }, []);
   const deleteAudio = useCallback(() => {
-    try {
-      if (audio.current?.exists) audio.current.delete();
-    } catch {
-      /* Cache cleanup must not lose a transcript. */
-    }
+    deleteRecording(audio.current);
     audio.current = null;
   }, []);
+
+  const discardRecording = useCallback(async () => {
+    // Capture this recording before awaiting stop so a later one is never deleted.
+    let file: File | null = null;
+    try {
+      file = recorder.uri ? new File(recorder.uri) : null;
+      if (recorder.isRecording) await recorder.stop();
+    } catch {
+      /* Interrupted recording. */
+    }
+    deleteRecording(file);
+    await resetAudioMode();
+  }, [recorder]);
 
   const transcribe = useCallback(
     async (file: File, attempt: number) => {
@@ -94,6 +111,8 @@ export function VoiceDictation({
         const token = await getToken({ template: "convex" });
         if (version.current !== attempt) return;
         if (!token) throw new Error("voice.signInAgain");
+        const bytes = await file.bytes();
+        if (version.current !== attempt) return;
         const url = (
           process.env.EXPO_PUBLIC_CONVEX_SITE_URL ??
           (process.env.EXPO_PUBLIC_CONVEX_URL ?? "").replace(".cloud", ".site")
@@ -104,7 +123,8 @@ export function VoiceDictation({
             Authorization: `Bearer ${token}`,
             "Content-Type": "audio/mp4",
           },
-          body: file,
+          // expo/fetch replaces the header with File.type for Blob-like bodies.
+          body: bytes,
           signal: abort.signal,
         });
         if (!response.ok)
@@ -147,12 +167,15 @@ export function VoiceDictation({
       if (version.current !== attempt) return;
       if (!recorder.uri) throw new Error("voice.noSpeech");
       const file = new File(recorder.uri);
-      audio.current = file;
-      if (!file.exists || !file.size) throw new Error("voice.noSpeech");
+      if (!file.exists || !file.size) {
+        deleteRecording(file);
+        throw new Error("voice.noSpeech");
+      }
       if (file.size > MAX_AUDIO_BYTES) {
-        deleteAudio();
+        deleteRecording(file);
         throw new Error("voice.tooLarge");
       }
+      audio.current = file;
       await transcribe(file, attempt);
     } catch (err) {
       if (version.current !== attempt) return;
@@ -163,15 +186,14 @@ export function VoiceDictation({
       );
       updateStatus("failed");
     }
-  }, [recorder, transcribe, updateStatus, deleteAudio]);
+  }, [recorder, transcribe, updateStatus]);
 
   useEffect(() => {
     if (status !== "recording") return;
     if (recordEvent?.hasError) {
       setError("voice.recordingFailed");
       updateStatus("failed");
-      if (recorder.isRecording) void recorder.stop().catch(() => {});
-      void resetAudioMode();
+      void discardRecording();
     } else if (
       recordEvent?.isFinished ||
       recorderState.durationMillis >= MAX_RECORDING_SECONDS * 1000
@@ -184,7 +206,7 @@ export function VoiceDictation({
     recorderState.durationMillis,
     finish,
     updateStatus,
-    recorder,
+    discardRecording,
   ]);
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (next) => {
@@ -216,12 +238,11 @@ export function VoiceDictation({
     () => () => {
       version.current += 1;
       controller.current?.abort();
-      if (recorder.isRecording) void recorder.stop().catch(() => {});
       deleteAudio();
-      void resetAudioMode();
+      void discardRecording();
       onBusyChange(false);
     },
-    [recorder, deleteAudio, onBusyChange],
+    [discardRecording, deleteAudio, onBusyChange],
   );
 
   const start = async () => {

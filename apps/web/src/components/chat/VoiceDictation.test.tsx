@@ -110,6 +110,18 @@ it("keeps the same recording after a network failure and retries without recordi
   );
 });
 
+it.each([502, 504])("shows a retryable error for HTTP %i", async (status) => {
+  vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status }));
+  const p = props();
+  render(<VoiceDictation {...p} />);
+  await recordAndStop();
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "voice.failedRequest",
+  );
+  expect(screen.getByRole("button", { name: "voice.retry" })).toBeEnabled();
+  expect(p.onTranscript).not.toHaveBeenCalled();
+});
+
 it("appends dictation to a draft and releases the send lock only after completion", async () => {
   function Draft() {
     const [draft, setDraft] = useState("Ya había escrito algo");

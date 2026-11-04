@@ -104,7 +104,6 @@
     "signInAgain": "Inicia sesión de nuevo para transcribir.",
     "limitReached": "Hay una transcripción en curso o llegaste al límite de 30 intentos diarios.",
     "unavailable": "La transcripción no está disponible en este momento. Puedes reintentar.",
-    "failedRequest": "No se pudo transcribir. Tu grabación sigue disponible para reintentar.",
-    "cancelling": "Cancelando…"
+    "failedRequest": "No se pudo transcribir. Tu grabación sigue disponible para reintentar."
   }
 }

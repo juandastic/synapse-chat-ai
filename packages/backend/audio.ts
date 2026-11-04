@@ -26,5 +26,5 @@ export function transcriptionErrorKey(status: number): string {
   if (status === 422 || status === 400) return "voice.noSpeech";
   if (status === 429) return "voice.limitReached";
   if (status === 503) return "voice.unavailable";
-  return "voice.failed";
+  return "voice.failedRequest";
 }
