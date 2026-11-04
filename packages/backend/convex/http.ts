@@ -1,6 +1,7 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { transcribe } from "./audioTranscription";
 
 import { CompilationMetadata, CORTEX_API_BASE_URL } from "./cortexConfig";
 import { PromptMode } from "./prompts";
@@ -70,6 +71,13 @@ function corsHeaders(request: Request): Record<string, string> {
 // =============================================================================
 
 const http = httpRouter();
+
+http.route({ path: "/audio/transcribe", method: "POST", handler: transcribe });
+http.route({
+  path: "/audio/transcribe",
+  method: "OPTIONS",
+  handler: transcribe,
+});
 
 http.route({
   path: "/chat",

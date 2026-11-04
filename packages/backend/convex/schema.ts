@@ -285,6 +285,15 @@ export default defineSchema({
   // ===========================================================================
   // Usage Tracking
   // ===========================================================================
+  /** One reusable daily quota record per user; no recorded content. */
+  audio_transcription_limits: defineTable({
+    userId: v.id("users"),
+    day: v.string(),
+    attempts: v.number(),
+    requestId: v.string(),
+    activeUntil: v.number(),
+  }).index("by_user", ["userId"]),
+
   /**
    * Monthly bucket with daily slots pattern.
    * One document per user per month. dailyStats holds per-day breakdowns.

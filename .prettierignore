@@ -1,4 +1,5 @@
 node_modules/
+**/.convex/
 **/dist/
 coverage/
 **/.expo/

@@ -6,10 +6,10 @@ import { api } from "@synapse/backend/api";
 import { Id } from "@synapse/backend/dataModel";
 import { useChatContext } from "@/contexts/useChatContext";
 
-const CONVEX_SITE_URL = import.meta.env.VITE_CONVEX_URL.replace(
-  ".cloud",
-  ".site",
-);
+const CONVEX_SITE_URL = (
+  import.meta.env.VITE_CONVEX_SITE_URL ??
+  import.meta.env.VITE_CONVEX_URL.replace(".cloud", ".site")
+).replace(/\/$/, "");
 
 export function useStreamResponse() {
   const { threadId, updateStreamedContent, stopStreaming } = useChatContext();

@@ -9,6 +9,7 @@
  */
 
 import type * as analytics from "../analytics.js";
+import type * as audioTranscription from "../audioTranscription.js";
 import type * as chat from "../chat.js";
 import type * as chatModels from "../chatModels.js";
 import type * as cortex from "../cortex.js";
@@ -42,6 +43,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   analytics: typeof analytics;
+  audioTranscription: typeof audioTranscription;
   chat: typeof chat;
   chatModels: typeof chatModels;
   cortex: typeof cortex;

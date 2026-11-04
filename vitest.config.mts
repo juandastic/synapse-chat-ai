@@ -41,7 +41,10 @@ export default defineConfig({
           environment: "jsdom",
           include: ["apps/web/src/**/*.test.{ts,tsx}"],
           setupFiles: ["apps/web/src/test/setup.ts"],
-          env: { VITE_CONVEX_URL: "https://test.convex.cloud" },
+          env: {
+            VITE_CONVEX_URL: "https://test.convex.cloud",
+            VITE_CONVEX_SITE_URL: "https://test.convex.site",
+          },
           clearMocks: true,
           restoreMocks: true,
           silent: "passed-only",

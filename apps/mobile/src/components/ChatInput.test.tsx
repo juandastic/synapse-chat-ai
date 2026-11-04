@@ -12,11 +12,46 @@ const mockStart = jest.fn();
 const mockCancel = jest.fn();
 const mockClearImages = jest.fn();
 const mockRestoreImages = jest.fn();
+const mockTranscription = jest.fn();
+const mockDeleteRecording = jest.fn();
+const mockRecorder = {
+  isRecording: false,
+  uri: "file:///recording.m4a",
+  stop: jest.fn(),
+  record: jest.fn(),
+  prepareToRecordAsync: jest.fn(),
+};
 const mockState = {
   editingMessage: null as Doc<"messages"> | null,
   isGenerating: false,
   atLimit: false,
 };
+jest.mock("@clerk/expo", () => ({
+  useAuth: () => ({ getToken: async () => "session-token" }),
+}));
+jest.mock("expo-audio", () => {
+  return {
+    AudioModule: {
+      requestRecordingPermissionsAsync: async () => ({ granted: true }),
+    },
+    RecordingPresets: { HIGH_QUALITY: {} },
+    setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+    useAudioRecorder: () => mockRecorder,
+    useAudioRecorderState: () => ({ durationMillis: 0 }),
+  };
+});
+jest.mock("expo/fetch", () => ({
+  fetch: (...args: unknown[]) => mockTranscription(...args),
+}));
+jest.mock("expo-file-system", () => ({
+  File: class {
+    exists = true;
+    size = 50;
+    delete() {
+      mockDeleteRecording();
+    }
+  },
+}));
 jest.mock("convex/react", () => ({
   useMutation: (fn: Parameters<typeof mockGetFunctionName>[0]) => {
     const name = mockGetFunctionName(fn);
@@ -85,6 +120,18 @@ jest.mock("../contexts/ThemeContext", () => ({
 const threadId = "thread" as Id<"threads">;
 const sendButton = () => screen.getByLabelText("chatInput.sendMessage");
 beforeEach(() => {
+  mockRecorder.isRecording = false;
+  mockRecorder.record.mockImplementation(() => {
+    mockRecorder.isRecording = true;
+  });
+  mockRecorder.stop.mockImplementation(async () => {
+    mockRecorder.isRecording = false;
+  });
+  mockRecorder.prepareToRecordAsync.mockResolvedValue(undefined);
+  mockTranscription.mockResolvedValue({
+    ok: true,
+    json: async () => ({ text: "Mi historia" }),
+  });
   mockState.editingMessage = null;
   mockState.isGenerating = false;
   mockState.atLimit = false;
@@ -181,4 +228,42 @@ it("quota exhaustion and active generation disable submission", async () => {
   await view.rerender(<ChatInput threadId={threadId} />);
   await fireEvent.press(sendButton());
   expect(mockSend).not.toHaveBeenCalled();
+});
+
+it("appends voice dictation to the existing draft and sends only after review", async () => {
+  await render(<ChatInput threadId={threadId} />);
+  await fireEvent.changeText(
+    screen.getByPlaceholderText("chatInput.placeholder"),
+    "Borrador",
+  );
+  await fireEvent.press(screen.getByLabelText("voice.start"));
+  expect(mockRecorder.record).toHaveBeenCalledWith({ forDuration: 300 });
+  await fireEvent.press(sendButton());
+  expect(mockSend).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByLabelText("voice.stop"));
+  expect(screen.getByDisplayValue("Borrador\nMi historia")).toBeTruthy();
+  expect(mockDeleteRecording).toHaveBeenCalled();
+  expect(mockSend).not.toHaveBeenCalled();
+  await fireEvent.press(sendButton());
+  expect(mockSend).toHaveBeenCalledWith({
+    threadId,
+    content: "Borrador\nMi historia",
+  });
+});
+
+it("retains a failed native recording for retry without replacing the draft", async () => {
+  mockTranscription.mockRejectedValueOnce(new Error("offline"));
+  await render(<ChatInput threadId={threadId} />);
+  await fireEvent.changeText(
+    screen.getByPlaceholderText("chatInput.placeholder"),
+    "Borrador",
+  );
+  await fireEvent.press(screen.getByLabelText("voice.start"));
+  await fireEvent.press(screen.getByLabelText("voice.stop"));
+  expect(screen.getByDisplayValue("Borrador")).toBeTruthy();
+  expect(mockDeleteRecording).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByLabelText("voice.retry"));
+  expect(screen.getByDisplayValue("Borrador\nMi historia")).toBeTruthy();
+  expect(mockRecorder.record).toHaveBeenCalledTimes(1);
+  expect(mockDeleteRecording).toHaveBeenCalled();
 });

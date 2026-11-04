@@ -21,6 +21,8 @@ import { useChatContext } from "@/contexts/useChatContext";
 import { useUploadFile } from "@convex-dev/r2/react";
 import { useStreamResponse } from "@/hooks/useStreamResponse";
 import { useTranslation } from "react-i18next";
+import { appendTranscript } from "@synapse/backend/audio";
+import { VoiceDictation } from "./VoiceDictation";
 
 const MAX_IMAGES = 4;
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/gif,image/webp";
@@ -35,6 +37,7 @@ interface ImagePreview {
 
 export function ChatInput() {
   const [content, setContent] = useState("");
+  const [voiceBusy, setVoiceBusy] = useState(false);
   const [isSavingModel, setIsSavingModel] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -196,6 +199,7 @@ export function ChatInput() {
       isSavingModel ||
       isGenerating ||
       isAtLimit ||
+      voiceBusy ||
       incompatibleModel
     )
       return;
@@ -250,6 +254,7 @@ export function ChatInput() {
     isSavingModel,
     isGenerating,
     isAtLimit,
+    voiceBusy,
     incompatibleModel,
     releasePreview,
     sendMessage,
@@ -332,7 +337,9 @@ export function ChatInput() {
     [processAndAddImages],
   );
 
-  const isDisabled = isSubmitting || isSavingModel || isGenerating || isAtLimit;
+  const baseDisabled =
+    isSubmitting || isSavingModel || isGenerating || isAtLimit;
+  const isDisabled = baseDisabled || voiceBusy;
   const canSubmit =
     (content.trim().length > 0 || images.length > 0) &&
     !isDisabled &&
@@ -387,6 +394,16 @@ export function ChatInput() {
             )}
           />
         </div>
+
+        <VoiceDictation
+          key={threadId}
+          disabled={baseDisabled}
+          onTranscript={(text) => {
+            setContent((draft) => appendTranscript(draft, text));
+            requestAnimationFrame(adjustTextareaHeight);
+          }}
+          onBusyChange={setVoiceBusy}
+        />
 
         {images.length > 0 && (
           <div className="flex gap-2 overflow-x-auto px-4 py-2">

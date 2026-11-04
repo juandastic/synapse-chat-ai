@@ -1,5 +1,40 @@
 # Synapse AI Chat
 
+## Voice dictation
+
+Web and mobile can record up to five minutes, transcribe the recording, and append
+the result to the current draft. The user reviews and sends the text normally.
+Dictation does not create a chat message, upload an R2 asset, or invoke the chat
+model. Failed uploads retain the recording on the client for retry; cancel,
+successful transcription, or leaving the composer discards it. Native files use
+the app's temporary cache and cleanup is best effort.
+
+The client sends raw WebM or MP4/M4A audio to Convex `POST /audio/transcribe`
+with its Clerk `convex` token. Convex accepts registered users, bounds uploads to
+10 MB, and atomically limits each user to one active request and 30 attempts per
+UTC day. Attempts count even if the provider fails. The five-minute recording
+limit is enforced by the clients; the server enforces bytes and request quotas.
+Convex forwards the audio to Cortex `/v1/audio/transcriptions` with
+`SYNAPSE_CORTEX_API_SECRET`, then returns only `{ text }`. Audio and transcripts
+are not written by this endpoint to messages, memory, analytics, or asset storage.
+The reviewed text enters those existing flows only when the user sends it.
+
+Configure `OPEN_AI_API_KEY` in Cortex's server environment. `OPENAI_API_KEY` is
+also supported. The default model is `gpt-transcribe`, configurable with
+`OPENAI_TRANSCRIPTION_MODEL`. No OpenAI credential belongs in a `VITE_` or
+`EXPO_PUBLIC_` variable. See the Cortex README for the server endpoint.
+
+For local or custom deployments, set `VITE_CONVEX_SITE_URL` on web and
+`EXPO_PUBLIC_CONVEX_SITE_URL` on mobile to the Convex HTTP endpoint. Both dictation
+and chat streaming use this override; cloud deployments keep deriving it from
+the `.convex.cloud` URL. Point Convex's `SYNAPSE_CORTEX_API_BASE_URL` at the
+matching Cortex deployment and configure its existing service credential.
+
+Mobile adds `expo-audio` and microphone permission. Version 1.0.3 requires a new
+native development/production build; do not ship it as an OTA update to 1.0.2.
+Recording ends when the mobile app leaves the foreground. Device permissions,
+recording interruptions and actual browser/device capture require manual QA.
+
 https://synapse-chat.juandago.dev/
 
 A multi-thread, persona-based conversational interface with **deep memory**. Each conversation is linked to a persona (AI personality) and maintains persistent context through a knowledge graph powered by [Graphiti](https://github.com/getzep/graphiti) / Neo4j. Users can visualize, inspect, and correct their knowledge graph in real time.

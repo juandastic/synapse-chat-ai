@@ -114,5 +114,25 @@
     "startConversationWith": "Start your conversation with {{name}}",
     "startConversation": "Start your conversation",
     "emptyStateDescription": "Share what's on your mind, and we'll explore it together."
+  },
+  "voice": {
+    "start": "Dictate message",
+    "starting": "Starting microphone…",
+    "recording": "Recording",
+    "transcribing": "Transcribing…",
+    "failed": "Recording pending",
+    "stop": "Stop",
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "permissionDenied": "Allow microphone access to dictate.",
+    "recordingFailed": "Recording failed. Cancel and try again.",
+    "unsupported": "This format or browser does not support dictation.",
+    "tooLarge": "The recording exceeds the 10 MB limit.",
+    "noSpeech": "Speech could not be recognized. Cancel to record again.",
+    "signInAgain": "Sign in again to transcribe.",
+    "limitReached": "A transcription is in progress or you reached the daily limit of 30 attempts.",
+    "unavailable": "Transcription is unavailable right now. You can retry.",
+    "failedRequest": "Transcription failed. Your recording is available to retry.",
+    "cancelling": "Cancelling…"
   }
 }
