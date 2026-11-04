@@ -68,6 +68,7 @@ export function VoiceDictation({
   );
   const recorderState = useAudioRecorderState(recorder, 250);
   const audio = useRef<File | null>(null);
+  const recordingUri = useRef<string | null>(null);
   const controller = useRef<AbortController | null>(null);
   const version = useRef(0);
   const pendingStart = useRef<Promise<void> | null>(null);
@@ -83,15 +84,22 @@ export function VoiceDictation({
     setStatus(next);
   }, []);
   const deleteAudio = useCallback(() => {
-    deleteRecording(audio.current);
+    deleteRecording(
+      audio.current ??
+        (recordingUri.current ? new File(recordingUri.current) : null),
+    );
     audio.current = null;
+    recordingUri.current = null;
   }, []);
 
   const discardRecording = useCallback(async () => {
     // Capture this recording before awaiting stop so a later one is never deleted.
-    let file: File | null = null;
+    const file =
+      audio.current ??
+      (recordingUri.current ? new File(recordingUri.current) : null);
+    audio.current = null;
+    recordingUri.current = null;
     try {
-      file = recorder.uri ? new File(recorder.uri) : null;
       if (recorder.isRecording) await recorder.stop();
     } catch {
       /* Interrupted recording. */
@@ -221,28 +229,23 @@ export function VoiceDictation({
     updateStatus("cancelling");
     try {
       await pendingStart.current;
-      if (recorder.isRecording) await recorder.stop();
-      if (!audio.current && recorder.uri)
-        audio.current = new File(recorder.uri);
     } catch {
       /* Interrupted recording. */
     }
-    deleteAudio();
-    await resetAudioMode();
+    await discardRecording();
     if (version.current === attempt) {
       setError(null);
       updateStatus("idle");
     }
-  }, [recorder, updateStatus, deleteAudio]);
+  }, [discardRecording, updateStatus]);
   useEffect(
     () => () => {
       version.current += 1;
       controller.current?.abort();
-      deleteAudio();
       void discardRecording();
       onBusyChange(false);
     },
-    [discardRecording, deleteAudio, onBusyChange],
+    [discardRecording, onBusyChange],
   );
 
   const start = async () => {
@@ -264,9 +267,10 @@ export function VoiceDictation({
         return;
       }
       await recorder.prepareToRecordAsync();
+      // Expo releases the native recorder before our unmount cleanup runs.
+      recordingUri.current = recorder.uri;
       if (version.current !== attempt) {
-        await recorder.stop();
-        await resetAudioMode();
+        await discardRecording();
         return;
       }
       recorder.record({ forDuration: MAX_RECORDING_SECONDS });

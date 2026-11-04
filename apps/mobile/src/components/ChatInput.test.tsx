@@ -16,10 +16,14 @@ const mockTranscription = jest.fn();
 const mockDeleteRecording = jest.fn();
 const mockRecordingBytes = new Uint8Array([1, 2, 3]);
 const mockRecordingFile = { exists: true, size: 3 };
+let mockRecorderReleased = false;
 let mockRecordingStatus: ((status: { hasError: boolean }) => void) | undefined;
 const mockRecorder = {
   isRecording: false,
-  uri: "file:///recording.m4a",
+  get uri() {
+    if (mockRecorderReleased) throw new Error("SharedObjectNotFoundException");
+    return "file:///recording.m4a";
+  },
   stop: jest.fn(),
   record: jest.fn(),
   prepareToRecordAsync: jest.fn(),
@@ -43,6 +47,13 @@ jest.mock("expo-audio", () => {
       _options: unknown,
       callback: typeof mockRecordingStatus,
     ) => {
+      jest.requireActual<typeof import("react")>("react").useEffect(
+        () => () => {
+          mockRecorderReleased = true;
+          mockRecorder.isRecording = false;
+        },
+        [],
+      );
       mockRecordingStatus = callback;
       return mockRecorder;
     },
@@ -54,6 +65,10 @@ jest.mock("expo/fetch", () => ({
 }));
 jest.mock("expo-file-system", () => ({
   File: class {
+    uri: string;
+    constructor(uri: string) {
+      this.uri = uri;
+    }
     type = "audio/mpeg";
     get exists() {
       return mockRecordingFile.exists;
@@ -65,7 +80,7 @@ jest.mock("expo-file-system", () => ({
       return mockRecordingBytes;
     }
     delete() {
-      mockDeleteRecording();
+      mockDeleteRecording(this.uri);
     }
   },
 }));
@@ -137,6 +152,7 @@ jest.mock("../contexts/ThemeContext", () => ({
 const threadId = "thread" as Id<"threads">;
 const sendButton = () => screen.getByLabelText("chatInput.sendMessage");
 beforeEach(() => {
+  mockRecorderReleased = false;
   mockRecordingFile.exists = true;
   mockRecordingFile.size = 3;
   mockRecorder.isRecording = false;
@@ -320,11 +336,11 @@ it("deletes a partial recording when the native recorder fails", async () => {
   expect(mockTranscription).not.toHaveBeenCalled();
 });
 
-it("stops and deletes an unfinished recording on unmount", async () => {
+it("deletes an unfinished recording after Expo releases the native recorder", async () => {
   const view = await render(<ChatInput threadId={threadId} />);
   await fireEvent.press(screen.getByLabelText("voice.start"));
   await view.unmount();
-  expect(mockRecorder.stop).toHaveBeenCalled();
-  expect(mockDeleteRecording).toHaveBeenCalled();
+  expect(() => mockRecorder.uri).toThrow("SharedObjectNotFoundException");
+  expect(mockDeleteRecording).toHaveBeenCalledWith("file:///recording.m4a");
   expect(mockTranscription).not.toHaveBeenCalled();
 });
