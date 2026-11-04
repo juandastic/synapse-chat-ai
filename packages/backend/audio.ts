@@ -2,6 +2,14 @@
 export const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 export const MAX_RECORDING_SECONDS = 5 * 60;
 export const TRANSCRIPTION_TIMEOUT_MS = 105_000;
+
+/** Map dBFS to a visible speech range. Missing metering is distinct from silence. */
+export function audioInputLevel(decibels: number | undefined): number | null {
+  if (decibels === -Infinity) return 0;
+  if (decibels === undefined || !Number.isFinite(decibels)) return null;
+  return Math.max(0, Math.min(1, (decibels + 60) / 48));
+}
+
 export const AUDIO_MIME_TYPES = new Set([
   "audio/webm",
   "audio/mp4",

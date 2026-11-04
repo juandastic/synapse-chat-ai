@@ -133,6 +133,10 @@
     "limitReached": "Hay una transcripción en curso o llegaste al límite de 30 intentos diarios.",
     "unavailable": "La transcripción no está disponible en este momento. Puedes reintentar.",
     "failedRequest": "No se pudo transcribir. Tu grabación sigue disponible para reintentar.",
-    "cancelling": "Cancelando…"
+    "cancelling": "Cancelando…",
+    "inputLevel": "Nivel de audio",
+    "soundDetected": "Audio detectado",
+    "noSound": "Sin sonido",
+    "levelUnavailable": "Nivel de audio no disponible"
   }
 }

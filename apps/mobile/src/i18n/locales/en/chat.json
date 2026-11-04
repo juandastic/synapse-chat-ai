@@ -133,6 +133,10 @@
     "limitReached": "A transcription is in progress or you reached the daily limit of 30 attempts.",
     "unavailable": "Transcription is unavailable right now. You can retry.",
     "failedRequest": "Transcription failed. Your recording is available to retry.",
-    "cancelling": "Cancelling…"
+    "cancelling": "Cancelling…",
+    "inputLevel": "Audio input level",
+    "soundDetected": "Audio detected",
+    "noSound": "No sound",
+    "levelUnavailable": "Audio level unavailable"
   }
 }
