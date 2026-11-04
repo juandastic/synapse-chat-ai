@@ -6,7 +6,8 @@
   "exports": {
     "./api": "./convex/_generated/api.js",
     "./dataModel": "./convex/_generated/dataModel.d.ts",
-    "./chatModels": "./convex/chatModels.ts"
+    "./chatModels": "./convex/chatModels.ts",
+    "./audio": "./audio.ts"
   },
   "scripts": {
     "test": "vitest run --root ../.. --project backend",

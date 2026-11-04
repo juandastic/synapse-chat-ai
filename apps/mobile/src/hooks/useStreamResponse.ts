@@ -8,7 +8,10 @@ import { useChatContext } from "../contexts/useChatContext";
 import { captureError } from "../lib/analytics";
 
 const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL ?? "";
-const CONVEX_SITE_URL = CONVEX_URL.replace(".cloud", ".site");
+const CONVEX_SITE_URL = (
+  process.env.EXPO_PUBLIC_CONVEX_SITE_URL ??
+  CONVEX_URL.replace(".cloud", ".site")
+).replace(/\/$/, "");
 
 /**
  * Stream AI response using XMLHttpRequest.

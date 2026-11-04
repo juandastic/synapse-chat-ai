@@ -5,6 +5,7 @@ module.exports = {
   clearMocks: true,
   restoreMocks: true,
   moduleNameMapper: {
+    "^@synapse/backend/audio$": "<rootDir>/../../packages/backend/audio.ts",
     "^@synapse/backend/chatModels$":
       "<rootDir>/../../packages/backend/convex/chatModels.ts",
     "^@synapse/backend/api$":

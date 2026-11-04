@@ -7,7 +7,7 @@ const bundleIdentifier = "com.synapse.mobile";
 module.exports = {
   name: isDevelopment ? `${name} Dev` : name,
   slug: "synapse-mobile",
-  version: "1.0.2",
+  version: "1.0.3",
   runtimeVersion: {
     policy: "appVersion",
   },
@@ -51,6 +51,15 @@ module.exports = {
     "expo-system-ui",
     "expo-updates",
     "expo-web-browser",
+    [
+      "expo-audio",
+      {
+        microphonePermission:
+          "Synapse needs microphone access to turn your voice into text.",
+        enableBackgroundRecording: false,
+        enableBackgroundPlayback: false,
+      },
+    ],
     [
       "expo-image-picker",
       {

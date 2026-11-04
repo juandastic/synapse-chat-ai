@@ -25,6 +25,8 @@ import { useChatContext } from "../contexts/useChatContext";
 import { useStreamResponse } from "../hooks/useStreamResponse";
 import { useImagePicker, PickedImage } from "../hooks/useImagePicker";
 import { ChatModelSelector } from "./ChatModelSelector";
+import { VoiceDictation } from "./VoiceDictation";
+import { appendTranscript } from "@synapse/backend/audio";
 import {
   getImageUploadErrorTelemetry,
   ImageUploadError,
@@ -37,6 +39,7 @@ interface ChatInputProps {
 
 export function ChatInput({ threadId }: ChatInputProps) {
   const [content, setContent] = useState("");
+  const [voiceBusy, setVoiceBusy] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +115,13 @@ export function ChatInput({ threadId }: ChatInputProps) {
     const hasImages = images.length > 0;
 
     if (!trimmedContent && !hasImages) return;
-    if (isSubmitting || isSavingModel || isGenerating || modelUnavailable)
+    if (
+      isSubmitting ||
+      isSavingModel ||
+      isGenerating ||
+      modelUnavailable ||
+      voiceBusy
+    )
       return;
 
     setIsSubmitting(true);
@@ -240,6 +249,7 @@ export function ChatInput({ threadId }: ChatInputProps) {
     content,
     images,
     isSubmitting,
+    voiceBusy,
     isSavingModel,
     isGenerating,
     modelUnavailable,
@@ -272,7 +282,9 @@ export function ChatInput({ threadId }: ChatInputProps) {
   const usagePercent =
     !isUnlimited && msgLimit ? msgLimit.used / msgLimit.limit : 0;
 
-  const isDisabled = isSubmitting || isSavingModel || isGenerating || isAtLimit;
+  const baseDisabled =
+    isSubmitting || isSavingModel || isGenerating || isAtLimit;
+  const isDisabled = baseDisabled || voiceBusy;
   const canSubmit =
     (content.trim().length > 0 || images.length > 0) &&
     !isDisabled &&
@@ -477,6 +489,15 @@ export function ChatInput({ threadId }: ChatInputProps) {
             ))}
           </ScrollView>
         )}
+
+        <VoiceDictation
+          key={`${threadId}:${editingMessage?._id ?? "new"}`}
+          disabled={baseDisabled}
+          onTranscript={(text) =>
+            setContent((draft) => appendTranscript(draft, text))
+          }
+          onBusyChange={setVoiceBusy}
+        />
 
         {/* Input row */}
         <View style={s.inputRow}>

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { getFunctionName as mockGetFunctionName } from "convex/server";
 import type { Doc, Id } from "@synapse/backend/dataModel";
 import * as Haptics from "expo-haptics";
@@ -12,11 +12,78 @@ const mockStart = jest.fn();
 const mockCancel = jest.fn();
 const mockClearImages = jest.fn();
 const mockRestoreImages = jest.fn();
+const mockTranscription = jest.fn();
+const mockDeleteRecording = jest.fn();
+const mockRecordingBytes = new Uint8Array([1, 2, 3]);
+const mockRecordingFile = { exists: true, size: 3 };
+let mockRecorderReleased = false;
+let mockRecordingStatus: ((status: { hasError: boolean }) => void) | undefined;
+const mockRecorder = {
+  isRecording: false,
+  get uri() {
+    if (mockRecorderReleased) throw new Error("SharedObjectNotFoundException");
+    return "file:///recording.m4a";
+  },
+  stop: jest.fn(),
+  record: jest.fn(),
+  prepareToRecordAsync: jest.fn(),
+};
 const mockState = {
   editingMessage: null as Doc<"messages"> | null,
   isGenerating: false,
   atLimit: false,
 };
+jest.mock("@clerk/expo", () => ({
+  useAuth: () => ({ getToken: async () => "session-token" }),
+}));
+jest.mock("expo-audio", () => {
+  return {
+    AudioModule: {
+      requestRecordingPermissionsAsync: async () => ({ granted: true }),
+    },
+    RecordingPresets: { HIGH_QUALITY: {} },
+    setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+    useAudioRecorder: (
+      _options: unknown,
+      callback: typeof mockRecordingStatus,
+    ) => {
+      jest.requireActual<typeof import("react")>("react").useEffect(
+        () => () => {
+          mockRecorderReleased = true;
+          mockRecorder.isRecording = false;
+        },
+        [],
+      );
+      mockRecordingStatus = callback;
+      return mockRecorder;
+    },
+    useAudioRecorderState: () => ({ durationMillis: 0 }),
+  };
+});
+jest.mock("expo/fetch", () => ({
+  fetch: (...args: unknown[]) => mockTranscription(...args),
+}));
+jest.mock("expo-file-system", () => ({
+  File: class {
+    uri: string;
+    constructor(uri: string) {
+      this.uri = uri;
+    }
+    type = "audio/mpeg";
+    get exists() {
+      return mockRecordingFile.exists;
+    }
+    get size() {
+      return mockRecordingFile.size;
+    }
+    async bytes() {
+      return mockRecordingBytes;
+    }
+    delete() {
+      mockDeleteRecording(this.uri);
+    }
+  },
+}));
 jest.mock("convex/react", () => ({
   useMutation: (fn: Parameters<typeof mockGetFunctionName>[0]) => {
     const name = mockGetFunctionName(fn);
@@ -85,6 +152,21 @@ jest.mock("../contexts/ThemeContext", () => ({
 const threadId = "thread" as Id<"threads">;
 const sendButton = () => screen.getByLabelText("chatInput.sendMessage");
 beforeEach(() => {
+  mockRecorderReleased = false;
+  mockRecordingFile.exists = true;
+  mockRecordingFile.size = 3;
+  mockRecorder.isRecording = false;
+  mockRecorder.record.mockImplementation(() => {
+    mockRecorder.isRecording = true;
+  });
+  mockRecorder.stop.mockImplementation(async () => {
+    mockRecorder.isRecording = false;
+  });
+  mockRecorder.prepareToRecordAsync.mockResolvedValue(undefined);
+  mockTranscription.mockResolvedValue({
+    ok: true,
+    json: async () => ({ text: "Mi historia" }),
+  });
   mockState.editingMessage = null;
   mockState.isGenerating = false;
   mockState.atLimit = false;
@@ -181,4 +263,84 @@ it("quota exhaustion and active generation disable submission", async () => {
   await view.rerender(<ChatInput threadId={threadId} />);
   await fireEvent.press(sendButton());
   expect(mockSend).not.toHaveBeenCalled();
+});
+
+it("appends voice dictation to the existing draft and sends only after review", async () => {
+  await render(<ChatInput threadId={threadId} />);
+  await fireEvent.changeText(
+    screen.getByPlaceholderText("chatInput.placeholder"),
+    "Borrador",
+  );
+  await fireEvent.press(screen.getByLabelText("voice.start"));
+  expect(mockRecorder.record).toHaveBeenCalledWith({ forDuration: 300 });
+  await fireEvent.press(sendButton());
+  expect(mockSend).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByLabelText("voice.stop"));
+  expect(mockTranscription).toHaveBeenCalledWith(
+    expect.stringContaining("/audio/transcribe"),
+    expect.objectContaining({
+      headers: {
+        Authorization: "Bearer session-token",
+        "Content-Type": "audio/mp4",
+      },
+      body: mockRecordingBytes,
+    }),
+  );
+  expect(screen.getByDisplayValue("Borrador\nMi historia")).toBeTruthy();
+  expect(mockDeleteRecording).toHaveBeenCalled();
+  expect(mockSend).not.toHaveBeenCalled();
+  await fireEvent.press(sendButton());
+  expect(mockSend).toHaveBeenCalledWith({
+    threadId,
+    content: "Borrador\nMi historia",
+  });
+});
+
+it("retains a failed native recording for retry without replacing the draft", async () => {
+  mockTranscription.mockRejectedValueOnce(new Error("offline"));
+  await render(<ChatInput threadId={threadId} />);
+  await fireEvent.changeText(
+    screen.getByPlaceholderText("chatInput.placeholder"),
+    "Borrador",
+  );
+  await fireEvent.press(screen.getByLabelText("voice.start"));
+  await fireEvent.press(screen.getByLabelText("voice.stop"));
+  expect(screen.getByDisplayValue("Borrador")).toBeTruthy();
+  expect(mockDeleteRecording).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByLabelText("voice.retry"));
+  expect(screen.getByDisplayValue("Borrador\nMi historia")).toBeTruthy();
+  expect(mockRecorder.record).toHaveBeenCalledTimes(1);
+  expect(mockDeleteRecording).toHaveBeenCalled();
+});
+
+it("discards an empty recording without offering retry or uploading", async () => {
+  mockRecordingFile.size = 0;
+  await render(<ChatInput threadId={threadId} />);
+  await fireEvent.press(screen.getByLabelText("voice.start"));
+  await fireEvent.press(screen.getByLabelText("voice.stop"));
+  expect(screen.getByText("voice.noSpeech")).toBeTruthy();
+  expect(screen.queryByLabelText("voice.retry")).toBeNull();
+  expect(mockTranscription).not.toHaveBeenCalled();
+  expect(mockDeleteRecording).toHaveBeenCalled();
+});
+
+it("deletes a partial recording when the native recorder fails", async () => {
+  await render(<ChatInput threadId={threadId} />);
+  await fireEvent.press(screen.getByLabelText("voice.start"));
+  await act(async () => {
+    mockRecordingStatus?.({ hasError: true });
+  });
+  expect(screen.getByText("voice.recordingFailed")).toBeTruthy();
+  expect(mockRecorder.stop).toHaveBeenCalled();
+  expect(mockDeleteRecording).toHaveBeenCalled();
+  expect(mockTranscription).not.toHaveBeenCalled();
+});
+
+it("deletes an unfinished recording after Expo releases the native recorder", async () => {
+  const view = await render(<ChatInput threadId={threadId} />);
+  await fireEvent.press(screen.getByLabelText("voice.start"));
+  await view.unmount();
+  expect(() => mockRecorder.uri).toThrow("SharedObjectNotFoundException");
+  expect(mockDeleteRecording).toHaveBeenCalledWith("file:///recording.m4a");
+  expect(mockTranscription).not.toHaveBeenCalled();
 });

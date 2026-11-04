@@ -86,5 +86,24 @@
     "default": "Predeterminado",
     "imagesNotice": "Elige un modelo compatible con imágenes.",
     "saveFailed": "No se pudo guardar el modelo. Inténtalo de nuevo."
+  },
+  "voice": {
+    "start": "Dictar mensaje",
+    "starting": "Activando micrófono…",
+    "recording": "Grabando",
+    "transcribing": "Transcribiendo…",
+    "failed": "Grabación pendiente",
+    "stop": "Detener",
+    "cancel": "Cancelar",
+    "retry": "Reintentar",
+    "permissionDenied": "Permite el acceso al micrófono para dictar.",
+    "recordingFailed": "No se pudo grabar. Cancela y vuelve a intentarlo.",
+    "unsupported": "Este formato o navegador no permite dictar.",
+    "tooLarge": "La grabación supera el límite de 10 MB.",
+    "noSpeech": "No se pudo reconocer el audio. Cancela para grabar de nuevo.",
+    "signInAgain": "Inicia sesión de nuevo para transcribir.",
+    "limitReached": "Hay una transcripción en curso o llegaste al límite de 30 intentos diarios.",
+    "unavailable": "La transcripción no está disponible en este momento. Puedes reintentar.",
+    "failedRequest": "No se pudo transcribir. Tu grabación sigue disponible para reintentar."
   }
 }

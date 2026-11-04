@@ -31,6 +31,9 @@ vi.mock("convex/react", () => ({
     })[getFunctionName(fn)],
 }));
 vi.mock("@convex-dev/r2/react", () => ({ useUploadFile: () => f.upload }));
+vi.mock("@clerk/clerk-react", () => ({
+  useAuth: () => ({ getToken: async () => "session-token" }),
+}));
 vi.mock("@/contexts/useChatContext", () => ({
   useChatContext: () => ({
     isGenerating: f.isGenerating,
