@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { useTranslation } from "react-i18next";
 import { Mic, Square, X, RotateCcw } from "lucide-react";
+import { monitorMicrophoneLevel } from "../../lib/microphone-level";
+import { AudioLevelIndicator } from "./AudioLevelIndicator";
 import {
   MAX_AUDIO_BYTES,
   MAX_RECORDING_SECONDS,
@@ -26,6 +28,8 @@ export function VoiceDictation({
   const [status, setStatus] = useState<Status>("idle");
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [audioLevel, setAudioLevel] = useState<number | null>(null);
+  const stopMeter = useRef<(() => void) | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -41,6 +45,8 @@ export function VoiceDictation({
   }, [onBusyChange, status]);
 
   const releaseMicrophone = useCallback(() => {
+    stopMeter.current?.();
+    stopMeter.current = null;
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
     stream.current?.getTracks().forEach((track) => track.stop());
@@ -122,6 +128,7 @@ export function VoiceDictation({
     const attempt = ++version.current;
     setStatus("starting");
     setSeconds(0);
+    setAudioLevel(null);
     setError(null);
     try {
       if (
@@ -174,6 +181,7 @@ export function VoiceDictation({
         void transcribe(blob, attempt);
       };
       recording.start(1000);
+      stopMeter.current = monitorMicrophoneLevel(media, setAudioLevel);
       const startedAt = Date.now();
       timer.current = setInterval(() => {
         const elapsed = Math.min(
@@ -214,10 +222,24 @@ export function VoiceDictation({
         </button>
       ) : (
         <>
-          <span className="px-2 text-xs text-muted-foreground" role="status">
-            {t(`voice.${status}`)}
-            {status === "recording" &&
-              ` ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} / 5:00`}
+          {status === "recording" && <AudioLevelIndicator level={audioLevel} />}
+          <span className="px-2 text-xs text-muted-foreground">
+            <span role="status">
+              {t(`voice.${status}`)}
+              {status === "recording" &&
+                ` ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} / 5:00`}
+            </span>
+            {status === "recording" && (
+              <span className="block text-[11px]">
+                {t(
+                  audioLevel === null
+                    ? "voice.levelUnavailable"
+                    : audioLevel > 0
+                      ? "voice.soundDetected"
+                      : "voice.noSound",
+                )}
+              </span>
+            )}
           </span>
           {status === "recording" && (
             <button

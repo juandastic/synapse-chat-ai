@@ -23,8 +23,15 @@ import {
   MAX_RECORDING_SECONDS,
   TRANSCRIPTION_TIMEOUT_MS,
   transcriptionErrorKey,
+  audioInputLevel,
 } from "@synapse/backend/audio";
 import { useTheme } from "../contexts/ThemeContext";
+import { AudioLevelIndicator } from "./AudioLevelIndicator";
+
+const RECORDING_OPTIONS = {
+  ...RecordingPresets.HIGH_QUALITY,
+  isMeteringEnabled: true,
+};
 
 type Status =
   "idle" | "starting" | "recording" | "transcribing" | "failed" | "cancelling";
@@ -62,11 +69,8 @@ export function VoiceDictation({
   const phase = useRef<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [recordEvent, setRecordEvent] = useState<RecordingStatus | null>(null);
-  const recorder = useAudioRecorder(
-    RecordingPresets.HIGH_QUALITY,
-    setRecordEvent,
-  );
-  const recorderState = useAudioRecorderState(recorder, 250);
+  const recorder = useAudioRecorder(RECORDING_OPTIONS, setRecordEvent);
+  const recorderState = useAudioRecorderState(recorder, 100);
   const audio = useRef<File | null>(null);
   const recordingUri = useRef<string | null>(null);
   const controller = useRef<AbortController | null>(null);
@@ -288,6 +292,7 @@ export function VoiceDictation({
   };
 
   const seconds = Math.floor(recorderState.durationMillis / 1000);
+  const audioLevel = audioInputLevel(recorderState.metering);
   const buttonStyle = {
     minHeight: 44,
     justifyContent: "center" as const,
@@ -313,14 +318,30 @@ export function VoiceDictation({
           </Pressable>
         ) : (
           <>
+            {status === "recording" && (
+              <AudioLevelIndicator level={audioLevel} />
+            )}
             {status === "transcribing" && (
               <ActivityIndicator size="small" color={colors.inkMuted} />
             )}
-            <Text style={labelStyle} accessibilityLiveRegion="polite">
-              {t(`voice.${status}`)}
-              {status === "recording" &&
-                ` ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} / 5:00`}
-            </Text>
+            <View>
+              <Text style={labelStyle} accessibilityLiveRegion="polite">
+                {t(`voice.${status}`)}
+                {status === "recording" &&
+                  ` ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} / 5:00`}
+              </Text>
+              {status === "recording" && (
+                <Text style={{ color: colors.inkMuted, fontSize: 11 }}>
+                  {t(
+                    audioLevel === null
+                      ? "voice.levelUnavailable"
+                      : audioLevel > 0
+                        ? "voice.soundDetected"
+                        : "voice.noSound",
+                  )}
+                </Text>
+              )}
+            </View>
             {status === "recording" && (
               <Pressable
                 style={buttonStyle}

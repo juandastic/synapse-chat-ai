@@ -14,6 +14,11 @@ const mockClearImages = jest.fn();
 const mockRestoreImages = jest.fn();
 const mockTranscription = jest.fn();
 const mockDeleteRecording = jest.fn();
+const mockRecorderOptions = jest.fn();
+const mockRecorderState = {
+  durationMillis: 0,
+  metering: undefined as number | undefined,
+};
 const mockRecordingBytes = new Uint8Array([1, 2, 3]);
 const mockRecordingFile = { exists: true, size: 3 };
 let mockRecorderReleased = false;
@@ -44,9 +49,10 @@ jest.mock("expo-audio", () => {
     RecordingPresets: { HIGH_QUALITY: {} },
     setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
     useAudioRecorder: (
-      _options: unknown,
+      options: unknown,
       callback: typeof mockRecordingStatus,
     ) => {
+      mockRecorderOptions(options);
       jest.requireActual<typeof import("react")>("react").useEffect(
         () => () => {
           mockRecorderReleased = true;
@@ -57,7 +63,7 @@ jest.mock("expo-audio", () => {
       mockRecordingStatus = callback;
       return mockRecorder;
     },
-    useAudioRecorderState: () => ({ durationMillis: 0 }),
+    useAudioRecorderState: () => mockRecorderState,
   };
 });
 jest.mock("expo/fetch", () => ({
@@ -127,6 +133,7 @@ jest.mock("../hooks/useImageUpload", () => ({
 jest.mock("posthog-react-native", () => ({ usePostHog: () => null }));
 jest.mock("../lib/analytics", () => ({ captureError: jest.fn() }));
 jest.mock("lucide-react-native", () => ({
+  Mic: () => null,
   Send: () => null,
   ImagePlus: () => null,
   Pencil: () => null,
@@ -152,6 +159,8 @@ jest.mock("../contexts/ThemeContext", () => ({
 const threadId = "thread" as Id<"threads">;
 const sendButton = () => screen.getByLabelText("chatInput.sendMessage");
 beforeEach(() => {
+  mockRecorderState.metering = undefined;
+  mockRecorderState.durationMillis = 0;
   mockRecorderReleased = false;
   mockRecordingFile.exists = true;
   mockRecordingFile.size = 3;
@@ -288,6 +297,7 @@ it("appends voice dictation to the existing draft and sends only after review", 
   );
   expect(screen.getByDisplayValue("Borrador\nMi historia")).toBeTruthy();
   expect(mockDeleteRecording).toHaveBeenCalled();
+  expect(screen.queryByLabelText("voice.inputLevel")).toBeNull();
   expect(mockSend).not.toHaveBeenCalled();
   await fireEvent.press(sendButton());
   expect(mockSend).toHaveBeenCalledWith({
@@ -334,6 +344,7 @@ it("deletes a partial recording when the native recorder fails", async () => {
   expect(mockRecorder.stop).toHaveBeenCalled();
   expect(mockDeleteRecording).toHaveBeenCalled();
   expect(mockTranscription).not.toHaveBeenCalled();
+  expect(screen.queryByLabelText("voice.inputLevel")).toBeNull();
 });
 
 it("deletes an unfinished recording after Expo releases the native recorder", async () => {
@@ -342,5 +353,44 @@ it("deletes an unfinished recording after Expo releases the native recorder", as
   await view.unmount();
   expect(() => mockRecorder.uri).toThrow("SharedObjectNotFoundException");
   expect(mockDeleteRecording).toHaveBeenCalledWith("file:///recording.m4a");
+  expect(mockTranscription).not.toHaveBeenCalled();
+});
+
+it("enables native metering and shows input volume without mistaking missing data for silence", async () => {
+  const view = await render(<ChatInput threadId={threadId} />);
+  expect(mockRecorderOptions).toHaveBeenCalledWith(
+    expect.objectContaining({ isMeteringEnabled: true }),
+  );
+  expect(screen.queryByLabelText("voice.inputLevel")).toBeNull();
+  await fireEvent.press(screen.getByLabelText("voice.start"));
+  expect(screen.getByText("voice.levelUnavailable")).toBeTruthy();
+  mockRecorderState.metering = -160;
+  await view.rerender(<ChatInput threadId={threadId} />);
+  expect(
+    screen.getByRole("progressbar", {
+      name: "voice.inputLevel",
+      value: { now: 0 },
+    }),
+  ).toBeTruthy();
+  expect(screen.getByText("voice.noSound")).toBeTruthy();
+  mockRecorderState.metering = -36;
+  await view.rerender(<ChatInput threadId={threadId} />);
+  expect(
+    screen.getByRole("progressbar", {
+      name: "voice.inputLevel",
+      value: { now: 50 },
+    }),
+  ).toBeTruthy();
+  expect(screen.getByText("voice.soundDetected")).toBeTruthy();
+  mockRecorderState.metering = 0;
+  await view.rerender(<ChatInput threadId={threadId} />);
+  expect(
+    screen.getByRole("progressbar", {
+      name: "voice.inputLevel",
+      value: { now: 100 },
+    }),
+  ).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText("voice.cancel"));
+  expect(screen.queryByLabelText("voice.inputLevel")).toBeNull();
   expect(mockTranscription).not.toHaveBeenCalled();
 });

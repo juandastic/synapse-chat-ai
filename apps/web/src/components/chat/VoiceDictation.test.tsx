@@ -38,6 +38,24 @@ class Recorder {
   }
 }
 const microphoneStop = vi.fn();
+let inputAmplitude = 0;
+const sourceDisconnect = vi.fn();
+const analyserDisconnect = vi.fn();
+const contextClose = vi.fn(async () => {});
+class MeterContext {
+  state = "running";
+  createMediaStreamSource = () => ({
+    connect: vi.fn(),
+    disconnect: sourceDisconnect,
+  });
+  createAnalyser = () => ({
+    fftSize: 1024,
+    getFloatTimeDomainData: (samples: Float32Array) =>
+      samples.fill(inputAmplitude),
+    disconnect: analyserDisconnect,
+  });
+  close = contextClose;
+}
 const props = () => ({
   disabled: false,
   onTranscript: vi.fn(),
@@ -52,7 +70,9 @@ async function recordAndStop() {
 }
 beforeEach(() => {
   Recorder.instances = [];
+  inputAmplitude = 0;
   vi.stubGlobal("MediaRecorder", Recorder);
+  vi.stubGlobal("AudioContext", MeterContext);
   Object.defineProperty(navigator, "mediaDevices", {
     configurable: true,
     value: {
@@ -90,6 +110,8 @@ it("records first, authenticates the upload and returns text without sending a c
     }),
   );
   expect(microphoneStop).toHaveBeenCalled();
+  expect(contextClose).toHaveBeenCalled();
+  expect(screen.queryByRole("meter")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "voice.start" })).toBeEnabled();
 });
 
@@ -246,3 +268,88 @@ it("uses the explicit HTTP endpoint for an isolated local Convex deployment", as
     expect.anything(),
   );
 });
+
+it("shows actual input levels, falls flat during silence and resets on a new recording", async () => {
+  vi.useFakeTimers();
+  render(<VoiceDictation {...props()} />);
+  expect(screen.queryByRole("meter")).not.toBeInTheDocument();
+  await act(async () => click("start"));
+  const meter = screen.getByLabelText("voice.inputLevel");
+  expect(meter).not.toHaveAttribute("aria-valuenow");
+  await act(async () => vi.advanceTimersByTime(100));
+  expect(meter).toHaveAttribute("aria-valuenow", "0");
+  expect(screen.getByText("voice.noSound")).toBeInTheDocument();
+  inputAmplitude = 0.01;
+  await act(async () => vi.advanceTimersByTime(100));
+  expect(meter).toHaveAttribute("aria-valuenow", "42");
+  expect(screen.getByText("voice.soundDetected")).toBeInTheDocument();
+  inputAmplitude = 0.8;
+  await act(async () => vi.advanceTimersByTime(100));
+  expect(meter).toHaveAttribute("aria-valuenow", "100");
+  inputAmplitude = 0;
+  await act(async () => vi.advanceTimersByTime(100));
+  expect(meter).toHaveAttribute("aria-valuenow", "0");
+  click("cancel");
+  await act(async () => click("start"));
+  expect(screen.getByLabelText("voice.inputLevel")).not.toHaveAttribute(
+    "aria-valuenow",
+  );
+});
+
+it.each(["cancel", "unmount", "error"])(
+  "releases the audio meter on %s",
+  async (action) => {
+    vi.useFakeTimers();
+    const view = render(<VoiceDictation {...props()} />);
+    await act(async () => click("start"));
+    await act(async () => vi.advanceTimersByTime(100));
+    if (action === "cancel") click("cancel");
+    else if (action === "unmount") view.unmount();
+    else act(() => Recorder.instances[0].onerror?.());
+    expect(sourceDisconnect).toHaveBeenCalledTimes(1);
+    expect(analyserDisconnect).toHaveBeenCalledTimes(1);
+    expect(contextClose).toHaveBeenCalledTimes(1);
+    expect(microphoneStop).toHaveBeenCalled();
+    expect(screen.queryByRole("meter")).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
+  },
+);
+
+it.each(["unsupported", "failed", "suspended"])(
+  "keeps recording when metering is %s",
+  async (mode) => {
+    if (mode === "unsupported") vi.stubGlobal("AudioContext", undefined);
+    else if (mode === "failed")
+      vi.stubGlobal(
+        "AudioContext",
+        class {
+          constructor() {
+            throw new Error("unavailable");
+          }
+        },
+      );
+    else
+      vi.stubGlobal(
+        "AudioContext",
+        class extends MeterContext {
+          state = "suspended";
+          resume = async () => {
+            throw new Error("blocked");
+          };
+        },
+      );
+    const p = props();
+    render(<VoiceDictation {...p} />);
+    click("start");
+    await screen.findByRole("button", { name: "voice.stop" });
+    expect(
+      screen.getByRole("img", { name: "voice.inputLevel" }),
+    ).toHaveAttribute("aria-description", "voice.levelUnavailable");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(Recorder.instances[0].state).toBe("recording");
+    click("stop");
+    await waitFor(() =>
+      expect(p.onTranscript).toHaveBeenCalledWith("Mi historia"),
+    );
+  },
+);
