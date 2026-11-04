@@ -23,6 +23,7 @@
       "channel": "preview"
     },
     "production": {
+      "node": "24.17.0",
       "autoIncrement": true,
       "channel": "production"
     },
