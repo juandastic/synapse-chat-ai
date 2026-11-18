@@ -5,6 +5,7 @@ import { transcribe } from "./audioTranscription";
 
 import { CompilationMetadata, CORTEX_API_BASE_URL } from "./cortexConfig";
 import { PromptMode } from "./prompts";
+import { parseConsultationMetadata } from "./schema";
 
 // =============================================================================
 // Configuration
@@ -50,6 +51,7 @@ interface StreamChunk {
     grounding_support_count?: number;
     grounding_search_entry_point?: string | null;
     grounding_sources?: Array<{ title: string; uri: string }>;
+    consultation?: unknown;
   };
 }
 
@@ -310,6 +312,12 @@ http.route({
               try {
                 const chunk: StreamChunk = JSON.parse(data);
                 if (chunk.model) modelUsed = chunk.model;
+                // Preserve terminal accounting/trace data even when this frame
+                // also reports a failure after a partial answer.
+                if (chunk.usage) {
+                  localUsage = chunk.usage;
+                  usage = chunk.usage;
+                }
 
                 if (chunk.error) {
                   throw new Error(
@@ -339,10 +347,6 @@ http.route({
 
                 if (chunk.choices?.[0]?.finish_reason) {
                   finishReason = chunk.choices[0].finish_reason;
-                }
-
-                if (chunk.usage) {
-                  localUsage = chunk.usage;
                 }
               } catch (e) {
                 if (
@@ -391,6 +395,35 @@ http.route({
 
         // ── Single DB write — persist final content + metadata ───────────
         const totalLatencyMs = Date.now() - startTime;
+        const consultation = parseConsultationMetadata(usage?.consultation);
+        if (usage?.consultation !== undefined && !consultation) {
+          console.warn(
+            "[http /chat] Ignoring malformed consultation metadata",
+            {
+              requestId,
+              sessionId,
+            },
+          );
+        }
+        const consultationProperties = consultation
+          ? {
+              consultation_policy_version: consultation.policy_version,
+              consultation_status: consultation.status,
+              consultation_category: consultation.category,
+              consultation_probability: consultation.probability,
+              consultation_model: consultation.model,
+              consultation_reasoning_effort: consultation.reasoning_effort,
+              consultation_search_used: consultation.search_used,
+              consultation_search_requests: consultation.search_requests,
+              consultation_source_count: consultation.sources?.length ?? 0,
+              consultation_routing_ms: consultation.routing_ms,
+              consultation_advice_ms: consultation.advice_ms,
+              consultation_known_cost_usd: consultation.known_cost_usd,
+              consultation_cost_complete: consultation.cost_complete,
+              consultation_error_type: consultation.error_type,
+              cortex_trace_id: consultation.trace_id,
+            }
+          : {};
 
         await ctx.runMutation(internal.messages.finalizeGeneration, {
           id: assistantMessageId as never,
@@ -399,6 +432,7 @@ http.route({
             model: modelUsed,
             provider: target.provider,
             cost: usage?.cost ?? undefined,
+            consultation,
             usedFallback,
             promptTokens: usage?.prompt_tokens,
             completionTokens: usage?.completion_tokens,
@@ -463,6 +497,8 @@ http.route({
           ),
           finishReason,
           promptMode,
+          sessionId,
+          ...consultationProperties,
         });
 
         // PostHog: track successful message generation
@@ -499,6 +535,7 @@ http.route({
               product_contract_version: productContractVersion,
               voice_prompt_version: voicePromptVersion,
               persona_prompt_source: personaPromptSource,
+              ...consultationProperties,
             },
           });
         } catch {
@@ -528,6 +565,7 @@ http.route({
         const message = error instanceof Error ? error.message : String(error);
         const isProviderError = message.startsWith("Provider error:");
         const latencyMs = Date.now() - startTime;
+        const consultation = parseConsultationMetadata(usage?.consultation);
 
         console.error("[http /chat] Stream failed", {
           requestId,
@@ -535,6 +573,9 @@ http.route({
           clientDisconnected,
           latencyMs,
           contentLength: content.length,
+          sessionId,
+          consultationStatus: consultation?.status,
+          cortexTraceId: consultation?.trace_id,
         });
 
         // PostHog: track generation failure
@@ -549,6 +590,11 @@ http.route({
               session_id: sessionId,
               model: modelUsed,
               partial_content: content.length > 0,
+              consultation_status: consultation?.status,
+              consultation_category: consultation?.category,
+              consultation_error_type: consultation?.error_type,
+              consultation_known_cost_usd: consultation?.known_cost_usd,
+              cortex_trace_id: consultation?.trace_id,
             },
           });
         } catch {
@@ -566,6 +612,11 @@ http.route({
               usedFallback,
               latencyMs,
               finishReason: "error",
+              consultation,
+              cost: usage?.cost ?? undefined,
+              promptTokens: usage?.prompt_tokens,
+              completionTokens: usage?.completion_tokens,
+              totalTokens: usage?.total_tokens,
             },
             completedAt: Date.now(),
           });
@@ -578,9 +629,29 @@ http.route({
               error: message,
               errorCode: isProviderError ? "PROVIDER_ERROR" : "STREAM_ERROR",
               latencyMs,
+              consultation,
             },
             completedAt: Date.now(),
           });
+        }
+        if (usage) {
+          try {
+            await ctx.runMutation(internal.usage.trackActivity, {
+              userId: userId as never,
+              type: "chat",
+              metrics: {
+                tokensIn: usage.prompt_tokens ?? 0,
+                tokensOut: usage.completion_tokens ?? 0,
+                chars: content.length,
+                count: 1,
+              },
+            });
+          } catch {
+            console.warn(
+              "[http /chat] Failed to track partial generation usage",
+              { requestId },
+            );
+          }
         }
       } finally {
         try {

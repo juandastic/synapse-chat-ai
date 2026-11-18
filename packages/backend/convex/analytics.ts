@@ -49,6 +49,11 @@ export const capture = internalAction({
         event: args.event,
         properties: {
           ...args.properties,
+          // Convex rejects dollar-prefixed argument keys. Construct PostHog's
+          // reserved trace property after crossing the Convex boundary.
+          ...(typeof args.properties?.cortex_trace_id === "string"
+            ? { $ai_trace_id: args.properties.cortex_trace_id }
+            : {}),
           ...(args.personProperties ? { $set: args.personProperties } : {}),
         },
       });

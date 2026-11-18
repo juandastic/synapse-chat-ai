@@ -16,6 +16,7 @@ import { checkDailyUsage } from "./usageLimits";
 import { r2 } from "./r2";
 import { getAssignedChatModel, getSavedChatModel } from "./chatModels";
 import { Doc } from "./_generated/dataModel";
+import { consultationMetadataValidator } from "./schema";
 
 /** Only metadata consumed by the chat UI crosses the public query boundary. */
 export function publicMessage(message: Doc<"messages">) {
@@ -682,6 +683,7 @@ export const finalizeGeneration = internalMutation({
         ),
       ),
       cost: v.optional(v.number()),
+      consultation: v.optional(consultationMetadataValidator),
       latencyMs: v.optional(v.number()),
       finishReason: v.optional(v.string()),
       usedFallback: v.optional(v.boolean()),
@@ -711,6 +713,8 @@ export const finalizeGeneration = internalMutation({
       tokens: args.metadata.totalTokens,
       latencyMs: args.metadata.latencyMs,
       finishReason: args.metadata.finishReason,
+      consultationStatus: args.metadata.consultation?.status,
+      cortexTraceId: args.metadata.consultation?.trace_id,
     });
   },
 });
@@ -725,6 +729,7 @@ export const markAsError = internalMutation({
         error: v.optional(v.string()),
         errorCode: v.optional(v.string()),
         latencyMs: v.optional(v.number()),
+        consultation: v.optional(consultationMetadataValidator),
       }),
     ),
     completedAt: v.number(),

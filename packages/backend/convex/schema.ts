@@ -1,7 +1,137 @@
 import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { v, type Infer, type GenericValidator } from "convex/values";
 import { promptSnapshotValidator } from "./prompts";
 import { CHAT_MODELS, LEGACY_CHAT_MODELS } from "./chatModels";
+
+const consultationStageUsage = v.object({
+  prompt_tokens: v.number(),
+  completion_tokens: v.number(),
+  total_tokens: v.number(),
+  thoughts_tokens: v.number(),
+  cached_tokens: v.number(),
+  cost: v.union(v.number(), v.null()),
+});
+
+/** Internal observability only: omitted by every public message query. */
+export const consultationMetadataValidator = v.object({
+  policy_version: v.literal("v1"),
+  trace_id: v.optional(v.string()),
+  status: v.union(
+    v.literal("routing_failed"),
+    v.literal("skipped"),
+    v.literal("draft_failed"),
+    v.literal("advice_failed"),
+    v.literal("consulted"),
+    v.literal("final_failed"),
+    v.literal("final_failed_partial"),
+    v.literal("cancelled"),
+  ),
+  category: v.optional(
+    v.union(v.literal("general"), v.literal("medical"), v.literal("mixed")),
+  ),
+  probability: v.optional(v.number()),
+  model: v.optional(v.string()),
+  reasoning_effort: v.optional(v.string()),
+  search_used: v.optional(v.boolean()),
+  search_requests: v.optional(v.number()),
+  sources: v.optional(
+    v.array(
+      v.object({
+        title: v.string(),
+        url: v.string(),
+        provenance: v.optional(
+          v.union(v.literal("provider_annotation"), v.literal("model_link")),
+        ),
+      }),
+    ),
+  ),
+  routing_ms: v.optional(v.number()),
+  advice_ms: v.optional(v.number()),
+  error_type: v.optional(v.string()),
+  stages: v.optional(
+    v.object({
+      routing: v.optional(consultationStageUsage),
+      draft: v.optional(consultationStageUsage),
+      advice: v.optional(consultationStageUsage),
+      published: v.optional(consultationStageUsage),
+      failed_final: v.optional(consultationStageUsage),
+    }),
+  ),
+  known_cost_usd: v.optional(v.number()),
+  cost_complete: v.optional(v.boolean()),
+});
+
+export type ConsultationMetadata = Infer<typeof consultationMetadataValidator>;
+
+/** Validate untrusted HTTP data against the same shape used for persistence. */
+export function parseConsultationMetadata(
+  value: unknown,
+): ConsultationMetadata | undefined {
+  // This metadata must stay small, contain finite nonnegative metrics, and never
+  // prevent publishing a valid answer when an upstream version/shape changes.
+  const matches = (
+    candidate: unknown,
+    validator: GenericValidator,
+  ): boolean => {
+    switch (validator.kind) {
+      case "null":
+        return candidate === null;
+      case "string":
+        return typeof candidate === "string" && candidate.length <= 4000;
+      case "float64":
+        return (
+          typeof candidate === "number" &&
+          Number.isFinite(candidate) &&
+          candidate >= 0
+        );
+      case "boolean":
+        return typeof candidate === "boolean";
+      case "literal":
+        return candidate === validator.value;
+      case "array":
+        return (
+          Array.isArray(candidate) &&
+          candidate.length <= 50 &&
+          candidate.every((item) => matches(item, validator.element))
+        );
+      case "union":
+        return validator.members.some((member) => matches(candidate, member));
+      case "object": {
+        if (
+          !candidate ||
+          typeof candidate !== "object" ||
+          Array.isArray(candidate)
+        )
+          return false;
+        const record = candidate as Record<string, unknown>;
+        return (
+          Object.keys(record).every((key) =>
+            Object.prototype.hasOwnProperty.call(validator.fields, key),
+          ) &&
+          Object.entries(validator.fields).every(([key, field]) =>
+            record[key] === undefined
+              ? field.isOptional === "optional"
+              : matches(record[key], field),
+          )
+        );
+      }
+      case "any":
+      case "bytes":
+      case "commitTs":
+      case "id":
+      case "int64":
+      case "record":
+        return false;
+    }
+  };
+  if (!matches(value, consultationMetadataValidator)) return undefined;
+  const metadata = value as ConsultationMetadata;
+  if (metadata.probability !== undefined && metadata.probability > 1)
+    return undefined;
+  if (metadata.sources?.some((source) => !/^https?:\/\//i.test(source.url)))
+    return undefined;
+  return metadata;
+}
 
 export default defineSchema({
   // ===========================================================================
@@ -214,6 +344,7 @@ export default defineSchema({
           ),
         ),
         cost: v.optional(v.number()),
+        consultation: v.optional(consultationMetadataValidator),
         latencyMs: v.optional(v.number()),
         finishReason: v.optional(v.string()),
         usedFallback: v.optional(v.boolean()),
